@@ -1,171 +1,110 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 
-// ============ MODEL ============
-
-/// Rút gọn — chỉ đủ field để chọn trong dropdown, chưa phải feature
-/// "Danh sách thiết bị" đầy đủ (sẽ tách riêng khi làm tới)
 class ThietBiRutGon {
-  final int maThietBi;
-  final String tenThietBi;
-  final String? loaiThietBi;
-  final int maChuKy;
-
-  ThietBiRutGon({
-    required this.maThietBi,
-    required this.tenThietBi,
-    this.loaiThietBi,
-    required this.maChuKy,
-  });
-
-  factory ThietBiRutGon.fromJson(Map<String, dynamic> j) => ThietBiRutGon(
-        maThietBi: j['maThietBi'],
-        tenThietBi: j['tenThietBi'],
-        loaiThietBi: j['loaiThietBi'],
-        maChuKy: j['maChuKy'],
-      );
+  final int maThietBi; final String tenThietBi; final String? loaiThietBi; final int maChuKy;
+  ThietBiRutGon({required this.maThietBi, required this.tenThietBi, this.loaiThietBi, required this.maChuKy});
+  factory ThietBiRutGon.fromJson(Map<String,dynamic> j)=>ThietBiRutGon(maThietBi:(j['maThietBi'] as num?)?.toInt()??0,tenThietBi:j['tenThietBi']?.toString()??'',loaiThietBi:j['loaiThietBi']?.toString(),maChuKy:(j['maChuKy'] as num?)?.toInt()??0);
 }
 
 class ChuKyBaoTriModel {
-  final int maChuKy;
-  final String? loaiThietBi;
-  final int soThangChuKyDeXuat;
-
-  ChuKyBaoTriModel({required this.maChuKy, this.loaiThietBi, required this.soThangChuKyDeXuat});
-
-  factory ChuKyBaoTriModel.fromJson(Map<String, dynamic> j) => ChuKyBaoTriModel(
-      maChuKy: (j['maChuKy'] as num?)?.toInt() ?? 0,
-        loaiThietBi: j['loaiThietBi'],
-      soThangChuKyDeXuat: (j['soThangChuKyDeXuat'] as num?)?.toInt() ?? 0,
-      );
-
-  String get nhan => '${loaiThietBi ?? "Chưa rõ loại"} · $soThangChuKyDeXuat tháng/lần';
+  final int maChuKy; final String? loaiThietBi; final int soThangChuKyDeXuat;
+  ChuKyBaoTriModel({required this.maChuKy,this.loaiThietBi,required this.soThangChuKyDeXuat});
+  factory ChuKyBaoTriModel.fromJson(Map<String,dynamic> j)=>ChuKyBaoTriModel(maChuKy:(j['maChuKy'] as num?)?.toInt()??0,loaiThietBi:j['loaiThietBi']?.toString(),soThangChuKyDeXuat:(j['soThangChuKyDeXuat'] as num?)?.toInt()??0);
+  String get nhan=>'${loaiThietBi??"Chưa rõ loại"} · $soThangChuKyDeXuat tháng/lần';
 }
 
-/// 1 dòng thiết bị trong kế hoạch — người dùng tự chọn ngày dự kiến bảo trì,
-/// KHÁC với ngày lập kế hoạch (đúng lưu ý bạn nhấn mạnh)
-class ChiTietKeHoachInput {
-  final ThietBiRutGon thietBi;
-  DateTime ngayDuKienBaoTri;
-  ChiTietKeHoachInput({required this.thietBi, required this.ngayDuKienBaoTri});
+/// BƯỚC 1 trả về - 1 yêu cầu đăng ký ngày bảo trì đang "Chờ lập kế hoạch"
+class YeuCauNgayBaoTri {
+  final int maYeuCauNgayBaoTri;
+  final String tenThietBi;
+  final String? loaiThietBi;
+  final int soThangChuKy;
+  final int nam;
+  final DateTime ngayBaoTri;
+  final String trangThai;
+
+  YeuCauNgayBaoTri({
+    required this.maYeuCauNgayBaoTri, required this.tenThietBi, this.loaiThietBi,
+    required this.soThangChuKy, required this.nam, required this.ngayBaoTri, required this.trangThai,
+  });
+
+  factory YeuCauNgayBaoTri.fromJson(Map<String,dynamic> j) => YeuCauNgayBaoTri(
+    maYeuCauNgayBaoTri: (j['maYeuCauNgayBaoTri'] as num?)?.toInt() ?? 0,
+    tenThietBi: j['tenThietBi']?.toString() ?? '',
+    loaiThietBi: j['loaiThietBi']?.toString(),
+    soThangChuKy: (j['soThangChuKy'] as num?)?.toInt() ?? 0,
+    nam: (j['nam'] as num?)?.toInt() ?? 0,
+    ngayBaoTri: DateTime.parse(j['ngayBaoTri'].toString()),
+    trangThai: j['trangThai']?.toString() ?? '',
+  );
 }
 
 class ChiTietKeHoach {
-  final int maChiTietKeHoach;
-  final int maThietBi;
-  final String tenThietBi;
-  final DateTime ngayDuKienBaoTri;
-  final int? maHoSoBaoTri; // null = chưa tạo hồ sơ, có giá trị = đã tạo
-
-  ChiTietKeHoach({
-    required this.maChiTietKeHoach,
-    required this.maThietBi,
-    required this.tenThietBi,
-    required this.ngayDuKienBaoTri,
-    this.maHoSoBaoTri,
-  });
-
-  bool get daTaoHoSo => maHoSoBaoTri != null;
-
-  factory ChiTietKeHoach.fromJson(Map<String, dynamic> j) => ChiTietKeHoach(
-        maChiTietKeHoach: j['maChiTietKeHoach'],
-        maThietBi: j['maThietBi'],
-        tenThietBi: j['tenThietBi'] ?? '',
-        ngayDuKienBaoTri: DateTime.parse(j['ngayDuKienBaoTri']),
-        maHoSoBaoTri: j['maHoSoBaoTri'],
-      );
+  final int maChiTietKeHoach, maThietBi; final String tenThietBi; final DateTime ngayDuKienBaoTri; final int? maHoSoBaoTri;
+  ChiTietKeHoach({required this.maChiTietKeHoach,required this.maThietBi,required this.tenThietBi,required this.ngayDuKienBaoTri,this.maHoSoBaoTri});
+  bool get daTaoHoSo=>maHoSoBaoTri!=null;
+  factory ChiTietKeHoach.fromJson(Map<String,dynamic> j)=>ChiTietKeHoach(maChiTietKeHoach:(j['maChiTietKeHoach'] as num?)?.toInt()??0,maThietBi:(j['maThietBi'] as num?)?.toInt()??0,tenThietBi:j['tenThietBi']?.toString()??'',ngayDuKienBaoTri:DateTime.parse(j['ngayDuKienBaoTri'].toString()),maHoSoBaoTri:(j['maHoSoBaoTri'] as num?)?.toInt());
 }
 
 class KeHoachBaoTri {
-  final int maKeHoach;
-  final int maChuKy;
-  final String? tenChuKy;
-  final int nam;
-  final String? tenNhanVienLap;
-  final DateTime ngayLapKeHoach;
-  final String trangThai;
-  final int soThietBi;
-  final String? tenThietBi;
-  // BỎ: ngayBatDauKeHoach, ngayKetThucKeHoach — không có trong DB
-
-  KeHoachBaoTri({
-    required this.maKeHoach,
-    required this.maChuKy,
-    this.tenChuKy,
-    required this.nam,
-    this.tenNhanVienLap,
-    required this.ngayLapKeHoach,
-    required this.trangThai,
-    required this.soThietBi,
-    this.tenThietBi,
-  });
-
-  factory KeHoachBaoTri.fromJson(Map<String, dynamic> j) => KeHoachBaoTri(
-        maKeHoach: j['maKeHoach'],
-        maChuKy: j['maChuKy'],
-        tenChuKy: j['tenChuKy'],
-        nam: j['nam'],
-        tenNhanVienLap: j['tenNhanVienLap'],
-        ngayLapKeHoach: DateTime.parse(j['ngayLapKeHoach']),
-        trangThai: j['trangThai'] ?? '',
-        soThietBi: j['soThietBi'] ?? 0,
-        tenThietBi: j['tenThietBi'],
-      );
+  final int maKeHoach, maChuKy, nam, soThietBi; final String? tenChuKy, tenNhanVienLap, tenThietBi; final DateTime ngayLapKeHoach; final String trangThai;
+  KeHoachBaoTri({required this.maKeHoach,required this.maChuKy,this.tenChuKy,required this.nam,this.tenNhanVienLap,required this.ngayLapKeHoach,required this.trangThai,required this.soThietBi,this.tenThietBi});
+  factory KeHoachBaoTri.fromJson(Map<String,dynamic> j)=>KeHoachBaoTri(maKeHoach:(j['maKeHoach'] as num?)?.toInt()??0,maChuKy:(j['maChuKy'] as num?)?.toInt()??0,tenChuKy:j['tenChuKy']?.toString(),nam:(j['nam'] as num?)?.toInt()??0,tenNhanVienLap:j['tenNhanVienLap']?.toString(),ngayLapKeHoach:DateTime.parse(j['ngayLapKeHoach'].toString()),trangThai:j['trangThai']?.toString()??'',soThietBi:(j['soThietBi'] as num?)?.toInt()??0,tenThietBi:j['tenThietBi']?.toString());
 }
 
-// ============ SERVICE ============
-
 class MaintenancePlanService {
-  static String _dateOnly(DateTime date) =>
-      '${date.year.toString().padLeft(4, '0')}-'
-      '${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
+  static String _dateOnly(DateTime d)=>'${d.year.toString().padLeft(4,'0')}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
 
   static Future<List<ChuKyBaoTriModel>> layDanhSachChuKy() async {
-    final data = await ApiClient.instance.get<List<dynamic>>(ApiConstants.chuKyBaoTri);
-    return data.map((e) => ChuKyBaoTriModel.fromJson(e)).toList();
-  }
-
-  static Future<List<ThietBiRutGon>> layThietBiTheoChuKy(int maChuKy) async {
-    final data = await ApiClient.instance.get<List<dynamic>>(
-      ApiConstants.equipment,
-      query: {'maChuKy': maChuKy},
-    );
-    return data.map((e) => ThietBiRutGon.fromJson(e)).toList();
+    final data=await ApiClient.instance.get<List<dynamic>>(ApiConstants.chuKyBaoTri);
+    return data.map((e)=>ChuKyBaoTriModel.fromJson(Map<String,dynamic>.from(e as Map))).toList();
   }
 
   static Future<List<ThietBiRutGon>> layDanhSachThietBi() async {
-    final data = await ApiClient.instance.get<List<dynamic>>(ApiConstants.equipment);
-    return data.map((e) => ThietBiRutGon.fromJson(e)).toList();
+    final data=await ApiClient.instance.get<List<dynamic>>(ApiConstants.equipment);
+    return data.map((e)=>ThietBiRutGon.fromJson(Map<String,dynamic>.from(e as Map))).toList();
+  }
+
+  /// BƯỚC 1: đăng ký ngày muốn bảo trì cho 1 thiết bị
+  static Future<void> taoYeuCauNgayBaoTri({
+    required int maThietBi,
+    required int nam,
+    required DateTime ngayBaoTri,
+  }) async {
+    await ApiClient.instance.post<Map<String,dynamic>>(ApiConstants.yeuCauNgayBaoTri, {
+      'maThietBi': maThietBi,
+      'nam': nam,
+      'ngayBaoTri': _dateOnly(ngayBaoTri),
+    });
+  }
+
+  /// Danh sách yêu cầu đang chờ lập kế hoạch - hiện ở màn BƯỚC 2 để chọn
+  static Future<List<YeuCauNgayBaoTri>> layYeuCauChoLapKeHoach() async {
+    final data = await ApiClient.instance.get<List<dynamic>>(
+      '${ApiConstants.yeuCauNgayBaoTri}/cho-lap-ke-hoach',
+    );
+    return data.map((e) => YeuCauNgayBaoTri.fromJson(Map<String,dynamic>.from(e as Map))).toList();
+  }
+
+  /// BƯỚC 2: lập kế hoạch từ 1 yêu cầu đã chọn
+  static Future<void> lapKeHoachTuYeuCau({
+    required int maYeuCauNgayBaoTri,
+    required int nam,
+  }) async {
+    await ApiClient.instance.post<Map<String,dynamic>>(ApiConstants.maintenancePlan, {
+      'maYeuCauNgayBaoTri': maYeuCauNgayBaoTri,
+      'nam': nam,
+    });
   }
 
   static Future<List<KeHoachBaoTri>> layDanhSachKeHoach() async {
-    final data = await ApiClient.instance.get<List<dynamic>>(ApiConstants.maintenancePlan);
-    return data.map((e) => KeHoachBaoTri.fromJson(e)).toList();
+    final data=await ApiClient.instance.get<List<dynamic>>(ApiConstants.maintenancePlan);
+    return data.map((e)=>KeHoachBaoTri.fromJson(Map<String,dynamic>.from(e as Map))).toList();
   }
 
   static Future<List<ChiTietKeHoach>> layChiTietKeHoach(int maKeHoach) async {
-    final data = await ApiClient.instance.get<List<dynamic>>(
-      '${ApiConstants.maintenancePlan}/$maKeHoach/chi-tiet',
-    );
-    return data.map((e) => ChiTietKeHoach.fromJson(e)).toList();
+    final data=await ApiClient.instance.get<List<dynamic>>('${ApiConstants.maintenancePlan}/$maKeHoach/chi-tiet');
+    return data.map((e)=>ChiTietKeHoach.fromJson(Map<String,dynamic>.from(e as Map))).toList();
   }
-
-  /// Tạo kế hoạch cả năm + danh sách thiết bị kèm ngày dự kiến bảo trì riêng
-  static Future<void> taoKeHoach({
-  required int maChuKy,
-  required int nam,
-  required List<ChiTietKeHoachInput> danhSachThietBi,
-}) async {
-  await ApiClient.instance.post<Map<String, dynamic>>(ApiConstants.maintenancePlan, {
-    'maChuKy': maChuKy,
-    'nam': nam,
-    'thietBiDuocChon': danhSachThietBi   // đổi tên key cho khớp DTO C#
-        .map((e) => {
-              'maThietBi': e.thietBi.maThietBi,
-              'ngayDuKienBaoTri': _dateOnly(e.ngayDuKienBaoTri),
-            })
-        .toList(),
-  });
-}
 }

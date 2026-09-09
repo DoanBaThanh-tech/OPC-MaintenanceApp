@@ -68,7 +68,7 @@ class DashboardLogic {
         return [
           MenuGroup(tieuDe: 'Thiết bị', muc: [
             MenuItemData(icon: Icons.precision_manufacturing_rounded, label: 'Danh sách thiết bị', screenBuilder: () => const _ChuaLamScreen(ten: 'Danh sách thiết bị')),
-            MenuItemData(icon: Icons.event_note_rounded, label: 'Kế hoạch bảo trì', screenBuilder: () => const MaintenancePlanListScreen()),
+            MenuItemData(icon: Icons.event_note_rounded, label: 'Kế hoạch bảo trì', screenBuilder: () => const LapKeHoachTuYeuCauScreen()),
           ]),
           MenuGroup(tieuDe: 'Công việc', muc: [
             MenuItemData(icon: Icons.build_rounded, label: 'Hồ sơ bảo trì', screenBuilder: () => const WorkOrderBaoTriListScreen()),

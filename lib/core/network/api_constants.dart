@@ -13,5 +13,6 @@ class ApiConstants {
   static const String inventory = "/Inventory";
   static const String system = "/System";
   static const String chuKyBaoTri = '$maintenancePlan/chu-ky';
+  static const String yeuCauNgayBaoTri = '$maintenancePlan/yeu-cau-ngay';
   static const String nhanVien = "/NhanVien";
 }
