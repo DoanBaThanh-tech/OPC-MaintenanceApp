@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/network/api_exception.dart';
 import '../../../core/responsive/responsive.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/work_order_logic.dart';
@@ -22,37 +21,29 @@ class CreateWorkOrderBaoTriScreen extends StatefulWidget {
 }
 
 class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScreen> {
+  final _controller = CreateWorkOrderBaoTriController();
   final _formKey = GlobalKey<FormState>();
   final _noiDungController = TextEditingController();
   final _thoiGianController = TextEditingController(text: '4');
-  bool _dangLuu = false;
-  String? _loi;
-
-  Future<void> _luu(bool guiDuyet) async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() { _dangLuu = true; _loi = null; });
-    try {
-      await WorkOrderService.taoHoSoBaoTri(
-        maChiTietKeHoach: widget.maChiTietKeHoach,
-        maThietBi: widget.maThietBi,
-        noiDungCongViec: _noiDungController.text.trim(),
-        thoiGianDuKien: _thoiGianController.text.trim(),
-        guiDuyet: guiDuyet,
-      );
-      if (!mounted) return;
-      Navigator.pop(context, true);
-    } on ApiException catch (e) {
-      setState(() => _loi = e.message);
-    } finally {
-      if (mounted) setState(() => _dangLuu = false);
-    }
-  }
 
   @override
   void dispose() {
+    _controller.dispose();
     _noiDungController.dispose();
     _thoiGianController.dispose();
     super.dispose();
+  }
+
+  Future<void> _luu(bool guiDuyet) async {
+    if (!_formKey.currentState!.validate()) return;
+    final ok = await _controller.luu(
+      maChiTietKeHoach: widget.maChiTietKeHoach,
+      maThietBi: widget.maThietBi,
+      noiDungCongViec: _noiDungController.text.trim(),
+      thoiGianDuKien: _thoiGianController.text.trim(),
+      guiDuyet: guiDuyet,
+    );
+    if (ok && mounted) Navigator.pop(context, true);
   }
 
   @override
@@ -96,28 +87,37 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                       decoration: const InputDecoration(labelText: 'Thời gian dự kiến (giờ)', border: OutlineInputBorder()),
                       validator: (v) => (v == null || int.tryParse(v) == null) ? 'Vui lòng nhập số giờ hợp lệ' : null,
                     ),
-                    if (_loi != null) ...[
-                      const SizedBox(height: 12),
-                      Text(_loi!, style: const TextStyle(color: AppColors.danger)),
-                    ],
+                    AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, _) {
+                        if (_controller.loi == null) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
+                        );
+                      },
+                    ),
                     const SizedBox(height: 20),
-                    Row(children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _dangLuu ? null : () => _luu(false),
-                          child: const Text('Lưu nháp'),
+                    AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, _) => Row(children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _controller.dangLuu ? null : () => _luu(false),
+                            child: const Text('Lưu nháp'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _dangLuu ? null : () => _luu(true),
-                          child: _dangLuu
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : const Text('Tạo & Gửi duyệt'),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton(
+                            onPressed: _controller.dangLuu ? null : () => _luu(true),
+                            child: _controller.dangLuu
+                                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                : const Text('Tạo & Gửi duyệt'),
+                          ),
                         ),
-                      ),
-                    ]),
+                      ]),
+                    ),
                   ],
                 ),
               ),
@@ -138,8 +138,8 @@ class WorkOrderBaoTriListScreen extends StatefulWidget {
 }
 
 class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> with SingleTickerProviderStateMixin {
+  final _controller = WorkOrderBaoTriListController();
   late TabController _tab;
-  late Future<List<HoSoBaoTri>> _future;
 
   final _tabs = const ['Tất cả', 'Chờ duyệt', 'Đã duyệt', 'Đang thực hiện', 'Từ chối'];
 
@@ -147,18 +147,29 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
   void initState() {
     super.initState();
     _tab = TabController(length: _tabs.length, vsync: this);
-    _future = WorkOrderService.layDanhSachHoSoBaoTri();
+    _controller.taiDanhSach();
   }
 
-  void _taiLai() => setState(() => _future = WorkOrderService.layDanhSachHoSoBaoTri());
+  @override
+  void dispose() {
+    _tab.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
 
-  Color _mau(String tt) {
+  Color _mau(TrangThaiHoSoBaoTri tt) {
     switch (tt) {
-      case 'Đã duyệt': return const Color(0xFF0068A9);
-      case 'Đang thực hiện': return const Color(0xFF1D4ED8);
-      case 'Đã hoàn thành': return AppColors.success;
-      case 'Từ chối': return AppColors.danger;
-      default: return AppColors.warning;
+      case TrangThaiHoSoBaoTri.daDuyet:
+        return const Color(0xFF0068A9);
+      case TrangThaiHoSoBaoTri.dangThucHien:
+        return const Color(0xFF1D4ED8);
+      case TrangThaiHoSoBaoTri.daHoanThanh:
+        return AppColors.success;
+      case TrangThaiHoSoBaoTri.tuChoi:
+        return AppColors.danger;
+      case TrangThaiHoSoBaoTri.choDuyet:
+      case TrangThaiHoSoBaoTri.khac:
+        return AppColors.warning;
     }
   }
 
@@ -172,47 +183,45 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
         indicatorColor: AppColors.primary,
         tabs: _tabs.map((e) => Tab(text: e)).toList(),
       ),
-      body: FutureBuilder<List<HoSoBaoTri>>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) return Center(child: Text('Lỗi: ${snap.error}'));
-          final all = snap.data ?? [];
+      body: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          if (_controller.dangTai) return const Center(child: CircularProgressIndicator());
+          if (_controller.loi != null) return Center(child: Text(_controller.loi!));
 
           return TabBarView(
             controller: _tab,
             children: _tabs.map((tab) {
-              final list = tab == 'Tất cả' ? all : all.where((h) => h.trangThai == tab).toList();
+              final list = _controller.locTheoTab(tab);
               if (list.isEmpty) return const Center(child: Text('Không có hồ sơ nào'));
               return RefreshIndicator(
-                onRefresh: () async => _taiLai(),
+                onRefresh: _controller.taiDanhSach,
                 child: ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: list.length,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (context, i) {
                     final hs = list[i];
+                    final mau = _mau(phanLoaiTrangThaiHoSo(hs.trangThai));
                     return Card(
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
-                        side: BorderSide(color: _mau(hs.trangThai), width: 3, style: BorderStyle.solid),
+                        side: BorderSide(color: mau, width: 3, style: BorderStyle.solid),
                       ),
                       child: ListTile(
                         title: Text(hs.tenThietBi, style: const TextStyle(fontWeight: FontWeight.w700)),
                         subtitle: Text('#${hs.maHoSoBaoTri} · ${hs.ngayTao.day}/${hs.ngayTao.month}/${hs.ngayTao.year}'),
                         trailing: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(color: _mau(hs.trangThai).withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
-                          child: Text(hs.trangThai, style: TextStyle(color: _mau(hs.trangThai), fontSize: 10.5, fontWeight: FontWeight.w700)),
+                          decoration: BoxDecoration(color: mau.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
+                          child: Text(hs.trangThai, style: TextStyle(color: mau, fontSize: 10.5, fontWeight: FontWeight.w700)),
                         ),
                         onTap: () async {
                           final changed = await Navigator.push(
                             context,
                             MaterialPageRoute(builder: (_) => WorkOrderBaoTriDetailScreen(maHoSoBaoTri: hs.maHoSoBaoTri)),
                           );
-                          if (changed == true) _taiLai();
+                          if (changed == true) _controller.taiDanhSach();
                         },
                       ),
                     );
@@ -237,26 +246,31 @@ class WorkOrderBaoTriDetailScreen extends StatefulWidget {
 }
 
 class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScreen> {
-  late Future<HoSoBaoTri> _future;
+  late final WorkOrderBaoTriDetailController _controller;
 
   @override
   void initState() {
     super.initState();
-    _future = WorkOrderService.layChiTietHoSoBaoTri(widget.maHoSoBaoTri);
+    _controller = WorkOrderBaoTriDetailController(widget.maHoSoBaoTri);
+    _controller.taiChiTiet();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Chi tiết hồ sơ bảo trì'), backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-      body: FutureBuilder<HoSoBaoTri>(
-        future: _future,
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snap.hasError) return Center(child: Text('Lỗi: ${snap.error}'));
-          final hs = snap.data!;
+      body: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          if (_controller.dangTai) return const Center(child: CircularProgressIndicator());
+          if (_controller.loi != null) return Center(child: Text(_controller.loi!));
+          final hs = _controller.hoSo!;
 
           return Padding(
             padding: const EdgeInsets.all(16),
@@ -328,49 +342,23 @@ class PhanCongBaoTriScreen extends StatefulWidget {
 }
 
 class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
-  List<NhanVienRutGon> _dsNhanVien = [];
-  NhanVienRutGon? _chon;
-  DateTime _ngayBatDau = DateTime.now();
-  DateTime _ngayKetThuc = DateTime.now().add(const Duration(days: 1));
-  bool _dangTai = true;
-  bool _dangLuu = false;
-  String? _loi;
+  final _controller = PhanCongBaoTriController();
 
   @override
   void initState() {
     super.initState();
-    _taiNhanVien();
+    _controller.taiNhanVien();
   }
 
-  Future<void> _taiNhanVien() async {
-    try {
-      final ds = await WorkOrderService.layDanhSachNhanVienKyThuat();
-      setState(() { _dsNhanVien = ds; _dangTai = false; });
-    } catch (e) {
-      setState(() { _loi = 'Không tải được danh sách nhân viên'; _dangTai = false; });
-    }
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _xacNhan() async {
-    if (_chon == null) {
-      setState(() => _loi = 'Vui lòng chọn nhân viên thực hiện');
-      return;
-    }
-    setState(() { _dangLuu = true; _loi = null; });
-    try {
-      await WorkOrderService.phanCongBaoTri(
-        maHoSoBaoTri: widget.maHoSoBaoTri,
-        maNhanVienThucHien: _chon!.maNhanVien,
-        ngayBatDau: _ngayBatDau,
-        ngayKetThuc: _ngayKetThuc,
-      );
-      if (!mounted) return;
-      Navigator.pop(context, true);
-    } on ApiException catch (e) {
-      setState(() => _loi = e.message);
-    } finally {
-      if (mounted) setState(() => _dangLuu = false);
-    }
+    final ok = await _controller.xacNhan(widget.maHoSoBaoTri);
+    if (ok && mounted) Navigator.pop(context, true);
   }
 
   String _fmt(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -379,70 +367,84 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Phân công công việc'), backgroundColor: AppColors.primary, foregroundColor: Colors.white),
-      body: _dangTai
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Text('Chọn nhân viên thực hiện', style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  ..._dsNhanVien.map((nv) => Card(
-                        color: _chon?.maNhanVien == nv.maNhanVien ? AppColors.primary.withValues(alpha: 0.08) : null,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(color: _chon?.maNhanVien == nv.maNhanVien ? AppColors.primary : Colors.transparent),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(child: Text(nv.hoTen.isNotEmpty ? nv.hoTen[0] : '?')),
-                          title: Text(nv.hoTen),
-                          trailing: _chon?.maNhanVien == nv.maNhanVien ? const Icon(Icons.check_circle, color: AppColors.primary) : null,
-                          onTap: () => setState(() => _chon = nv),
-                        ),
-                      )),
-                  const SizedBox(height: 16),
-                  Row(children: [
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final d = await showDatePicker(context: context, initialDate: _ngayBatDau, firstDate: DateTime(2020), lastDate: DateTime(2100));
-                          if (d != null) setState(() => _ngayBatDau = d);
-                        },
-                        child: InputDecorator(
-                          decoration: const InputDecoration(labelText: 'Bắt đầu dự kiến', border: OutlineInputBorder()),
-                          child: Text(_fmt(_ngayBatDau)),
-                        ),
+      body: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          if (_controller.dangTai) return const Center(child: CircularProgressIndicator());
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text('Chọn nhân viên thực hiện', style: TextStyle(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 8),
+                ..._controller.dsNhanVien.map((nv) => Card(
+                      color: _controller.chon?.maNhanVien == nv.maNhanVien ? AppColors.primary.withValues(alpha: 0.08) : null,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(color: _controller.chon?.maNhanVien == nv.maNhanVien ? AppColors.primary : Colors.transparent),
+                      ),
+                      child: ListTile(
+                        leading: CircleAvatar(child: Text(nv.hoTen.isNotEmpty ? nv.hoTen[0] : '?')),
+                        title: Text(nv.hoTen),
+                        trailing: _controller.chon?.maNhanVien == nv.maNhanVien ? const Icon(Icons.check_circle, color: AppColors.primary) : null,
+                        onTap: () => _controller.chonNhanVien(nv),
+                      ),
+                    )),
+                const SizedBox(height: 16),
+                Row(children: [
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final d = await showDatePicker(
+                          context: context,
+                          initialDate: _controller.ngayBatDau,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+                        if (d != null) _controller.datNgayBatDau(d);
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(labelText: 'Bắt đầu dự kiến', border: OutlineInputBorder()),
+                        child: Text(_fmt(_controller.ngayBatDau)),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InkWell(
-                        onTap: () async {
-                          final d = await showDatePicker(context: context, initialDate: _ngayKetThuc, firstDate: DateTime(2020), lastDate: DateTime(2100));
-                          if (d != null) setState(() => _ngayKetThuc = d);
-                        },
-                        child: InputDecorator(
-                          decoration: const InputDecoration(labelText: 'Kết thúc dự kiến', border: OutlineInputBorder()),
-                          child: Text(_fmt(_ngayKetThuc)),
-                        ),
-                      ),
-                    ),
-                  ]),
-                  if (_loi != null) ...[
-                    const SizedBox(height: 12),
-                    Text(_loi!, style: const TextStyle(color: AppColors.danger)),
-                  ],
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: _dangLuu ? null : _xacNhan,
-                    child: _dangLuu
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Xác nhận phân công'),
                   ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () async {
+                        final d = await showDatePicker(
+                          context: context,
+                          initialDate: _controller.ngayKetThuc,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2100),
+                        );
+                        if (d != null) _controller.datNgayKetThuc(d);
+                      },
+                      child: InputDecorator(
+                        decoration: const InputDecoration(labelText: 'Kết thúc dự kiến', border: OutlineInputBorder()),
+                        child: Text(_fmt(_controller.ngayKetThuc)),
+                      ),
+                    ),
+                  ),
+                ]),
+                if (_controller.loi != null) ...[
+                  const SizedBox(height: 12),
+                  Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
                 ],
-              ),
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: _controller.dangLuu ? null : _xacNhan,
+                  child: _controller.dangLuu
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Xác nhận phân công'),
+                ),
+              ],
             ),
+          );
+        },
+      ),
     );
   }
 }
