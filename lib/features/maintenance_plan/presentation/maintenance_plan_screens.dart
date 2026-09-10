@@ -79,11 +79,12 @@ class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen> {
                     onTap: () => Navigator.push(
                       context,
                       MaterialPageRoute(
-                        // Truyền thêm maChuKy — Chi tiết kế hoạch cần nó để tính
-                        // ngày gợi ý cho nút "Thêm lần bảo trì"
+                        // Truyền thêm maChuKy VÀ nam — Chi tiết kế hoạch cần cả 2
+                        // để tính ngày gợi ý và giới hạn năm cho nút "Thêm lần bảo trì"
                         builder: (_) => MaintenancePlanDetailScreen(
                           maKeHoach: kh.maKeHoach,
                           maChuKy: kh.maChuKy,
+                          nam: kh.nam,
                         ),
                       ),
                     ),
@@ -329,15 +330,17 @@ class _DatePickerField extends StatelessWidget {
   }
 }
 
-// ============ MÀN 3: CHI TIẾT KẾ HOẠCH (đã thêm nút "+ Thêm lần bảo trì") ============
+// ============ MÀN 3: CHI TIẾT KẾ HOẠCH (chặn "+" nếu lần tiếp theo lấn năm sau) ============
 
 class MaintenancePlanDetailScreen extends StatefulWidget {
   final int maKeHoach;
   final int maChuKy;
+  final int nam;
   const MaintenancePlanDetailScreen({
     super.key,
     required this.maKeHoach,
     required this.maChuKy,
+    required this.nam,
   });
   @override
   State<MaintenancePlanDetailScreen> createState() => _MaintenancePlanDetailScreenState();
@@ -349,7 +352,7 @@ class _MaintenancePlanDetailScreenState extends State<MaintenancePlanDetailScree
   @override
   void initState() {
     super.initState();
-    _controller = MaintenancePlanDetailController(widget.maKeHoach, widget.maChuKy);
+    _controller = MaintenancePlanDetailController(widget.maKeHoach, widget.maChuKy, widget.nam);
     _controller.taiChiTiet();
   }
 
@@ -362,18 +365,37 @@ class _MaintenancePlanDetailScreenState extends State<MaintenancePlanDetailScree
   String _formatNgay(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   Future<void> _themLanBaoTri() async {
-    final goiY = _controller.ngayGoiYLanTiepTheo;
-    if (goiY == null && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chưa đủ dữ liệu chu kỳ để gợi ý ngày, vui lòng chọn thủ công')),
+    // Chặn ngay từ đầu, không mở DatePicker nếu lần tiếp theo đã lấn qua năm sau
+    if (!_controller.coTheThemLanBaoTri) {
+      final goiY = _controller.ngayGoiYLanTiepTheo!;
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Đã hết chu kỳ trong năm'),
+          content: Text(
+            'Lần bảo trì tiếp theo của thiết bị này (dự kiến ${_formatNgay(goiY)}) '
+            'đã vượt qua năm ${widget.nam}.\n\n'
+            'Vui lòng lập kế hoạch bảo trì mới cho năm ${goiY.year} '
+            'để tiếp tục — đây sẽ là lần bảo trì đầu tiên của kế hoạch năm đó.',
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Đã hiểu')),
+          ],
+        ),
       );
+      return;
     }
+
+    final goiY = _controller.ngayGoiYLanTiepTheo;
     final ngay = await showDatePicker(
       context: context,
-      initialDate: goiY ?? DateTime.now(),
-      firstDate: DateTime(DateTime.now().year - 1, 1, 1),
-      lastDate: DateTime(DateTime.now().year + 2, 12, 31),
-      helpText: goiY != null ? 'Chọn ngày cho lần bảo trì tiếp theo (gợi ý: ${_formatNgay(goiY)})' : 'Chọn ngày cho lần bảo trì tiếp theo',
+      initialDate: goiY ?? _controller.ngayDauNam,
+      // Giới hạn cứng trong đúng năm của kế hoạch — không cho chọn sang năm khác nữa
+      firstDate: _controller.ngayDauNam,
+      lastDate: _controller.ngayCuoiNam,
+      helpText: goiY != null
+          ? 'Chọn ngày cho lần bảo trì tiếp theo (gợi ý: ${_formatNgay(goiY)})'
+          : 'Chọn ngày cho lần bảo trì tiếp theo (trong năm ${widget.nam})',
     );
     if (ngay == null) return;
 
@@ -391,7 +413,7 @@ class _MaintenancePlanDetailScreenState extends State<MaintenancePlanDetailScree
       floatingActionButton: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) => FloatingActionButton.extended(
-          backgroundColor: AppColors.primary,
+          backgroundColor: _controller.coTheThemLanBaoTri ? AppColors.primary : Colors.grey,
           onPressed: _controller.dangThem ? null : _themLanBaoTri,
           icon: _controller.dangThem
               ? const SizedBox(
@@ -399,8 +421,11 @@ class _MaintenancePlanDetailScreenState extends State<MaintenancePlanDetailScree
                   height: 18,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-              : const Icon(Icons.add, color: Colors.white),
-          label: const Text('Thêm lần bảo trì', style: TextStyle(color: Colors.white)),
+              : Icon(_controller.coTheThemLanBaoTri ? Icons.add : Icons.block, color: Colors.white),
+          label: Text(
+            _controller.coTheThemLanBaoTri ? 'Thêm lần bảo trì' : 'Đã hết chu kỳ năm nay',
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
       ),
       body: AnimatedBuilder(

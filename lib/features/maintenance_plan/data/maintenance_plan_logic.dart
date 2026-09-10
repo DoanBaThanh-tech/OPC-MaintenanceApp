@@ -225,13 +225,17 @@ class MaintenancePlanListController extends ChangeNotifier {
 class MaintenancePlanDetailController extends ChangeNotifier {
   final int maKeHoach;
   final int maChuKy;
-  MaintenancePlanDetailController(this.maKeHoach, this.maChuKy);
+  final int nam;
+  MaintenancePlanDetailController(this.maKeHoach, this.maChuKy, this.nam);
 
   List<ChiTietKeHoach> danhSach = [];
   bool dangTai = true;
   bool dangThem = false;
   String? loi;
   int? _soThangChuKy;
+
+  DateTime get ngayDauNam => DateTime(nam, 1, 1);
+  DateTime get ngayCuoiNam => DateTime(nam, 12, 31);
 
   Future<void> taiChiTiet() async {
     dangTai = true;
@@ -244,7 +248,8 @@ class MaintenancePlanDetailController extends ChangeNotifier {
       ]);
       danhSach = results[0] as List<ChiTietKeHoach>;
       final dsChuKy = results[1] as List<ChuKyBaoTriModel>;
-      _soThangChuKy = dsChuKy.where((c) => c.maChuKy == maChuKy).firstOrNull?.soThangChuKyDeXuat;
+      final trung = dsChuKy.where((c) => c.maChuKy == maChuKy);
+      _soThangChuKy = trung.isEmpty ? null : trung.first.soThangChuKyDeXuat;
     } catch (e) {
       loi = 'Lỗi tải dữ liệu: $e';
     } finally {
@@ -253,17 +258,25 @@ class MaintenancePlanDetailController extends ChangeNotifier {
     }
   }
 
-  /// Thiết bị của kế hoạch này — hiện tại 1 kế hoạch chỉ theo 1 thiết bị,
-  /// lấy từ dòng chi tiết đầu tiên đang có
   int? get maThietBiCuaKeHoach => danhSach.isEmpty ? null : danhSach.first.maThietBi;
   String? get tenThietBiCuaKeHoach => danhSach.isEmpty ? null : danhSach.first.tenThietBi;
 
   /// Ngày gợi ý cho lần bảo trì tiếp theo = ngày gần nhất hiện có + số tháng chu kỳ.
-  /// Trả về null nếu chưa đủ dữ liệu để tính (chưa có chu kỳ hoặc danh sách rỗng).
+  /// Trả về null nếu chưa đủ dữ liệu (chưa có chu kỳ hoặc chưa có lần bảo trì nào).
   DateTime? get ngayGoiYLanTiepTheo {
     if (danhSach.isEmpty || _soThangChuKy == null) return null;
     final ganNhat = danhSach.map((c) => c.ngayDuKienBaoTri).reduce((a, b) => a.isAfter(b) ? a : b);
     return DateTime(ganNhat.year, ganNhat.month + _soThangChuKy!, ganNhat.day);
+  }
+
+  /// Rule mới: nếu ngày gợi ý cho lần tiếp theo đã lấn qua năm sau (ví dụ kế hoạch
+  /// 2027 nhưng gợi ý ra 2028) thì KHÔNG cho thêm nữa — phải lập kế hoạch năm sau.
+  /// Nếu chưa tính được ngày gợi ý (thiếu chu kỳ), vẫn cho phép chọn thủ công
+  /// trong phạm vi năm hiện tại.
+  bool get coTheThemLanBaoTri {
+    final goiY = ngayGoiYLanTiepTheo;
+    if (goiY == null) return true;
+    return !goiY.isAfter(ngayCuoiNam);
   }
 
   /// Trả về true nếu thêm thành công
@@ -271,6 +284,13 @@ class MaintenancePlanDetailController extends ChangeNotifier {
     final maThietBi = maThietBiCuaKeHoach;
     if (maThietBi == null) {
       loi = 'Kế hoạch chưa có thiết bị nào để thêm lần bảo trì';
+      notifyListeners();
+      return false;
+    }
+    // Điều kiện chặn tại client trước khi gọi API — đối chiếu đúng năm kế hoạch
+    if (ngay.year != nam) {
+      loi = 'Ngày bảo trì phải thuộc năm $nam. Muốn bảo trì sang năm ${ngay.year}, '
+          'vui lòng lập kế hoạch bảo trì mới cho năm ${ngay.year}.';
       notifyListeners();
       return false;
     }
