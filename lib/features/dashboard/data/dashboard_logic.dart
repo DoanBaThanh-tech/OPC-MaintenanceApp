@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../maintenance_plan/presentation/maintenance_plan_screens.dart';
 import '../../work_order/presentation/work_order_screens.dart';
-
+import '../../approval/presentation/approval_screens.dart';
 // ============ MODEL ============
 
 /// 1 mục trong slide menu
@@ -87,15 +87,16 @@ class DashboardLogic {
           ]),
         ];
 
-      case 'Giám đốc/Phó giám đốc':
-        return [
-          MenuGroup(tieuDe: 'Phê duyệt', muc: [
-            MenuItemData(icon: Icons.fact_check_rounded, label: 'Duyệt hồ sơ bảo trì', screenBuilder: () => const _ChuaLamScreen(ten: 'Duyệt hồ sơ bảo trì')),
-            MenuItemData(icon: Icons.fact_check_outlined, label: 'Duyệt hồ sơ sửa chữa', screenBuilder: () => const _ChuaLamScreen(ten: 'Duyệt hồ sơ sửa chữa')),
-            MenuItemData(icon: Icons.inventory_rounded, label: 'Duyệt yêu cầu vật tư', screenBuilder: () => const _ChuaLamScreen(ten: 'Duyệt yêu cầu vật tư')),
-            MenuItemData(icon: Icons.history_rounded, label: 'Lịch sử phê duyệt', screenBuilder: () => const _ChuaLamScreen(ten: 'Lịch sử phê duyệt')),
-          ]),
-        ];
+      case 'Giám đốc':
+      case 'Phó giám đốc':
+      return [
+        MenuGroup(tieuDe: 'Phê duyệt', muc: [
+          MenuItemData(icon: Icons.fact_check_rounded, label: 'Duyệt hồ sơ bảo trì', screenBuilder: () => const ApprovalBaoTriListScreen()),
+          MenuItemData(icon: Icons.fact_check_outlined, label: 'Duyệt hồ sơ sửa chữa', screenBuilder: () => const _ChuaLamScreen(ten: 'Duyệt hồ sơ sửa chữa')),
+          MenuItemData(icon: Icons.inventory_rounded, label: 'Duyệt yêu cầu vật tư', screenBuilder: () => const _ChuaLamScreen(ten: 'Duyệt yêu cầu vật tư')),
+          MenuItemData(icon: Icons.history_rounded, label: 'Lịch sử phê duyệt', screenBuilder: () => const _ChuaLamScreen(ten: 'Lịch sử phê duyệt')),
+        ]),
+      ];
 
       case 'Nhân viên quản lý vật tư':
         return [
