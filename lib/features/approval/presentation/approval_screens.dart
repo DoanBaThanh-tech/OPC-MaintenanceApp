@@ -35,6 +35,121 @@ class _ApprovalBaoTriListScreenState extends State<ApprovalBaoTriListScreen> {
         title: const Text('Hồ sơ bảo trì chờ duyệt'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        actions: [
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) {
+              final namHienTai = _controller.namLoc;
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: PopupMenuButton<int>(
+                  tooltip: 'Lọc theo năm',
+                  offset: const Offset(0, 48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  onSelected: (value) {
+                    // -1 = Tất cả năm
+                    _controller.datNamLoc(value == -1 ? null : value);
+                  },
+                  itemBuilder: (context) {
+                    final nams = _controller.cacNamCoDuLieu;
+                    return [
+                      // ===== Tất cả năm =====
+                      PopupMenuItem<int>(
+                        value: -1,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.all_inclusive_rounded,
+                              size: 18,
+                              color: namHienTai == null ? AppColors.primary : Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              'Tất cả năm',
+                              style: TextStyle(
+                                fontWeight: namHienTai == null ? FontWeight.w700 : FontWeight.w500,
+                                color: namHienTai == null ? AppColors.primary : null,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // ===== Các năm thực sự có dữ liệu =====
+                      if (nams.isEmpty)
+                        const PopupMenuItem(
+                          enabled: false,
+                          child: Text('Chưa có hồ sơ nào', style: TextStyle(color: Colors.grey)),
+                        )
+                      else
+                        ...nams.map((n) {
+                          final dangChon = namHienTai == n;
+                          return PopupMenuItem<int>(
+                            value: n,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.calendar_today_rounded,
+                                  size: 16,
+                                  color: dangChon ? AppColors.primary : Colors.grey.shade600,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Năm $n',
+                                  style: TextStyle(
+                                    fontWeight: dangChon ? FontWeight.w700 : FontWeight.w500,
+                                    color: dangChon ? AppColors.primary : null,
+                                  ),
+                                ),
+                                if (dangChon) ...[
+                                  const Spacer(),
+                                  Icon(Icons.check_rounded, size: 18, color: AppColors.primary),
+                                ],
+                              ],
+                            ),
+                          );
+                        }),
+                    ];
+                  },
+                  // Nút lọc đẹp
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.filter_list_rounded, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          namHienTai == null ? 'Tất cả năm' : 'Năm $namHienTai',
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                        ),
+                        if (namHienTai != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: const BoxDecoration(
+                              color: Colors.amber,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(width: 4),
+                        const Icon(Icons.keyboard_arrow_down_rounded, size: 18),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: AnimatedBuilder(
         animation: _controller,
@@ -43,7 +158,13 @@ class _ApprovalBaoTriListScreenState extends State<ApprovalBaoTriListScreen> {
           if (_controller.loi != null) return Center(child: Text(_controller.loi!));
           final list = _controller.danhSach;
           if (list.isEmpty) {
-            return const Center(child: Text('Không có hồ sơ nào đang chờ duyệt'));
+            return Center(
+              child: Text(
+                _controller.namLoc == null
+                    ? 'Không có hồ sơ nào đang chờ duyệt'
+                    : 'Không có hồ sơ nào đang chờ duyệt trong năm ${_controller.namLoc}',
+              ),
+            );
           }
           return RefreshIndicator(
             onRefresh: _controller.taiDanhSachChoDuyet,
@@ -54,7 +175,7 @@ class _ApprovalBaoTriListScreenState extends State<ApprovalBaoTriListScreen> {
                   padding: const EdgeInsets.all(16),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: soCot,
-                    mainAxisExtent: 118,
+                    mainAxisExtent: 130,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
                   ),
@@ -84,7 +205,24 @@ class _ApprovalBaoTriListScreenState extends State<ApprovalBaoTriListScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(hs.tenThietBi, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                              Row(children: [
+                                Expanded(
+                                  child: Text(hs.tenThietBi,
+                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                                      overflow: TextOverflow.ellipsis),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blueGrey.shade50,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'KH ${hs.nam}${hs.namTuKeHoach ? '' : ' (đột xuất)'}',
+                                    style: TextStyle(fontSize: 10, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                              ]),
                               Text('Người lập: ${hs.tenNguoiLap ?? '—'}',
                                   style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5)),
                               Row(children: [

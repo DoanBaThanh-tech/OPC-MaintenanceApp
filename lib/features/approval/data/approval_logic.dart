@@ -5,7 +5,7 @@ import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_exception.dart';
 
 // ============================================================
-// MODEL
+// MODEL (giữ nguyên)
 // ============================================================
 
 class HoSoBaoTriDuyet {
@@ -19,6 +19,8 @@ class HoSoBaoTriDuyet {
   final String trangThai;
   final String? lyDoTuChoi;
   final String? rowVersion;
+  final int nam;
+  final bool namTuKeHoach;
 
   HoSoBaoTriDuyet({
     required this.maHoSoBaoTri,
@@ -31,6 +33,8 @@ class HoSoBaoTriDuyet {
     required this.trangThai,
     this.lyDoTuChoi,
     this.rowVersion,
+    required this.nam,
+    required this.namTuKeHoach,
   });
 
   bool get choDuyet => trangThai == 'Chờ duyệt';
@@ -46,6 +50,8 @@ class HoSoBaoTriDuyet {
         trangThai: j['trangThai']?.toString() ?? '',
         lyDoTuChoi: j['lyDoTuChoi']?.toString(),
         rowVersion: j['rowVersion']?.toString(),
+        nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
+        namTuKeHoach: j['namTuKeHoach'] == true,
       );
 }
 
@@ -54,6 +60,7 @@ class HoSoBaoTriDuyet {
 // ============================================================
 
 class ApprovalService {
+  /// Luôn tải TOÀN BỘ hồ sơ chờ duyệt (không lọc năm ở API) - lọc năm làm ở client
   static Future<List<HoSoBaoTriDuyet>> layDanhSachBaoTri({String? trangThai}) async {
     final data = await ApiClient.instance.get<List<dynamic>>(
       '${ApiConstants.workOrder}/bao-tri',
@@ -67,10 +74,9 @@ class ApprovalService {
     return HoSoBaoTriDuyet.fromJson(data);
   }
 
-  /// MaNhanVienDuyet KHÔNG gửi lên — server tự lấy từ JWT (giám đốc đang đăng nhập).
   static Future<void> duyetBaoTri({
     required int maHoSoBaoTri,
-    required String quyetDinh, // "Duyệt" | "Từ chối"
+    required String quyetDinh,
     String? lyDo,
     required String rowVersion,
   }) async {
@@ -83,20 +89,33 @@ class ApprovalService {
 }
 
 // ============================================================
-// CONTROLLERS
+// CONTROLLER: danh sách + lọc năm (LỌC PHÍA CLIENT)
 // ============================================================
 
 class ApprovalBaoTriListController extends ChangeNotifier {
-  List<HoSoBaoTriDuyet> danhSach = [];
+  List<HoSoBaoTriDuyet> _tatCa = []; // toàn bộ dữ liệu tải về, KHÔNG lọc năm
   bool dangTai = true;
   String? loi;
+  int? namLoc; // null = "Tất cả năm"
+
+  /// Danh sách hiện ra màn hình - luôn lọc từ _tatCa, không gọi mạng lại
+  List<HoSoBaoTriDuyet> get danhSach =>
+      namLoc == null ? _tatCa : _tatCa.where((h) => h.nam == namLoc).toList();
+
+  /// Chỉ những năm THỰC SỰ có hồ sơ - lấy trực tiếp từ dữ liệu vừa tải,
+  /// không đoán/hardcode -> luôn khớp đúng dữ liệu thật, tự thêm năm mới khi có hồ sơ năm đó
+  List<int> get cacNamCoDuLieu {
+    final nams = _tatCa.map((h) => h.nam).toSet().toList();
+    nams.sort((a, b) => b.compareTo(a)); // mới nhất trước
+    return nams;
+  }
 
   Future<void> taiDanhSachChoDuyet() async {
     dangTai = true;
     loi = null;
     notifyListeners();
     try {
-      danhSach = await ApprovalService.layDanhSachBaoTri(trangThai: 'Chờ duyệt');
+      _tatCa = await ApprovalService.layDanhSachBaoTri(trangThai: 'Chờ duyệt');
     } catch (e) {
       loi = 'Lỗi tải dữ liệu: $e';
     } finally {
@@ -104,7 +123,17 @@ class ApprovalBaoTriListController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Chỉ đổi bộ lọc hiển thị - KHÔNG gọi mạng, nên không có độ trễ/lỗi thời điểm
+  void datNamLoc(int? nam) {
+    namLoc = nam;
+    notifyListeners();
+  }
 }
+
+// ============================================================
+// CONTROLLER: chi tiết + duyệt (giữ nguyên, không đổi)
+// ============================================================
 
 class ApprovalBaoTriDetailController extends ChangeNotifier {
   final int maHoSoBaoTri;
@@ -129,7 +158,6 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
     }
   }
 
-  /// Trả về true nếu xử lý thành công.
   Future<bool> xuLy({required String quyetDinh, String? lyDo}) async {
     if (hoSo?.rowVersion == null) {
       loi = 'Thiếu dữ liệu đồng bộ, vui lòng tải lại hồ sơ.';
