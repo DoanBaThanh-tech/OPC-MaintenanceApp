@@ -200,100 +200,154 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
           if (_controller.hoSo == null) return Center(child: Text(_controller.loi ?? 'Không tải được hồ sơ'));
           final hs = _controller.hoSo!;
 
-          return Responsive(
-            builder: (context, info) => SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: info.isMobile ? double.infinity : 600),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Row(children: [
-                      Expanded(
-                        child: Text(hs.tenThietBi, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text('Chờ duyệt',
-                            style: TextStyle(color: AppColors.warning, fontSize: 11.5, fontWeight: FontWeight.w700)),
-                      ),
-                    ]),
-                    const SizedBox(height: 16),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _dong('Người lập', hs.tenNguoiLap ?? '—'),
-                            const Divider(height: 20),
-                            _dong('Ngày tạo hồ sơ', _fmt(hs.ngayTao)),
-                            const Divider(height: 20),
-                            _dong('Ngày dự kiến bảo trì', _fmt(hs.ngayDuKienBaoTri)),
-                            const Divider(height: 20),
-                            _dong('Thời gian dự kiến', '${hs.thoiGianDuKien ?? '—'} giờ'),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(14),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Nội dung công việc',
-                                style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w700)),
-                            const SizedBox(height: 6),
-                            Text(hs.noiDungCongViec ?? '—'),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (_controller.loi != null) ...[
-                      const SizedBox(height: 12),
-                      Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
-                    ],
-                    const SizedBox(height: 24),
-                    if (_controller.dangXuLy)
-                      const Center(child: CircularProgressIndicator())
-                    else
-                      Row(children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.danger,
-                              side: const BorderSide(color: AppColors.danger),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            icon: const Icon(Icons.close_rounded),
-                            label: const Text('Từ chối'),
-                            onPressed: _tuChoi,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.success,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                            ),
-                            icon: const Icon(Icons.check_rounded),
-                            label: const Text('Phê duyệt'),
-                            onPressed: _duyet,
-                          ),
-                        ),
-                      ]),
-                  ],
+          return ResponsiveCenteredContent(
+  maxContentWidth: 600,
+  child: SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                hs.tenThietBi,
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-          );
+            Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: 5,
+              ),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text(
+                'Chờ duyệt',
+                style: TextStyle(
+                  color: AppColors.warning,
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 16),
+
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _dong(
+                  'Người lập',
+                  hs.tenNguoiLap ?? '—',
+                ),
+                const Divider(height: 20),
+                _dong(
+                  'Ngày tạo hồ sơ',
+                  _fmt(hs.ngayTao),
+                ),
+                const Divider(height: 20),
+                _dong(
+                  'Ngày dự kiến bảo trì',
+                  _fmt(hs.ngayDuKienBaoTri),
+                ),
+                const Divider(height: 20),
+                _dong(
+                  'Thời gian dự kiến',
+                  '${hs.thoiGianDuKien ?? '—'} giờ',
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 12),
+
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Nội dung công việc',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(hs.noiDungCongViec ?? '—'),
+              ],
+            ),
+          ),
+        ),
+
+        if (_controller.loi != null) ...[
+          const SizedBox(height: 12),
+          Text(
+            _controller.loi!,
+            style: const TextStyle(
+              color: AppColors.danger,
+            ),
+          ),
+        ],
+
+        const SizedBox(height: 24),
+
+        if (_controller.dangXuLy)
+          const Center(
+            child: CircularProgressIndicator(),
+          )
+        else
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: const BorderSide(
+                      color: AppColors.danger,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                    ),
+                  ),
+                  icon: const Icon(Icons.close_rounded),
+                  label: const Text('Từ chối'),
+                  onPressed: _tuChoi,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 14,
+                    ),
+                  ),
+                  icon: const Icon(Icons.check_rounded),
+                  label: const Text('Phê duyệt'),
+                  onPressed: _duyet,
+                ),
+              ),
+            ],
+          ),
+      ],
+    ),
+  ),
+);
         },
       ),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 class Breakpoints {
   Breakpoints._();
   static const double mobile = 600;
@@ -29,6 +30,33 @@ class Responsive extends StatelessWidget {
       builder: (context, constraints) {
         return builder(context, ResponsiveInfo(width: constraints.maxWidth));
       },
+    );
+  }
+}
+
+/// Widget căn giữa nội dung và giới hạn chiều rộng tối đa (cho Desktop/Tablet)
+class ResponsiveCenteredContent extends StatelessWidget {
+  final Widget child;
+  final double maxContentWidth;
+  final EdgeInsetsGeometry? padding;
+
+  const ResponsiveCenteredContent({
+    super.key,
+    required this.child,
+    this.maxContentWidth = 600,
+    this.padding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxWidth: maxContentWidth),
+        child: Padding(
+          padding: padding ?? EdgeInsets.zero,
+          child: child,
+        ),
+      ),
     );
   }
 }
