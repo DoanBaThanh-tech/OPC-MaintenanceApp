@@ -30,6 +30,8 @@ class HoSoBaoTri {
   final String trangThai;
   final String? lyDoTuChoi;
   final int? maPhanCong;
+  final int nam;
+  final bool namTuKeHoach;
 
   HoSoBaoTri({
     required this.maHoSoBaoTri,
@@ -41,14 +43,14 @@ class HoSoBaoTri {
     required this.trangThai,
     this.lyDoTuChoi,
     this.maPhanCong,
+    required this.nam,
+    required this.namTuKeHoach,
   });
 
   bool get choDuyet => trangThai == 'Chờ duyệt';
   bool get daDuyetChuaPhanCong => trangThai == 'Đã duyệt' && maPhanCong == null;
   bool get dangThucHien => trangThai == 'Đang thực hiện';
 
-  // Giữ nguyên fallback maThieBi (thiếu chữ 't') vì tên cột FK gốc trong DB bị đặt vậy —
-  // không đổi tên cột DB, chỉ dự phòng đọc đúng cả 2 khả năng JSON trả về.
   factory HoSoBaoTri.fromJson(Map<String, dynamic> j) => HoSoBaoTri(
         maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
         maThietBi: (j['maThietBi'] as num?)?.toInt() ?? (j['maThieBi'] as num?)?.toInt() ?? 0,
@@ -59,6 +61,8 @@ class HoSoBaoTri {
         trangThai: j['trangThai']?.toString() ?? '',
         lyDoTuChoi: j['lyDoTuChoi']?.toString(),
         maPhanCong: (j['maPhanCong'] as num?)?.toInt(),
+        nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
+        namTuKeHoach: j['namTuKeHoach'] == true,
       );
 }
 
@@ -88,14 +92,22 @@ TrangThaiHoSoBaoTri phanLoaiTrangThaiHoSo(String tt) {
 // ============================================================
 
 class WorkOrderService {
-  static Future<List<HoSoBaoTri>> layDanhSachHoSoBaoTri() async {
-    final data = await ApiClient.instance.get<List<dynamic>>('${ApiConstants.workOrder}/bao-tri');
+  static Future<List<HoSoBaoTri>> layDanhSachHoSoBaoTri({int? nam}) async {
+    final data = await ApiClient.instance.get<List<dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri',
+      query: nam != null ? {'nam': nam} : null,
+    );
     return data.map((e) => HoSoBaoTri.fromJson(Map<String, dynamic>.from(e as Map))).toList();
   }
 
   static Future<HoSoBaoTri> layChiTietHoSoBaoTri(int id) async {
     final data = await ApiClient.instance.get<Map<String, dynamic>>('${ApiConstants.workOrder}/bao-tri/$id');
     return HoSoBaoTri.fromJson(data);
+  }
+
+    static Future<List<int>> layDanhSachNamCoKeHoach() async {
+    final data = await ApiClient.instance.get<List<dynamic>>('${ApiConstants.maintenancePlan}/nam-da-lap');
+    return data.map((e) => (e as num).toInt()).toList();
   }
 
   /// MaNhanVienTao KHÔNG gửi lên — server tự lấy từ JWT Claims.
@@ -144,21 +156,33 @@ class WorkOrderService {
 
 class WorkOrderBaoTriListController extends ChangeNotifier {
   List<HoSoBaoTri> danhSach = [];
+  List<int> cacNamCoKeHoach = [];   // ← THÊM
   bool dangTai = true;
   String? loi;
+  int? namLoc;
 
   Future<void> taiDanhSach() async {
     dangTai = true;
     loi = null;
     notifyListeners();
     try {
-      danhSach = await WorkOrderService.layDanhSachHoSoBaoTri();
+      final results = await Future.wait([
+        WorkOrderService.layDanhSachHoSoBaoTri(nam: namLoc),
+        WorkOrderService.layDanhSachNamCoKeHoach(),
+      ]);
+      danhSach = results[0] as List<HoSoBaoTri>;
+      cacNamCoKeHoach = results[1] as List<int>;
     } catch (e) {
       loi = 'Lỗi tải dữ liệu: $e';
     } finally {
       dangTai = false;
       notifyListeners();
     }
+  }
+
+  void datNamLoc(int? nam) {
+    namLoc = nam;
+    taiDanhSach();
   }
 
   List<HoSoBaoTri> locTheoTab(String tab) =>

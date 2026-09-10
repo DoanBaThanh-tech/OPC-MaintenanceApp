@@ -157,6 +157,81 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
     super.dispose();
   }
 
+  void _moBoLocNam(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (sheetContext) {
+      return AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          final nams = _controller.cacNamCoKeHoach;
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
+                  ),
+                ),
+                const Text('Lọc theo năm kế hoạch', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 4),
+                Text(
+                  'Chỉ hiển thị những năm đã có kế hoạch bảo trì được lập',
+                  style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                ),
+                const SizedBox(height: 16),
+                if (nams.isEmpty)
+                  const Text('Chưa có kế hoạch bảo trì nào được lập', style: TextStyle(color: Colors.grey))
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _chipNam(context, nhan: 'Tất cả', giaTri: null),
+                      for (final n in nams) _chipNam(context, nhan: 'Năm $n', giaTri: n),
+                    ],
+                  ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
+}
+
+Widget _chipNam(BuildContext context, {required String nhan, required int? giaTri}) {
+  final dangChon = _controller.namLoc == giaTri;
+  return ChoiceChip(
+    label: Text(nhan),
+    selected: dangChon,
+    selectedColor: AppColors.primary,
+    backgroundColor: Colors.grey.shade100,
+    labelStyle: TextStyle(
+      color: dangChon ? Colors.white : Colors.black87,
+      fontWeight: dangChon ? FontWeight.w700 : FontWeight.w500,
+      fontSize: 12.5,
+    ),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: BorderSide(color: dangChon ? AppColors.primary : Colors.grey.shade300),
+    ),
+    onSelected: (_) {
+      _controller.datNamLoc(giaTri);
+      Navigator.pop(context);
+    },
+  );
+}
+
   Color _mau(TrangThaiHoSoBaoTri tt) {
     switch (tt) {
       case TrangThaiHoSoBaoTri.daDuyet:
@@ -176,12 +251,30 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: TabBar(
-        controller: _tab,
-        isScrollable: true,
-        labelColor: AppColors.primary,
-        indicatorColor: AppColors.primary,
-        tabs: _tabs.map((e) => Tab(text: e)).toList(),
+      appBar: AppBar(
+        title: const Text('Hồ sơ bảo trì'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        actions: [
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (context, _) => IconButton(
+              icon: Badge(
+                isLabelVisible: _controller.namLoc != null,
+                label: Text('${_controller.namLoc}', style: const TextStyle(fontSize: 9)),
+                child: const Icon(Icons.filter_alt_rounded),
+              ),
+              onPressed: () => _moBoLocNam(context),
+            ),
+          ),
+        ],
+        bottom: TabBar(
+          controller: _tab,
+          isScrollable: true,
+          labelColor: Colors.white,
+          indicatorColor: Colors.white,
+          tabs: _tabs.map((e) => Tab(text: e)).toList(),
+        ),
       ),
       body: AnimatedBuilder(
         animation: _controller,
@@ -210,7 +303,21 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
                       ),
                       child: ListTile(
                         title: Text(hs.tenThietBi, style: const TextStyle(fontWeight: FontWeight.w700)),
-                        subtitle: Text('#${hs.maHoSoBaoTri} · ${hs.ngayTao.day}/${hs.ngayTao.month}/${hs.ngayTao.year}'),
+                        subtitle: Row(children: [
+                          Text('#${hs.maHoSoBaoTri} · ${hs.ngayTao.day}/${hs.ngayTao.month}/${hs.ngayTao.year}'),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: Colors.blueGrey.shade50,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'KH ${hs.nam}${hs.namTuKeHoach ? '' : ' (đột xuất)'}',
+                              style: TextStyle(fontSize: 10, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ]),
                         trailing: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(color: mau.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(8)),
