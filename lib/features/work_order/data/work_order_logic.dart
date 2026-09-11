@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show TimeOfDay;
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
@@ -11,12 +12,27 @@ import '../../../core/network/api_exception.dart';
 class NhanVienRutGon {
   final int maNhanVien;
   final String hoTen;
+  final String? email;
+  final String? soDienThoai;
+  final String? chucVu;
+  final String? tenVaiTro;
 
-  NhanVienRutGon({required this.maNhanVien, required this.hoTen});
+  NhanVienRutGon({
+    required this.maNhanVien,
+    required this.hoTen,
+    this.email,
+    this.soDienThoai,
+    this.chucVu,
+    this.tenVaiTro,
+  });
 
   factory NhanVienRutGon.fromJson(Map<String, dynamic> j) => NhanVienRutGon(
         maNhanVien: (j['maNhanVien'] as num?)?.toInt() ?? 0,
         hoTen: j['hoTen']?.toString() ?? '',
+        email: j['email']?.toString(),
+        soDienThoai: j['soDienThoai']?.toString(),
+        chucVu: j['chucVu']?.toString(),
+        tenVaiTro: j['tenVaiTro']?.toString(),
       );
 }
 
@@ -82,7 +98,7 @@ class HoSoBaoTri {
 }
 
 /// Phân loại trạng thái thành nhóm cố định — presentation tự map ra màu,
-/// logic không phụ thuộc Flutter Material để giữ file này thuần dữ liệu.
+/// logic không phụ thuộc Material theme để giữ file này chủ yếu là dữ liệu.
 enum TrangThaiHoSoBaoTri { choDuyet, daDuyet, dangThucHien, daHoanThanh, tuChoi, khac }
 
 TrangThaiHoSoBaoTri phanLoaiTrangThaiHoSo(String tt) {
@@ -120,7 +136,7 @@ class WorkOrderService {
     return HoSoBaoTri.fromJson(data);
   }
 
-    static Future<List<int>> layDanhSachNamCoKeHoach() async {
+  static Future<List<int>> layDanhSachNamCoKeHoach() async {
     final data = await ApiClient.instance.get<List<dynamic>>('${ApiConstants.maintenancePlan}/nam-da-lap');
     return data.map((e) => (e as num).toInt()).toList();
   }
@@ -152,10 +168,10 @@ class WorkOrderService {
 
   /// MaNhanVienPhanCong KHÔNG gửi lên — server tự lấy từ JWT (tổ trưởng đang đăng nhập).
   static Future<void> phanCongBaoTri({
-  required int maHoSoBaoTri,
-  required int maNhanVienThucHien,
-  required DateTime ngayBatDau,
-  required DateTime ngayKetThuc,
+    required int maHoSoBaoTri,
+    required int maNhanVienThucHien,
+    required DateTime ngayBatDau,
+    required DateTime ngayKetThuc,
   }) async {
     await ApiClient.instance.post<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/phan-cong',
@@ -174,7 +190,7 @@ class WorkOrderService {
 
 class WorkOrderBaoTriListController extends ChangeNotifier {
   List<HoSoBaoTri> danhSach = [];
-  List<int> cacNamCoKeHoach = [];   // ← THÊM
+  List<int> cacNamCoKeHoach = [];
   bool dangTai = true;
   String? loi;
   int? namLoc;
@@ -267,19 +283,32 @@ class WorkOrderBaoTriDetailController extends ChangeNotifier {
 class PhanCongBaoTriController extends ChangeNotifier {
   List<NhanVienRutGon> dsNhanVien = [];
   NhanVienRutGon? chon;
+
+  // Người phân công (lấy từ user đang đăng nhập)
+  String? tenNguoiPhanCong;
+  int? maNguoiPhanCong;
+
   DateTime ngayBatDau = DateTime.now();
-  DateTime ngayKetThuc = DateTime.now().add(const Duration(days: 1));
+  TimeOfDay gioBatDau = const TimeOfDay(hour: 8, minute: 0);
+
+  DateTime ngayKetThuc = DateTime.now();
+  TimeOfDay gioKetThuc = const TimeOfDay(hour: 17, minute: 0);
+
   bool dangTai = true;
   bool dangLuu = false;
   String? loi;
 
   Future<void> taiNhanVien() async {
     dangTai = true;
+    loi = null;
     notifyListeners();
     try {
       dsNhanVien = await WorkOrderService.layDanhSachNhanVienKyThuat();
+
+      // TODO: Lấy thông tin người đang đăng nhập từ AuthService / SharedPreferences
+      tenNguoiPhanCong = 'Tổ trưởng đang đăng nhập'; // tạm thời
     } catch (e) {
-      loi = 'Không tải được danh sách nhân viên';
+      loi = 'Không tải được danh sách nhân viên: $e';
     } finally {
       dangTai = false;
       notifyListeners();
@@ -296,18 +325,49 @@ class PhanCongBaoTriController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void datGioBatDau(TimeOfDay t) {
+    gioBatDau = t;
+    notifyListeners();
+  }
+
   void datNgayKetThuc(DateTime d) {
     ngayKetThuc = d;
     notifyListeners();
   }
 
-  /// Trả về true nếu phân công thành công.
+  void datGioKetThuc(TimeOfDay t) {
+    gioKetThuc = t;
+    notifyListeners();
+  }
+
+  DateTime get thoiDiemBatDau => DateTime(
+        ngayBatDau.year,
+        ngayBatDau.month,
+        ngayBatDau.day,
+        gioBatDau.hour,
+        gioBatDau.minute,
+      );
+
+  DateTime get thoiDiemKetThuc => DateTime(
+        ngayKetThuc.year,
+        ngayKetThuc.month,
+        ngayKetThuc.day,
+        gioKetThuc.hour,
+        gioKetThuc.minute,
+      );
+
   Future<bool> xacNhan(int maHoSoBaoTri) async {
     if (chon == null) {
       loi = 'Vui lòng chọn nhân viên thực hiện';
       notifyListeners();
       return false;
     }
+    if (thoiDiemKetThuc.isBefore(thoiDiemBatDau)) {
+      loi = 'Thời điểm kết thúc phải sau thời điểm bắt đầu';
+      notifyListeners();
+      return false;
+    }
+
     dangLuu = true;
     loi = null;
     notifyListeners();
@@ -315,8 +375,8 @@ class PhanCongBaoTriController extends ChangeNotifier {
       await WorkOrderService.phanCongBaoTri(
         maHoSoBaoTri: maHoSoBaoTri,
         maNhanVienThucHien: chon!.maNhanVien,
-        ngayBatDau: ngayBatDau,
-        ngayKetThuc: ngayKetThuc,
+        ngayBatDau: thoiDiemBatDau,
+        ngayKetThuc: thoiDiemKetThuc,
       );
       return true;
     } on ApiException catch (e) {

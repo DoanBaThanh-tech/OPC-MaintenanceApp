@@ -568,8 +568,29 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
     if (ok && mounted) Navigator.pop(context, true);
   }
 
-  String _fmtDate(DateTime d) =>
-      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  String _fmtTime(TimeOfDay t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
+  Future<void> _chonGio({required bool isBatDau}) async {
+    final initial = isBatDau ? _controller.gioBatDau : _controller.gioKetThuc;
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+    if (picked != null) {
+      if (isBatDau) {
+        _controller.datGioBatDau(picked);
+      } else {
+        _controller.datGioKetThuc(picked);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -591,21 +612,42 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // ===== Người phân công =====
+                Card(
+                  child: ListTile(
+                    leading: const CircleAvatar(child: Icon(Icons.person_outline)),
+                    title: const Text('Người phân công', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    subtitle: Text(
+                      _controller.tenNguoiPhanCong ?? '—',
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
                 // ===== Nhân viên thực hiện =====
-                const Text('Nhân viên thực hiện',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                const Text('Nhân viên thực hiện', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 const SizedBox(height: 8),
+
                 if (_controller.dsNhanVien.isEmpty)
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
+                      color: Colors.orange.shade50,
                       borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
                     ),
-                    child: const Text(
-                      'Không có nhân viên kỹ thuật nào.\nHãy kiểm tra dữ liệu mẫu trong database.',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey),
+                    child: Column(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 32),
+                        const SizedBox(height: 8),
+                        Text(
+                          _controller.loi ?? 'Không có nhân viên kỹ thuật nào trong hệ thống.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.orange.shade800),
+                        ),
+                      ],
                     ),
                   )
                 else
@@ -613,7 +655,8 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                     final dangChon = _controller.chon?.maNhanVien == nv.maNhanVien;
                     return Card(
                       margin: const EdgeInsets.only(bottom: 8),
-                      color: dangChon ? AppColors.primary.withValues(alpha: 0.08) : null,
+                      elevation: dangChon ? 2 : 0,
+                      color: dangChon ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                         side: BorderSide(
@@ -633,51 +676,43 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                           ),
                         ),
                         title: Text(nv.hoTen, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(
+                          [
+                            if (nv.chucVu != null && nv.chucVu!.isNotEmpty) nv.chucVu!,
+                            if (nv.soDienThoai != null && nv.soDienThoai!.isNotEmpty) nv.soDienThoai!,
+                          ].join(' · '),
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        ),
                         trailing: dangChon
                             ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
-                            : null,
+                            : const Icon(Icons.circle_outlined, color: Colors.grey),
                         onTap: () => _controller.chonNhanVien(nv),
                       ),
                     );
                   }),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 24),
 
-                // ===== Thời gian dự kiến =====
-                const Text('Thời gian dự kiến',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                const SizedBox(height: 8),
+                // ===== Thời gian (chỉ giờ) =====
+                const Text('Thời gian thực hiện', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: _DateField(
-                        label: 'Ngày bắt đầu',
-                        value: _fmtDate(_controller.ngayBatDau),
-                        onTap: () async {
-                          final d = await showDatePicker(
-                            context: context,
-                            initialDate: _controller.ngayBatDau,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2100),
-                          );
-                          if (d != null) _controller.datNgayBatDau(d);
-                        },
+                      child: _PickerField(
+                        label: 'Giờ bắt đầu',
+                        value: _fmtTime(_controller.gioBatDau),
+                        icon: Icons.access_time_rounded,
+                        onTap: () => _chonGio(isBatDau: true),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _DateField(
-                        label: 'Ngày kết thúc',
-                        value: _fmtDate(_controller.ngayKetThuc),
-                        onTap: () async {
-                          final d = await showDatePicker(
-                            context: context,
-                            initialDate: _controller.ngayKetThuc,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2100),
-                          );
-                          if (d != null) _controller.datNgayKetThuc(d);
-                        },
+                      child: _PickerField(
+                        label: 'Giờ kết thúc',
+                        value: _fmtTime(_controller.gioKetThuc),
+                        icon: Icons.access_time_rounded,
+                        onTap: () => _chonGio(isBatDau: false),
                       ),
                     ),
                   ],
@@ -685,7 +720,14 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
 
                 if (_controller.loi != null) ...[
                   const SizedBox(height: 16),
-                  Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
+                  ),
                 ],
 
                 const SizedBox(height: 28),
@@ -712,11 +754,18 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
   }
 }
 
-class _DateField extends StatelessWidget {
+class _PickerField extends StatelessWidget {
   final String label;
   final String value;
+  final IconData icon;
   final VoidCallback onTap;
-  const _DateField({required this.label, required this.value, required this.onTap});
+
+  const _PickerField({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -727,9 +776,9 @@ class _DateField extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
-          suffixIcon: const Icon(Icons.calendar_today_rounded, size: 18),
+          suffixIcon: Icon(icon, size: 18),
         ),
-        child: Text(value),
+        child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600)),
       ),
     );
   }
