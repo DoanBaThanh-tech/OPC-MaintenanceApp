@@ -182,6 +182,41 @@ class WorkOrderService {
       },
     );
   }
+
+  static Future<List<LichSuPhanCong>> layLichSuPhanCong() async {
+    final data = await ApiClient.instance.get<List<dynamic>>('${ApiConstants.workOrder}/phan-cong');
+    return data.map((e) => LichSuPhanCong.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+  }
+}
+
+class LichSuPhanCong {
+  final int maPhanCong;
+  final String? tenNhanVienPhanCong;
+  final String? tenNhanVienThucHien;
+  final String trangThai;
+  final DateTime ngayPhanCong;
+  final DateTime? gioBatDau;
+  final DateTime? gioKetThuc;
+
+  LichSuPhanCong({
+    required this.maPhanCong,
+    this.tenNhanVienPhanCong,
+    this.tenNhanVienThucHien,
+    required this.trangThai,
+    required this.ngayPhanCong,
+    this.gioBatDau,
+    this.gioKetThuc,
+  });
+
+  factory LichSuPhanCong.fromJson(Map<String, dynamic> j) => LichSuPhanCong(
+        maPhanCong: (j['maPhanCong'] as num?)?.toInt() ?? 0,
+        tenNhanVienPhanCong: j['tenNhanVienPhanCong']?.toString(),
+        tenNhanVienThucHien: j['tenNhanVienThucHien']?.toString(),
+        trangThai: j['trangThai']?.toString() ?? '',
+        ngayPhanCong: DateTime.tryParse(j['ngayPhanCong']?.toString() ?? '') ?? DateTime.now(),
+        gioBatDau: j['gioBatDau'] != null ? DateTime.tryParse(j['gioBatDau'].toString()) : null,
+        gioKetThuc: j['gioKetThuc'] != null ? DateTime.tryParse(j['gioKetThuc'].toString()) : null,
+      );
 }
 
 // ============================================================
@@ -384,6 +419,26 @@ class PhanCongBaoTriController extends ChangeNotifier {
       return false;
     } finally {
       dangLuu = false;
+      notifyListeners();
+    }
+  }
+}
+
+class LichSuPhanCongController extends ChangeNotifier {
+  List<LichSuPhanCong> danhSach = [];
+  bool dangTai = true;
+  String? loi;
+
+  Future<void> tai() async {
+    dangTai = true;
+    loi = null;
+    notifyListeners();
+    try {
+      danhSach = await WorkOrderService.layLichSuPhanCong();
+    } catch (e) {
+      loi = 'Không tải được lịch sử: $e';
+    } finally {
+      dangTai = false;
       notifyListeners();
     }
   }

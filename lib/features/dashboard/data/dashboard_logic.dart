@@ -73,7 +73,7 @@ class DashboardLogic {
           MenuGroup(tieuDe: 'Công việc', muc: [
             MenuItemData(icon: Icons.build_rounded, label: 'Hồ sơ bảo trì', screenBuilder: () => const WorkOrderBaoTriListScreen()),
             MenuItemData(icon: Icons.handyman_rounded, label: 'Hồ sơ sửa chữa', screenBuilder: () => const _ChuaLamScreen(ten: 'Hồ sơ sửa chữa')),
-            MenuItemData(icon: Icons.groups_rounded, label: 'Phân công nhân viên', screenBuilder: () => const _ChuaLamScreen(ten: 'Phân công nhân viên')),
+            MenuItemData(icon: Icons.history_rounded, label: 'Lịch sử phân công', screenBuilder: () => const LichSuPhanCongScreen()),
           ]),
         ];
 

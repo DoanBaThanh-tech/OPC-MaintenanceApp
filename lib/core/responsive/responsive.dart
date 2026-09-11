@@ -49,7 +49,10 @@ class ResponsiveCenteredContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    // Không dùng Center (dễ làm constraint cao bị “lỏng” → Column overflow).
+    // Align topCenter + maxWidth giữ nội dung căn giữa theo chiều ngang, scroll theo dọc.
+    return Align(
+      alignment: Alignment.topCenter,
       child: ConstrainedBox(
         constraints: BoxConstraints(maxWidth: maxContentWidth),
         child: Padding(
