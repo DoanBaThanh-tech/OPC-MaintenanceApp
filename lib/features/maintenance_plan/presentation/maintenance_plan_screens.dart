@@ -179,136 +179,181 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
     if (ok && mounted) Navigator.pop(context, true);
   }
 
-  String _formatNgay(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  String _formatNgay(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
-  @override
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Lập kế hoạch bảo trì'), 
-        backgroundColor: AppColors.primary, 
+        title: const Text('Lập kế hoạch bảo trì'),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
       ),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
-          if (_controller.dangTai) return const Center(child: CircularProgressIndicator());
-          
+          if (_controller.dangTai) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
           return ResponsiveCenteredContent(
             maxContentWidth: 700,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text('Thiết bị', style: TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                DropdownButtonFormField<ThietBiRutGon>(
-                  initialValue: _controller.thietBiChon,
-                  decoration: const InputDecoration(border: OutlineInputBorder()),
-                  hint: const Text('Chọn thiết bị cần lập kế hoạch'),
-                  items: _controller.dsThietBi.map((tb) => DropdownMenuItem(value: tb, child: Text(tb.tenThietBi))).toList(),
-                  onChanged: _controller.chonThietBi,
-                ),
-                const Text('Chu kỳ bảo trì của thiết bị này', style: TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 6),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade300),
+            child: SingleChildScrollView(          // ← đã thêm để hết overflow
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text('Thiết bị', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  DropdownButtonFormField<ThietBiRutGon>(
+                    initialValue: _controller.thietBiChon,
+                    decoration: const InputDecoration(border: OutlineInputBorder()),
+                    hint: const Text('Chọn thiết bị cần lập kế hoạch'),
+                    items: _controller.dsThietBi
+                        .map((tb) => DropdownMenuItem(value: tb, child: Text(tb.tenThietBi)))
+                        .toList(),
+                    onChanged: _controller.chonThietBi,
                   ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _controller.thietBiChon == null ? Icons.hourglass_empty : Icons.event_repeat,
-                        size: 18,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
+
+                  const SizedBox(height: 16),
+                  const Text('Chu kỳ bảo trì của thiết bị này',
+                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey.shade300),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
                           _controller.thietBiChon == null
-                              ? 'Chọn thiết bị bên trên để xem chu kỳ'
-                              : (_controller.chuKyCoDinh != null
-                                  ? '${_controller.thietBiChon!.tenThietBi} · ${_controller.chuKyCoDinh!.soThangChuKyDeXuat} tháng/lần'
-                                  : 'Thiết bị "${_controller.thietBiChon!.tenThietBi}" chưa được gán chu kỳ trong hệ thống'),
-                          style: TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w600,
-                            color: _controller.chuKyCoDinh != null ? Colors.black87 : AppColors.danger,
+                              ? Icons.hourglass_empty
+                              : Icons.event_repeat,
+                          size: 18,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            _controller.thietBiChon == null
+                                ? 'Chọn thiết bị bên trên để xem chu kỳ'
+                                : (_controller.chuKyCoDinh != null
+                                    ? '${_controller.thietBiChon!.tenThietBi} · ${_controller.chuKyCoDinh!.soThangChuKyDeXuat} tháng/lần'
+                                    : 'Thiết bị "${_controller.thietBiChon!.tenThietBi}" chưa được gán chu kỳ trong hệ thống'),
+                            style: TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w600,
+                              color: _controller.chuKyCoDinh != null
+                                  ? Colors.black87
+                                  : AppColors.danger,
+                            ),
                           ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (_controller.chuKyCoDinh != null)
+                    Text(
+                      'Chu kỳ này lấy theo đúng thiết bị bạn chọn, không thể sửa tay ở đây — mỗi thiết bị có chu kỳ riêng, muốn thay đổi phải cập nhật ở "Danh sách thiết bị".',
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    initialValue: _controller.nam.toString(),
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Năm áp dụng',
+                      border: OutlineInputBorder(),
+                    ),
+                    onChanged: _controller.doiNam,
+                  ),
+
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DatePickerField(
+                          label: 'Bắt đầu kế hoạch',
+                          value: _controller.ngayBatDau,
+                          onPick: _controller.datNgayBatDau,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _DatePickerField(
+                          label: 'Kết thúc kế hoạch',
+                          value: _controller.ngayKetThuc,
+                          onPick: _controller.datNgayKetThuc,
                         ),
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 4),
-                if (_controller.chuKyCoDinh != null)
-                  Text(
-                    'Chu kỳ này lấy theo đúng thiết bị bạn chọn, không thể sửa tay ở đây — mỗi thiết bị có chu kỳ riêng, muốn thay đổi phải cập nhật ở "Danh sách thiết bị".',
-                    style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
-                  ),
-                TextFormField(
-                  initialValue: _controller.nam.toString(),
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Năm áp dụng', border: OutlineInputBorder()),
-                  onChanged: _controller.doiNam,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _DatePickerField(
-                        label: 'Bắt đầu kế hoạch',
-                        value: _controller.ngayBatDau,
-                        onPick: _controller.datNgayBatDau,
+
+                  const SizedBox(height: 20),
+                  if (_controller.chiTietChon != null) ...[
+                    const Divider(),
+                    const Text('Ngày dự kiến bảo trì',
+                        style: TextStyle(fontWeight: FontWeight.w700)),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Ngày này luôn thuộc năm đã chọn ở trên.',
+                      style: TextStyle(fontSize: 11.5, color: AppColors.warning),
+                    ),
+                    const SizedBox(height: 8),
+                    Card(
+                      child: ListTile(
+                        title: Text(_controller.chiTietChon!.thietBi.tenThietBi),
+                        subtitle: Text(
+                            'Dự kiến: ${_formatNgay(_controller.chiTietChon!.ngayDuKienBaoTri)}'),
+                        trailing: IconButton(
+                          icon: const Icon(Icons.edit_calendar, size: 20),
+                          onPressed: _chonNgayDuKien,
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _DatePickerField(
-                        label: 'Kết thúc kế hoạch',
-                        value: _controller.ngayKetThuc,
-                        onPick: _controller.datNgayKetThuc,
-                      ),
+                  ] else
+                    const Text(
+                      'Chọn thiết bị và chu kỳ trước để lập kế hoạch',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+
+                  if (_controller.loi != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _controller.loi!,
+                      style: const TextStyle(color: AppColors.danger),
                     ),
                   ],
-                ),
-                const SizedBox(height: 20),
-                if (_controller.chiTietChon != null) ...[
-                  const Divider(),
-                  const Text('Ngày dự kiến bảo trì', style: TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 4),
-                  const Text('Ngày này luôn thuộc năm đã chọn ở trên.', style: TextStyle(fontSize: 11.5, color: AppColors.warning)),
-                  const SizedBox(height: 8),
-                  Card(
-                    child: ListTile(
-                      title: Text(_controller.chiTietChon!.thietBi.tenThietBi),
-                      subtitle: Text('Dự kiến: ${_formatNgay(_controller.chiTietChon!.ngayDuKienBaoTri)}'),
-                      trailing: IconButton(icon: const Icon(Icons.edit_calendar, size: 20), onPressed: _chonNgayDuKien),
-                    ),
+
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: _controller.dangLuu ? null : _luu,
+                    child: _controller.dangLuu
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Text('Lưu kế hoạch'),
                   ),
-                ] else
-                  const Text('Chọn thiết bị và chu kỳ trước để lập kế hoạch', style: TextStyle(color: Colors.grey)),
-                if (_controller.loi != null) ...[
-                  const SizedBox(height: 12),
-                  Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
+                  const SizedBox(height: 16), // khoảng trống cuối
                 ],
-                const SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: _controller.dangLuu ? null : _luu,
-                  child: _controller.dangLuu
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Lưu kế hoạch'),
-                ),
-              ], // Kết thúc children của Column
-            ), // Kết thúc Column
-          ); // Kết thúc ResponsiveCenteredContent
-        }, // Kết thúc builder
-      ), // Kết thúc AnimatedBuilder
-    ); // Kết thúc Scaffold
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 

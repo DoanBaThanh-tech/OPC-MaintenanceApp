@@ -24,45 +24,60 @@ class HoSoBaoTri {
   final int maHoSoBaoTri;
   final int maThietBi;
   final String tenThietBi;
+  final String? tenNhanVienTao;
   final String? noiDungCongViec;
   final String? thoiGianDuKien;
+  final DateTime? ngayDuKienBaoTri;
   final DateTime ngayTao;
+  final DateTime? ngayDuyet;
   final String trangThai;
   final String? lyDoTuChoi;
   final int? maPhanCong;
   final int nam;
   final bool namTuKeHoach;
+  final String? rowVersion;
 
   HoSoBaoTri({
     required this.maHoSoBaoTri,
     required this.maThietBi,
     required this.tenThietBi,
+    this.tenNhanVienTao,
     this.noiDungCongViec,
     this.thoiGianDuKien,
+    this.ngayDuKienBaoTri,
     required this.ngayTao,
+    this.ngayDuyet,
     required this.trangThai,
     this.lyDoTuChoi,
     this.maPhanCong,
     required this.nam,
     required this.namTuKeHoach,
+    this.rowVersion,
   });
 
   bool get choDuyet => trangThai == 'Chờ duyệt';
   bool get daDuyetChuaPhanCong => trangThai == 'Đã duyệt' && maPhanCong == null;
   bool get dangThucHien => trangThai == 'Đang thực hiện';
+  bool get biTuChoi => trangThai == 'Từ chối';
 
   factory HoSoBaoTri.fromJson(Map<String, dynamic> j) => HoSoBaoTri(
         maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
         maThietBi: (j['maThietBi'] as num?)?.toInt() ?? (j['maThieBi'] as num?)?.toInt() ?? 0,
         tenThietBi: j['tenThietBi']?.toString() ?? '',
+        tenNhanVienTao: j['tenNhanVienTao']?.toString(),
         noiDungCongViec: j['noiDungCongViec']?.toString(),
         thoiGianDuKien: j['thoiGianDuKien']?.toString(),
+        ngayDuKienBaoTri: j['ngayDuKienBaoTri'] != null
+            ? DateTime.tryParse(j['ngayDuKienBaoTri'].toString())
+            : null,
         ngayTao: DateTime.parse(j['ngayTao'].toString()),
+        ngayDuyet: j['ngayDuyet'] != null ? DateTime.tryParse(j['ngayDuyet'].toString()) : null,
         trangThai: j['trangThai']?.toString() ?? '',
         lyDoTuChoi: j['lyDoTuChoi']?.toString(),
         maPhanCong: (j['maPhanCong'] as num?)?.toInt(),
         nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
         namTuKeHoach: j['namTuKeHoach'] == true,
+        rowVersion: j['rowVersion']?.toString(),
       );
 }
 
@@ -137,16 +152,19 @@ class WorkOrderService {
 
   /// MaNhanVienPhanCong KHÔNG gửi lên — server tự lấy từ JWT (tổ trưởng đang đăng nhập).
   static Future<void> phanCongBaoTri({
-    required int maHoSoBaoTri,
-    required int maNhanVienThucHien,
-    required DateTime ngayBatDau,
-    required DateTime ngayKetThuc,
+  required int maHoSoBaoTri,
+  required int maNhanVienThucHien,
+  required DateTime ngayBatDau,
+  required DateTime ngayKetThuc,
   }) async {
-    await ApiClient.instance.put<Map<String, dynamic>>('${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/phan-cong', {
-      'maNhanVienThucHien': maNhanVienThucHien,
-      'ngayBatDauDuKien': ngayBatDau.toIso8601String(),
-      'ngayKetThucDuKien': ngayKetThuc.toIso8601String(),
-    });
+    await ApiClient.instance.post<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/phan-cong',
+      {
+        'maNhanVienThucHien': maNhanVienThucHien,
+        'ngayBatDauDuKien': ngayBatDau.toIso8601String(),
+        'ngayKetThucDuKien': ngayKetThuc.toIso8601String(),
+      },
+    );
   }
 }
 

@@ -373,46 +373,135 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     super.dispose();
   }
 
+  String _fmt(DateTime? d) => d == null
+      ? '—'
+      : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  Widget _dong(String nhan, String giaTri) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(nhan, style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5)),
+        Flexible(
+          child: Text(giaTri,
+              textAlign: TextAlign.right,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Chi tiết hồ sơ bảo trì'), backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+      appBar: AppBar(
+        title: const Text('Chi tiết hồ sơ bảo trì'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+      ),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
           if (_controller.dangTai) return const Center(child: CircularProgressIndicator());
-          if (_controller.loi != null) return Center(child: Text(_controller.loi!));
+          if (_controller.loi != null || _controller.hoSo == null) {
+            return Center(child: Text(_controller.loi ?? 'Không tải được hồ sơ'));
+          }
           final hs = _controller.hoSo!;
 
-          return Padding(
+          return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text(hs.tenThietBi, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                // Header
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(hs.tenThietBi,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(hs.trangThai,
+                          style: const TextStyle(
+                              color: AppColors.warning, fontSize: 11.5, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 4),
-                Text('#${hs.maHoSoBaoTri} · ${hs.trangThai}', style: TextStyle(color: Colors.grey.shade600)),
+                Text('#${hs.maHoSoBaoTri}', style: TextStyle(color: Colors.grey.shade600)),
+
                 const SizedBox(height: 16),
+
+                // Thông tin chung
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      children: [
+                        _dong('Người lập', hs.tenNhanVienTao ?? '—'),
+                        const Divider(height: 20),
+                        _dong('Ngày tạo', _fmt(hs.ngayTao)),
+                        if (hs.ngayDuyet != null) ...[
+                          const Divider(height: 20),
+                          _dong('Ngày duyệt', _fmt(hs.ngayDuyet)),
+                        ],
+                        const Divider(height: 20),
+                        _dong('Ngày bảo trì dự kiến', _fmt(hs.ngayDuKienBaoTri)),
+                        if (hs.thoiGianDuKien != null) ...[
+                          const Divider(height: 20),
+                          _dong('Thời gian dự kiến', '${hs.thoiGianDuKien} giờ'),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Nội dung công việc
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(14),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Nội dung công việc', style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 4),
+                        const Text('Nội dung công việc',
+                            style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 6),
                         Text(hs.noiDungCongViec ?? '—'),
-                        const SizedBox(height: 12),
-                        Text('Thời gian dự kiến: ${hs.thoiGianDuKien ?? '—'} giờ'),
-                        if (hs.lyDoTuChoi != null) ...[
-                          const SizedBox(height: 12),
-                          Text('Lý do từ chối: ${hs.lyDoTuChoi}', style: const TextStyle(color: AppColors.danger)),
-                        ],
                       ],
                     ),
                   ),
                 ),
-                const Spacer(),
+
+                // Lý do từ chối (chỉ hiện khi bị từ chối)
+                if (hs.biTuChoi && hs.lyDoTuChoi != null) ...[
+                  const SizedBox(height: 12),
+                  Card(
+                    color: AppColors.danger.withValues(alpha: 0.06),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Lý do từ chối',
+                              style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          Text(hs.lyDoTuChoi!, style: const TextStyle(color: AppColors.danger)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 24),
+
+                // Nút hành động
                 if (hs.daDuyetChuaPhanCong)
                   ElevatedButton.icon(
                     icon: const Icon(Icons.groups_rounded),
@@ -420,7 +509,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                     onPressed: () async {
                       final ok = await Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (_) => PhanCongBaoTriScreen(maHoSoBaoTri: hs.maHoSoBaoTri)),
+                        MaterialPageRoute(
+                            builder: (_) => PhanCongBaoTriScreen(maHoSoBaoTri: hs.maHoSoBaoTri)),
                       );
                       if (ok == true && mounted) Navigator.pop(context, true);
                     },
@@ -428,7 +518,10 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                 else if (hs.choDuyet)
                   Container(
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: AppColors.warning.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+                    decoration: BoxDecoration(
+                      color: AppColors.warning.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                     child: const Row(
                       children: [
                         Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 20),
@@ -475,43 +568,91 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
     if (ok && mounted) Navigator.pop(context, true);
   }
 
-  String _fmt(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  String _fmtDate(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Phân công công việc'), backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+      appBar: AppBar(
+        title: const Text('Phân công công việc'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+      ),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
-          if (_controller.dangTai) return const Center(child: CircularProgressIndicator());
-          return Padding(
+          if (_controller.dangTai) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text('Chọn nhân viên thực hiện', style: TextStyle(fontWeight: FontWeight.w700)),
+                // ===== Nhân viên thực hiện =====
+                const Text('Nhân viên thực hiện',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 const SizedBox(height: 8),
-                ..._controller.dsNhanVien.map(
-                  (nv) => Card(
-                    color: _controller.chon?.maNhanVien == nv.maNhanVien ? AppColors.primary.withValues(alpha: 0.08) : null,
-                    shape: RoundedRectangleBorder(
+                if (_controller.dsNhanVien.isEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
                       borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(color: _controller.chon?.maNhanVien == nv.maNhanVien ? AppColors.primary : Colors.transparent),
                     ),
-                    child: ListTile(
-                      leading: CircleAvatar(child: Text(nv.hoTen.isNotEmpty ? nv.hoTen[0] : '?')),
-                      title: Text(nv.hoTen),
-                      trailing: _controller.chon?.maNhanVien == nv.maNhanVien ? const Icon(Icons.check_circle, color: AppColors.primary) : null,
-                      onTap: () => _controller.chonNhanVien(nv),
+                    child: const Text(
+                      'Không có nhân viên kỹ thuật nào.\nHãy kiểm tra dữ liệu mẫu trong database.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                  )
+                else
+                  ..._controller.dsNhanVien.map((nv) {
+                    final dangChon = _controller.chon?.maNhanVien == nv.maNhanVien;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      color: dangChon ? AppColors.primary.withValues(alpha: 0.08) : null,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: dangChon ? AppColors.primary : Colors.grey.shade200,
+                          width: dangChon ? 1.5 : 1,
+                        ),
+                      ),
+                      child: ListTile(
+                        leading: CircleAvatar(
+                          backgroundColor: dangChon ? AppColors.primary : Colors.grey.shade300,
+                          child: Text(
+                            nv.hoTen.isNotEmpty ? nv.hoTen[0].toUpperCase() : '?',
+                            style: TextStyle(
+                              color: dangChon ? Colors.white : Colors.black87,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        title: Text(nv.hoTen, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        trailing: dangChon
+                            ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+                            : null,
+                        onTap: () => _controller.chonNhanVien(nv),
+                      ),
+                    );
+                  }),
+
+                const SizedBox(height: 20),
+
+                // ===== Thời gian dự kiến =====
+                const Text('Thời gian dự kiến',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                const SizedBox(height: 8),
                 Row(
                   children: [
                     Expanded(
-                      child: InkWell(
+                      child: _DateField(
+                        label: 'Ngày bắt đầu',
+                        value: _fmtDate(_controller.ngayBatDau),
                         onTap: () async {
                           final d = await showDatePicker(
                             context: context,
@@ -521,15 +662,13 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                           );
                           if (d != null) _controller.datNgayBatDau(d);
                         },
-                        child: InputDecorator(
-                          decoration: const InputDecoration(labelText: 'Bắt đầu dự kiến', border: OutlineInputBorder()),
-                          child: Text(_fmt(_controller.ngayBatDau)),
-                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: InkWell(
+                      child: _DateField(
+                        label: 'Ngày kết thúc',
+                        value: _fmtDate(_controller.ngayKetThuc),
                         onTap: () async {
                           final d = await showDatePicker(
                             context: context,
@@ -539,29 +678,58 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                           );
                           if (d != null) _controller.datNgayKetThuc(d);
                         },
-                        child: InputDecorator(
-                          decoration: const InputDecoration(labelText: 'Kết thúc dự kiến', border: OutlineInputBorder()),
-                          child: Text(_fmt(_controller.ngayKetThuc)),
-                        ),
                       ),
                     ),
                   ],
                 ),
+
                 if (_controller.loi != null) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
                 ],
-                const SizedBox(height: 20),
+
+                const SizedBox(height: 28),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                   onPressed: _controller.dangLuu ? null : _xacNhan,
                   child: _controller.dangLuu
-                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Xác nhận phân công'),
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Text('Xác nhận phân công', style: TextStyle(fontSize: 15)),
                 ),
               ],
             ),
           );
         },
+      ),
+    );
+  }
+}
+
+class _DateField extends StatelessWidget {
+  final String label;
+  final String value;
+  final VoidCallback onTap;
+  const _DateField({required this.label, required this.value, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          border: const OutlineInputBorder(),
+          suffixIcon: const Icon(Icons.calendar_today_rounded, size: 18),
+        ),
+        child: Text(value),
       ),
     );
   }
