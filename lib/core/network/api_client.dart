@@ -15,7 +15,10 @@ class ApiClient {
   void Function()? onUnauthorized;
 
   Future<Map<String, String>> _headers({required bool auth}) async {
-    final headers = {'Content-Type': 'application/json'};
+    final headers = {
+      'Content-Type': 'application/json',
+      'ngrok-skip-browser-warning': 'true',
+    };
     if (auth) {
       final token = await TokenStorage.getToken();
       if (token != null) headers['Authorization'] = 'Bearer $token';

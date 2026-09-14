@@ -2,7 +2,7 @@ class ApiConstants {
   ApiConstants._();
 
   // Đổi IP theo máy chạy API của bạn
-  static const String baseUrl = "http://192.168.0.138:5232/api";
+  static const String baseUrl = "https://crispness-retrain-aversion.ngrok-free.dev/api";
 
   static const Duration connectTimeout = Duration(seconds: 15);
 
