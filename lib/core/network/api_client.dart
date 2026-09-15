@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
@@ -36,8 +37,21 @@ class ApiClient {
 
   /// Xử lý response chung cho mọi method — tự parse JSON,
   /// tự ném ApiException đúng message backend trả về (dạng { "Message": "..." })
+  ///
+  /// Lưu ý: nhiều endpoint ASP.NET trả `Ok()` không body → body = null.
+  /// Caller dùng `post` / `put` / `delete` không ép kiểu Map khi không cần body.
   dynamic _xuLyResponse(http.Response res) {
-    final body = res.body.isEmpty ? null : jsonDecode(res.body);
+    dynamic body;
+    if (res.body.isNotEmpty) {
+      try {
+        body = jsonDecode(res.body);
+      } on FormatException {
+        // Body không phải JSON (hiếm) — vẫn coi thành công nếu 2xx
+        body = res.body;
+      }
+    } else {
+      body = null;
+    }
 
     if (res.statusCode >= 200 && res.statusCode < 300) {
       return body;
@@ -52,7 +66,7 @@ class ApiClient {
       message = body['Message'].toString();
     } else if (body is Map && body['message'] != null) {
       message = body['message'].toString();
-    } else if (body is Map && body['loi'] != null) {          
+    } else if (body is Map && body['loi'] != null) {
       message = body['loi'].toString();
     } else if (body is Map && body['errors'] != null) {
       message = body['errors'].toString();
@@ -64,15 +78,33 @@ class ApiClient {
   Future<T> _thucHien<T>(Future<http.Response> Function() request) async {
     try {
       final res = await request().timeout(ApiConstants.connectTimeout);
-      return _xuLyResponse(res) as T;
+      final parsed = _xuLyResponse(res);
+
+      // Body rỗng (Ok() không nội dung) — trả về null an toàn, không ép Map
+      if (parsed == null) {
+        // Caller expect Map → trả {}
+        if (<String, dynamic>{} is T) {
+          return <String, dynamic>{} as T;
+        }
+        // Caller expect List → trả []
+        if (<dynamic>[] is T) {
+          return <dynamic>[] as T;
+        }
+        // dynamic / Object? / nullable → null
+        return null as T;
+      }
+
+      return parsed as T;
     } on SocketException {
-      throw NetworkException('Không thể kết nối tới máy chủ. Kiểm tra mạng hoặc địa chỉ API.');
+      throw NetworkException('Không thể kết nối tới máy chủ. Kiểm tra mạng Wi‑Fi/4G hoặc địa chỉ API (ngrok).');
     } on HttpException {
       throw NetworkException('Lỗi kết nối HTTP.');
     } on FormatException {
       throw NetworkException('Phản hồi từ máy chủ không hợp lệ.');
+    } on TimeoutException {
+      throw NetworkException('Hết thời gian chờ máy chủ. Thử lại hoặc kiểm tra ngrok còn online.');
     }
-    // ApiException tự ném lên, không bắt ở đây để giữ nguyên statusCode/message
+    // ApiException tự ném lên
   }
 
   Future<T> get<T>(String path, {Map<String, dynamic>? query, bool auth = true}) {

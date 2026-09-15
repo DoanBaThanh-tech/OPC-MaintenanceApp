@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
+import '../../../core/network/api_exception.dart';
 
 // ============================================================
 // MODEL
@@ -178,7 +179,8 @@ class MaintenancePlanService {
     if (nam < 2000 || nam > 2100) throw Exception('Năm không hợp lệ: $nam');
     if (danhSachThietBi.isEmpty) throw Exception('Chưa có thiết bị nào được chọn');
 
-    await ApiClient.instance.post<Map<String, dynamic>>(ApiConstants.maintenancePlan, {
+    // API có thể trả Ok() không body → dùng dynamic, không ép Map
+    await ApiClient.instance.post<dynamic>(ApiConstants.maintenancePlan, {
       'maChuKy': maChuKy,
       'nam': nam,
       'thietBiDuocChon': danhSachThietBi
@@ -191,7 +193,7 @@ class MaintenancePlanService {
   }
 
   static Future<void> taoNamMoi(int nam) async {
-    await ApiClient.instance.post<Map<String, dynamic>>(ApiConstants.namMoi, {'nam': nam});
+    await ApiClient.instance.post<dynamic>(ApiConstants.namMoi, {'nam': nam});
   }
 
   static Future<void> themThietBiVaoNam({
@@ -199,13 +201,14 @@ class MaintenancePlanService {
     required int maThietBi,
     required DateTime ngay,
   }) async {
-    await ApiClient.instance.post<Map<String, dynamic>>(ApiConstants.themThietBiVaoNam, {
+    await ApiClient.instance.post<dynamic>(ApiConstants.themThietBiVaoNam, {
       'nam': nam,
       'maThietBi': maThietBi,
       'ngayDuKienBaoTri': _dateOnly(ngay),
     });
   }
 }
+
 
 // ============================================================
 // CONTROLLERS
@@ -457,8 +460,14 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         ngay: chiTietChon!.ngayDuKienBaoTri,
       );
       return true;
+    } on ApiException catch (e) {
+      loi = e.message;
+      return false;
+    } on NetworkException catch (e) {
+      loi = e.message;
+      return false;
     } catch (e) {
-      loi = 'Đã có lỗi xảy ra, vui lòng thử lại sau.';
+      loi = 'Đã có lỗi xảy ra: $e';
       return false;
     } finally {
       dangLuu = false;
