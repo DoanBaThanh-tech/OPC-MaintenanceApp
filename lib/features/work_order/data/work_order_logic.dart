@@ -16,7 +16,10 @@ class NhanVienRutGon {
   final String? soDienThoai;
   final String? chucVu;
   final String? tenVaiTro;
-  /// true = đang làm bảo trì/sửa chữa chưa xong → không được chọn phân công
+  /// Số thiết bị đang BT/SC (Đang thực hiện)
+  final int soCongViecDangLam;
+  final int soCongViecToiDa;
+  /// true = đã đủ tối đa (3) → không phân công thêm
   final bool dangBan;
   final String? ghiChuBan;
 
@@ -27,6 +30,8 @@ class NhanVienRutGon {
     this.soDienThoai,
     this.chucVu,
     this.tenVaiTro,
+    this.soCongViecDangLam = 0,
+    this.soCongViecToiDa = 3,
     this.dangBan = false,
     this.ghiChuBan,
   });
@@ -38,10 +43,13 @@ class NhanVienRutGon {
     soDienThoai: j['soDienThoai']?.toString(),
     chucVu: j['chucVu']?.toString(),
     tenVaiTro: j['tenVaiTro']?.toString(),
+    soCongViecDangLam: (j['soCongViecDangLam'] as num?)?.toInt() ?? 0,
+    soCongViecToiDa: (j['soCongViecToiDa'] as num?)?.toInt() ?? 3,
     dangBan: j['dangBan'] == true,
     ghiChuBan: j['ghiChuBan']?.toString(),
   );
 }
+
 
 
 class HoSoBaoTri {
@@ -361,7 +369,8 @@ class PhanCongBaoTriController extends ChangeNotifier {
   void chonNhanVien(NhanVienRutGon nv) {
     if (nv.dangBan) {
       loi = nv.ghiChuBan ??
-          'Nhân viên đang đảm nhận bảo trì/sửa chữa chưa xong. Không thể chọn.';
+          'Nhân viên đang có việc chưa xong (${nv.soCongViecDangLam}/${nv.soCongViecToiDa}). '
+              'Chỉ được chọn lại khi đã về 0/${nv.soCongViecToiDa}.';
       notifyListeners();
       return;
     }
@@ -369,6 +378,7 @@ class PhanCongBaoTriController extends ChangeNotifier {
     loi = null;
     notifyListeners();
   }
+
 
 
   void datNgayBatDau(DateTime d) {

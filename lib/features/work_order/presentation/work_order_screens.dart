@@ -808,16 +808,21 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                           ),
                           subtitle: Text(
                             ban
-                                ? (nv.ghiChuBan ?? 'Đang bận — không thể phân công')
+                                ? (nv.ghiChuBan ??
+                                'Đang có việc ${nv.soCongViecDangLam}/${nv.soCongViecToiDa} — về 0 mới chọn lại')
                                 : [
                               if (nv.chucVu != null && nv.chucVu!.isNotEmpty) nv.chucVu!,
-                              if (nv.soDienThoai != null && nv.soDienThoai!.isNotEmpty) nv.soDienThoai!,
-                            ].join(' · '),
+                              if (nv.soDienThoai != null && nv.soDienThoai!.isNotEmpty)
+                                nv.soDienThoai!,
+                              if (nv.soCongViecDangLam > 0)
+                                'Đang làm ${nv.soCongViecDangLam}/${nv.soCongViecToiDa}',
+                            ].where((s) => s.isNotEmpty).join(' · '),
                             style: TextStyle(
                               fontSize: 12,
                               color: ban ? Colors.orange.shade800 : Colors.grey.shade600,
                             ),
                           ),
+
                           trailing: ban
                               ? Icon(Icons.block_rounded, color: Colors.orange.shade700)
                               : (dangChon
