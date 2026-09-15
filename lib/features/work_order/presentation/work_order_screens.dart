@@ -48,10 +48,12 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Tạo hồ sơ bảo trì'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SafeArea(
         child: LayoutBuilder(
@@ -73,47 +75,90 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.08),
-                            borderRadius: BorderRadius.circular(10),
+                            gradient: LinearGradient(
+                              colors: [
+                                AppColors.primary.withValues(alpha: 0.14),
+                                AppColors.primary.withValues(alpha: 0.05),
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.precision_manufacturing_rounded, color: AppColors.primary),
-                              const SizedBox(width: 10),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.precision_manufacturing_rounded, color: AppColors.primary),
+                              ),
+                              const SizedBox(width: 12),
                               Expanded(
-                                child: Text(
-                                  widget.tenThietBi,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Thiết bị',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      widget.tenThietBi,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFF8E1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: const Color(0xFFFFE082)),
+                          ),
+                          child: const Text(
+                            'Ngày bảo trì thực tế do xưởng chốt đã nằm trong kế hoạch. '
+                                'Khi phân công công việc bạn sẽ chọn khung giờ thực hiện chi tiết.',
+                            style: TextStyle(fontSize: 12.5, height: 1.35),
+                          ),
+                        ),
                         const SizedBox(height: 20),
+                        const Text('Nội dung công việc', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        const SizedBox(height: 8),
                         TextFormField(
                           controller: _noiDungController,
                           maxLines: 4,
                           decoration: const InputDecoration(
-                            labelText: 'Nội dung công việc',
+                            hintText: 'Mô tả công việc bảo trì…',
                             border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.description_outlined),
                           ),
                           validator: (v) =>
-                              (v == null || v.trim().isEmpty) ? 'Vui lòng nhập nội dung công việc' : null,
+                          (v == null || v.trim().isEmpty) ? 'Vui lòng nhập nội dung công việc' : null,
                         ),
                         const SizedBox(height: 16),
+                        const Text('Thời gian dự kiến (giờ)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        const SizedBox(height: 8),
                         TextFormField(
                           controller: _thoiGianController,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            labelText: 'Thời gian dự kiến (giờ)',
+                            hintText: 'Ví dụ: 4',
                             border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.schedule),
                           ),
                           validator: (v) =>
-                              (v == null || int.tryParse(v) == null) ? 'Vui lòng nhập số giờ hợp lệ' : null,
+                          (v == null || int.tryParse(v) == null) ? 'Vui lòng nhập số giờ hợp lệ' : null,
                         ),
                         AnimatedBuilder(
                           animation: _controller,
@@ -125,7 +170,7 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                             );
                           },
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 28),
                         AnimatedBuilder(
                           animation: _controller,
                           builder: (context, _) {
@@ -133,20 +178,29 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                               children: [
                                 Expanded(
                                   child: OutlinedButton(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
                                     onPressed: _controller.dangLuu ? null : () => _luu(false),
                                     child: const Text('Lưu nháp', maxLines: 1),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
-                                  child: ElevatedButton(
+                                  child: FilledButton(
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppColors.primary,
+                                      padding: const EdgeInsets.symmetric(vertical: 14),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                    ),
                                     onPressed: _controller.dangLuu ? null : () => _luu(true),
                                     child: _controller.dangLuu
                                         ? const SizedBox(
-                                            width: 20,
-                                            height: 20,
-                                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                                          )
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
                                         : const Text('Gửi duyệt', maxLines: 1),
                                   ),
                                 ),
@@ -154,7 +208,6 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                             );
                           },
                         ),
-                        // Chừa chỗ khi bàn phím bật
                         SizedBox(height: MediaQuery.viewInsetsOf(context).bottom + 16),
                       ],
                     ),
@@ -801,10 +854,10 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                   onPressed: _controller.dangLuu ? null : _xacNhan,
                   child: _controller.dangLuu
                       ? const SizedBox(
-                          width: 22,
-                          height: 22,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
                       : const Text('Xác nhận phân công', style: TextStyle(fontSize: 15)),
                 ),
               ],
