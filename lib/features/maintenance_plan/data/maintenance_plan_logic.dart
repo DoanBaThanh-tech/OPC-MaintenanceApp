@@ -383,6 +383,8 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   ThietBiRutGon? thietBiChon;
   ChiTietKeHoachInput? chiTietChon;
   int thang = DateTime.now().month;
+  /// Ngày lập kế hoạch năm — ngày dự kiến phải lớn hơn ngày này
+  DateTime? ngayLapKeHoach;
 
   bool dangTai = true;
   bool dangLuu = false;
@@ -391,6 +393,18 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   DateTime get ngayBatDau => DateTime(nam, thang, 1);
   DateTime get ngayKetThuc => DateTime(nam, thang + 1, 0);
 
+  /// Ngày sớm nhất được chọn: sau ngày lập kế hoạch và trong tháng
+  DateTime get ngayDuKienToiThieu {
+    final dauThang = ngayBatDau;
+    if (ngayLapKeHoach == null) return dauThang;
+    final sauNgayLap = DateTime(
+      ngayLapKeHoach!.year,
+      ngayLapKeHoach!.month,
+      ngayLapKeHoach!.day,
+    ).add(const Duration(days: 1));
+    return sauNgayLap.isAfter(dauThang) ? sauNgayLap : dauThang;
+  }
+
   Future<void> taiDuLieuBanDau() async {
     dangTai = true;
     notifyListeners();
@@ -398,9 +412,21 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       final results = await Future.wait([
         MaintenancePlanService.layDanhSachThietBi(),
         MaintenancePlanService.layDanhSachChuKy(),
+        MaintenancePlanService.layDanhSachKeHoach(),
       ]);
       dsThietBi = results[0] as List<ThietBiRutGon>;
       dsChuKy = results[1] as List<ChuKyBaoTriModel>;
+      final dsKeHoach = results[2] as List<KeHoachBaoTri>;
+      final khNam = dsKeHoach.where((k) => k.nam == nam).toList();
+      if (khNam.isNotEmpty) {
+        // Lấy ngày lập sớm nhất của năm (nếu có nhiều bản ghi)
+        khNam.sort((a, b) => a.ngayLapKeHoach.compareTo(b.ngayLapKeHoach));
+        ngayLapKeHoach = DateTime(
+          khNam.first.ngayLapKeHoach.year,
+          khNam.first.ngayLapKeHoach.month,
+          khNam.first.ngayLapKeHoach.day,
+        );
+      }
     } catch (e) {
       loi = 'Không tải được danh sách thiết bị';
     } finally {
@@ -408,6 +434,7 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       notifyListeners();
     }
   }
+
 
   ChuKyBaoTriModel? get chuKyCoDinh {
     if (thietBiChon == null) return null;
@@ -421,14 +448,21 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   void chonThietBi(ThietBiRutGon? tb) {
     if (tb == null) return;
     thietBiChon = tb;
-    chiTietChon = ChiTietKeHoachInput(thietBi: tb, ngayDuKienBaoTri: ngayBatDau);
+    // Mặc định: ngày tối thiểu hợp lệ trong tháng
+    var macDinh = ngayDuKienToiThieu;
+    if (macDinh.isAfter(ngayKetThuc)) macDinh = ngayKetThuc;
+    chiTietChon = ChiTietKeHoachInput(thietBi: tb, ngayDuKienBaoTri: macDinh);
     loi = null;
     notifyListeners();
   }
 
   void doiThang(int t) {
     thang = t;
-    if (chiTietChon != null) chiTietChon!.ngayDuKienBaoTri = ngayBatDau;
+    if (chiTietChon != null) {
+      var macDinh = ngayDuKienToiThieu;
+      if (macDinh.isAfter(ngayKetThuc)) macDinh = ngayKetThuc;
+      chiTietChon!.ngayDuKienBaoTri = macDinh;
+    }
     notifyListeners();
   }
 
@@ -438,6 +472,19 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       loi = 'Ngày dự kiến phải nằm trong tháng $thang';
       notifyListeners();
       return;
+    }
+    if (ngayLapKeHoach != null) {
+      final lap = DateTime(
+        ngayLapKeHoach!.year,
+        ngayLapKeHoach!.month,
+        ngayLapKeHoach!.day,
+      );
+      if (!ngay.isAfter(lap)) {
+        loi =
+        'Ngày dự kiến bảo trì phải lớn hơn ngày lập kế hoạch (${lap.day.toString().padLeft(2, '0')}/${lap.month.toString().padLeft(2, '0')}/${lap.year}).';
+        notifyListeners();
+        return;
+      }
     }
     chiTietChon!.ngayDuKienBaoTri = ngay;
     loi = null;
@@ -449,6 +496,19 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       loi = 'Vui lòng chọn thiết bị';
       notifyListeners();
       return false;
+    }
+    if (ngayLapKeHoach != null) {
+      final lap = DateTime(
+        ngayLapKeHoach!.year,
+        ngayLapKeHoach!.month,
+        ngayLapKeHoach!.day,
+      );
+      if (!chiTietChon!.ngayDuKienBaoTri.isAfter(lap)) {
+        loi =
+        'Ngày dự kiến bảo trì phải lớn hơn ngày lập kế hoạch (${lap.day.toString().padLeft(2, '0')}/${lap.month.toString().padLeft(2, '0')}/${lap.year}).';
+        notifyListeners();
+        return false;
+      }
     }
     dangLuu = true;
     loi = null;

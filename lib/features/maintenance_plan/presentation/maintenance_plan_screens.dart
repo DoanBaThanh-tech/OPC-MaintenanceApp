@@ -663,14 +663,32 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
   }
 
   Future<void> _chonNgay() async {
+    var first = _controller.ngayDuKienToiThieu;
+    final last = _controller.ngayKetThuc;
+    if (first.isAfter(last)) {
+      // Tháng đã qua hết so với ngày lập KH — không cho chọn
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tháng này không còn ngày hợp lệ (phải sau ngày lập kế hoạch). Chọn tháng khác.',
+          ),
+        ),
+      );
+      return;
+    }
+    var initial = _controller.chiTietChon?.ngayDuKienBaoTri ?? first;
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(last)) initial = last;
+
     final ngay = await showDatePicker(
       context: context,
-      initialDate: _controller.chiTietChon?.ngayDuKienBaoTri ?? _controller.ngayBatDau,
-      firstDate: _controller.ngayBatDau,
-      lastDate: _controller.ngayKetThuc,
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
     );
     if (ngay != null) _controller.datNgayDuKien(ngay);
   }
+
 
   Future<void> _luu() async {
     final ok = await _controller.luuKeHoach();
