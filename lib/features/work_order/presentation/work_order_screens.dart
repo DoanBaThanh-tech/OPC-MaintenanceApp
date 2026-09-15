@@ -768,40 +768,63 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                 else
                   ..._controller.dsNhanVien.map((nv) {
                     final dangChon = _controller.chon?.maNhanVien == nv.maNhanVien;
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      elevation: dangChon ? 2 : 0,
-                      color: dangChon ? AppColors.primary.withValues(alpha: 0.08) : Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        side: BorderSide(
-                          color: dangChon ? AppColors.primary : Colors.grey.shade200,
-                          width: dangChon ? 1.5 : 1,
-                        ),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: dangChon ? AppColors.primary : Colors.grey.shade300,
-                          child: Text(
-                            nv.hoTen.isNotEmpty ? nv.hoTen[0].toUpperCase() : '?',
-                            style: TextStyle(
-                              color: dangChon ? Colors.white : Colors.black87,
-                              fontWeight: FontWeight.w700,
-                            ),
+                    final ban = nv.dangBan;
+                    return Opacity(
+                      opacity: ban ? 0.55 : 1,
+                      child: Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        elevation: dangChon ? 2 : 0,
+                        color: ban
+                            ? Colors.grey.shade100
+                            : (dangChon ? AppColors.primary.withValues(alpha: 0.08) : Colors.white),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: ban
+                                ? Colors.orange.shade300
+                                : (dangChon ? AppColors.primary : Colors.grey.shade200),
+                            width: dangChon ? 1.5 : 1,
                           ),
                         ),
-                        title: Text(nv.hoTen, style: const TextStyle(fontWeight: FontWeight.w600)),
-                        subtitle: Text(
-                          [
-                            if (nv.chucVu != null && nv.chucVu!.isNotEmpty) nv.chucVu!,
-                            if (nv.soDienThoai != null && nv.soDienThoai!.isNotEmpty) nv.soDienThoai!,
-                          ].join(' · '),
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: ban
+                                ? Colors.orange.shade200
+                                : (dangChon ? AppColors.primary : Colors.grey.shade300),
+                            child: Text(
+                              nv.hoTen.isNotEmpty ? nv.hoTen[0].toUpperCase() : '?',
+                              style: TextStyle(
+                                color: dangChon && !ban ? Colors.white : Colors.black87,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            nv.hoTen,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: ban ? Colors.grey.shade700 : null,
+                            ),
+                          ),
+                          subtitle: Text(
+                            ban
+                                ? (nv.ghiChuBan ?? 'Đang bận — không thể phân công')
+                                : [
+                              if (nv.chucVu != null && nv.chucVu!.isNotEmpty) nv.chucVu!,
+                              if (nv.soDienThoai != null && nv.soDienThoai!.isNotEmpty) nv.soDienThoai!,
+                            ].join(' · '),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: ban ? Colors.orange.shade800 : Colors.grey.shade600,
+                            ),
+                          ),
+                          trailing: ban
+                              ? Icon(Icons.block_rounded, color: Colors.orange.shade700)
+                              : (dangChon
+                              ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+                              : const Icon(Icons.circle_outlined, color: Colors.grey)),
+                          onTap: ban ? null : () => _controller.chonNhanVien(nv),
                         ),
-                        trailing: dangChon
-                            ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
-                            : const Icon(Icons.circle_outlined, color: Colors.grey),
-                        onTap: () => _controller.chonNhanVien(nv),
                       ),
                     );
                   }),

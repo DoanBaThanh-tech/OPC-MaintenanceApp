@@ -16,6 +16,9 @@ class NhanVienRutGon {
   final String? soDienThoai;
   final String? chucVu;
   final String? tenVaiTro;
+  /// true = đang làm bảo trì/sửa chữa chưa xong → không được chọn phân công
+  final bool dangBan;
+  final String? ghiChuBan;
 
   NhanVienRutGon({
     required this.maNhanVien,
@@ -24,17 +27,22 @@ class NhanVienRutGon {
     this.soDienThoai,
     this.chucVu,
     this.tenVaiTro,
+    this.dangBan = false,
+    this.ghiChuBan,
   });
 
   factory NhanVienRutGon.fromJson(Map<String, dynamic> j) => NhanVienRutGon(
-        maNhanVien: (j['maNhanVien'] as num?)?.toInt() ?? 0,
-        hoTen: j['hoTen']?.toString() ?? '',
-        email: j['email']?.toString(),
-        soDienThoai: j['soDienThoai']?.toString(),
-        chucVu: j['chucVu']?.toString(),
-        tenVaiTro: j['tenVaiTro']?.toString(),
-      );
+    maNhanVien: (j['maNhanVien'] as num?)?.toInt() ?? 0,
+    hoTen: j['hoTen']?.toString() ?? '',
+    email: j['email']?.toString(),
+    soDienThoai: j['soDienThoai']?.toString(),
+    chucVu: j['chucVu']?.toString(),
+    tenVaiTro: j['tenVaiTro']?.toString(),
+    dangBan: j['dangBan'] == true,
+    ghiChuBan: j['ghiChuBan']?.toString(),
+  );
 }
+
 
 class HoSoBaoTri {
   final int maHoSoBaoTri;
@@ -77,24 +85,24 @@ class HoSoBaoTri {
   bool get biTuChoi => trangThai == 'Từ chối';
 
   factory HoSoBaoTri.fromJson(Map<String, dynamic> j) => HoSoBaoTri(
-        maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
-        maThietBi: (j['maThietBi'] as num?)?.toInt() ?? (j['maThieBi'] as num?)?.toInt() ?? 0,
-        tenThietBi: j['tenThietBi']?.toString() ?? '',
-        tenNhanVienTao: j['tenNhanVienTao']?.toString(),
-        noiDungCongViec: j['noiDungCongViec']?.toString(),
-        thoiGianDuKien: j['thoiGianDuKien']?.toString(),
-        ngayDuKienBaoTri: j['ngayDuKienBaoTri'] != null
-            ? DateTime.tryParse(j['ngayDuKienBaoTri'].toString())
-            : null,
-        ngayTao: DateTime.parse(j['ngayTao'].toString()),
-        ngayDuyet: j['ngayDuyet'] != null ? DateTime.tryParse(j['ngayDuyet'].toString()) : null,
-        trangThai: j['trangThai']?.toString() ?? '',
-        lyDoTuChoi: j['lyDoTuChoi']?.toString(),
-        maPhanCong: (j['maPhanCong'] as num?)?.toInt(),
-        nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
-        namTuKeHoach: j['namTuKeHoach'] == true,
-        rowVersion: j['rowVersion']?.toString(),
-      );
+    maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
+    maThietBi: (j['maThietBi'] as num?)?.toInt() ?? (j['maThieBi'] as num?)?.toInt() ?? 0,
+    tenThietBi: j['tenThietBi']?.toString() ?? '',
+    tenNhanVienTao: j['tenNhanVienTao']?.toString(),
+    noiDungCongViec: j['noiDungCongViec']?.toString(),
+    thoiGianDuKien: j['thoiGianDuKien']?.toString(),
+    ngayDuKienBaoTri: j['ngayDuKienBaoTri'] != null
+        ? DateTime.tryParse(j['ngayDuKienBaoTri'].toString())
+        : null,
+    ngayTao: DateTime.parse(j['ngayTao'].toString()),
+    ngayDuyet: j['ngayDuyet'] != null ? DateTime.tryParse(j['ngayDuyet'].toString()) : null,
+    trangThai: j['trangThai']?.toString() ?? '',
+    lyDoTuChoi: j['lyDoTuChoi']?.toString(),
+    maPhanCong: (j['maPhanCong'] as num?)?.toInt(),
+    nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
+    namTuKeHoach: j['namTuKeHoach'] == true,
+    rowVersion: j['rowVersion']?.toString(),
+  );
 }
 
 /// Phân loại trạng thái thành nhóm cố định — presentation tự map ra màu,
@@ -209,14 +217,14 @@ class LichSuPhanCong {
   });
 
   factory LichSuPhanCong.fromJson(Map<String, dynamic> j) => LichSuPhanCong(
-        maPhanCong: (j['maPhanCong'] as num?)?.toInt() ?? 0,
-        tenNhanVienPhanCong: j['tenNhanVienPhanCong']?.toString(),
-        tenNhanVienThucHien: j['tenNhanVienThucHien']?.toString(),
-        trangThai: j['trangThai']?.toString() ?? '',
-        ngayPhanCong: DateTime.tryParse(j['ngayPhanCong']?.toString() ?? '') ?? DateTime.now(),
-        gioBatDau: j['gioBatDau'] != null ? DateTime.tryParse(j['gioBatDau'].toString()) : null,
-        gioKetThuc: j['gioKetThuc'] != null ? DateTime.tryParse(j['gioKetThuc'].toString()) : null,
-      );
+    maPhanCong: (j['maPhanCong'] as num?)?.toInt() ?? 0,
+    tenNhanVienPhanCong: j['tenNhanVienPhanCong']?.toString(),
+    tenNhanVienThucHien: j['tenNhanVienThucHien']?.toString(),
+    trangThai: j['trangThai']?.toString() ?? '',
+    ngayPhanCong: DateTime.tryParse(j['ngayPhanCong']?.toString() ?? '') ?? DateTime.now(),
+    gioBatDau: j['gioBatDau'] != null ? DateTime.tryParse(j['gioBatDau'].toString()) : null,
+    gioKetThuc: j['gioKetThuc'] != null ? DateTime.tryParse(j['gioKetThuc'].toString()) : null,
+  );
 }
 
 // ============================================================
@@ -351,9 +359,17 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   void chonNhanVien(NhanVienRutGon nv) {
+    if (nv.dangBan) {
+      loi = nv.ghiChuBan ??
+          'Nhân viên đang đảm nhận bảo trì/sửa chữa chưa xong. Không thể chọn.';
+      notifyListeners();
+      return;
+    }
     chon = nv;
+    loi = null;
     notifyListeners();
   }
+
 
   void datNgayBatDau(DateTime d) {
     ngayBatDau = d;
@@ -376,20 +392,20 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   DateTime get thoiDiemBatDau => DateTime(
-        ngayBatDau.year,
-        ngayBatDau.month,
-        ngayBatDau.day,
-        gioBatDau.hour,
-        gioBatDau.minute,
-      );
+    ngayBatDau.year,
+    ngayBatDau.month,
+    ngayBatDau.day,
+    gioBatDau.hour,
+    gioBatDau.minute,
+  );
 
   DateTime get thoiDiemKetThuc => DateTime(
-        ngayKetThuc.year,
-        ngayKetThuc.month,
-        ngayKetThuc.day,
-        gioKetThuc.hour,
-        gioKetThuc.minute,
-      );
+    ngayKetThuc.year,
+    ngayKetThuc.month,
+    ngayKetThuc.day,
+    gioKetThuc.hour,
+    gioKetThuc.minute,
+  );
 
   Future<bool> xacNhan(int maHoSoBaoTri) async {
     if (chon == null) {
