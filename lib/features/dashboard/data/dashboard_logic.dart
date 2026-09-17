@@ -82,7 +82,6 @@ class DashboardLogic {
         return [
           MenuGroup(tieuDe: 'Công việc của tôi', muc: [
             MenuItemData(icon: Icons.assignment_rounded, label: 'Công việc được giao', screenBuilder: () => const _ChuaLamScreen(ten: 'Công việc được giao')),
-            MenuItemData(icon: Icons.build_rounded, label: 'Tạo hồ sơ bảo trì', screenBuilder: () => const _ChuaLamScreen(ten: 'Tạo hồ sơ bảo trì')),
             MenuItemData(icon: Icons.handyman_rounded, label: 'Tạo hồ sơ sửa chữa', screenBuilder: () => const _ChuaLamScreen(ten: 'Tạo hồ sơ sửa chữa')),
             MenuItemData(icon: Icons.inventory_2_rounded, label: 'Yêu cầu vật tư', screenBuilder: () => const _ChuaLamScreen(ten: 'Yêu cầu vật tư')),
           ]),

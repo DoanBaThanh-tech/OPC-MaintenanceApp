@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/maintenance_plan_logic.dart';
-import '../../work_order/presentation/work_order_screens.dart';
 
 const _tenThangNgan = [
   '', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12',
@@ -525,126 +524,91 @@ class _MaintenanceMonthDetailScreenState extends State<MaintenanceMonthDetailScr
                 borderRadius: BorderRadius.circular(16),
                 elevation: 0.8,
                 shadowColor: Colors.black26,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: ct.daTaoHoSo
-                      ? null
-                      : () async {
-                    final ok = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => CreateWorkOrderBaoTriScreen(
-                          maChiTietKeHoach: ct.maChiTietKeHoach,
-                          maThietBi: ct.maThietBi,
-                          tenThietBi: ct.tenThietBi,
-                        ),
-                      ),
-                    );
-                    if (ok == true) _controller.taiLai();
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border(left: BorderSide(color: mau, width: 4)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                ct.tenThietBi,
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                              ),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border(left: BorderSide(color: mau, width: 4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              ct.tenThietBi,
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: mau.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                nhanTT,
-                                style: TextStyle(color: mau, fontSize: 11, fontWeight: FontWeight.w700),
-                              ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: mau.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(Icons.event, size: 16, color: Colors.grey.shade600),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Dự kiến: ${_fmt(ct.ngayDuKienBaoTri)}',
-                              style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                            child: Text(
+                              nhanTT,
+                              style: TextStyle(color: mau, fontSize: 11, fontWeight: FontWeight.w700),
                             ),
-                          ],
-                        ),
-                        if (muc.keHoach.tenChuKy != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            muc.keHoach.tenChuKy!,
-                            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                           ),
                         ],
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            if (ct.daTaoHoSo)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: mau.withValues(alpha: 0.12),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Icon(
-                                      ct.trangThaiHoSo == 'Đã duyệt' || ct.trangThaiHoSo == 'Hoàn thành'
-                                          ? Icons.check_circle
-                                          : ct.trangThaiHoSo == 'Từ chối'
-                                          ? Icons.cancel
-                                          : Icons.info_outline,
-                                      size: 16,
-                                      color: mau,
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Hồ sơ: $nhanTT',
-                                      style: TextStyle(
-                                        color: mau,
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 12.5,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )
-                            else
-                              FilledButton.tonal(
-                                onPressed: () async {
-                                  final ok = await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => CreateWorkOrderBaoTriScreen(
-                                        maChiTietKeHoach: ct.maChiTietKeHoach,
-                                        maThietBi: ct.maThietBi,
-                                        tenThietBi: ct.tenThietBi,
-                                      ),
-                                    ),
-                                  );
-                                  if (ok == true) _controller.taiLai();
-                                },
-                                child: const Text('Tạo hồ sơ bảo trì'),
-                              ),
-                          ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.event, size: 16, color: Colors.grey.shade600),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Dự kiến: ${_fmt(ct.ngayDuKienBaoTri)}',
+                            style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
+                          ),
+                        ],
+                      ),
+                      if (muc.keHoach.tenChuKy != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          muc.keHoach.tenChuKy!,
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                         ),
                       ],
-                    ),
+                      // Trạng thái hồ sơ (đã gom tạo hồ sơ vào "Lập bảo trì cho thiết bị" — không còn nút tạo riêng)
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: mau.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              ct.daTaoHoSo
+                                  ? (ct.trangThaiHoSo == 'Đã duyệt' ||
+                                  ct.trangThaiHoSo == 'Hoàn thành' ||
+                                  ct.trangThaiHoSo == 'Đã hoàn thành'
+                                  ? Icons.check_circle
+                                  : ct.trangThaiHoSo == 'Từ chối'
+                                  ? Icons.cancel
+                                  : Icons.info_outline)
+                                  : Icons.schedule_outlined,
+                              size: 16,
+                              color: mau,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              ct.daTaoHoSo ? 'Hồ sơ: $nhanTT' : nhanTT,
+                              style: TextStyle(
+                                color: mau,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 12.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               );
