@@ -583,10 +583,19 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         ],
                         const Divider(height: 20),
                         _dong('Ngày bảo trì dự kiến', _fmt(hs.ngayDuKienBaoTri)),
-                        if (hs.thoiGianDuKien != null) ...[
-                          const Divider(height: 20),
-                          _dong('Thời gian dự kiến', '${hs.thoiGianDuKien} giờ'),
-                        ],
+                        const Divider(height: 20),
+                        _dong(
+                          'Thời gian dự kiến',
+                          hs.thoiGianDuKien == null || hs.thoiGianDuKien!.isEmpty
+                              ? '—'
+                              : (hs.thoiGianDuKien!.contains('giờ')
+                              ? hs.thoiGianDuKien!
+                              : '${hs.thoiGianDuKien} giờ'),
+                        ),
+                        const Divider(height: 20),
+                        _dong('Giờ bắt đầu', hs.gioBatDauDuKien ?? '—'),
+                        const Divider(height: 20),
+                        _dong('Giờ kết thúc', hs.gioKetThucDuKien ?? '—'),
                       ],
                     ),
                   ),
