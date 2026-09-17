@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
@@ -62,6 +63,8 @@ class ChiTietKeHoach {
   final String tenThietBi;
   final DateTime ngayDuKienBaoTri;
   final int? maHoSoBaoTri;
+  /// Trạng thái hồ sơ bảo trì (null = chưa tạo hồ sơ). Ví dụ: Chờ duyệt, Đã duyệt, Từ chối...
+  final String? trangThaiHoSo;
 
   ChiTietKeHoach({
     required this.maChiTietKeHoach,
@@ -69,9 +72,14 @@ class ChiTietKeHoach {
     required this.tenThietBi,
     required this.ngayDuKienBaoTri,
     this.maHoSoBaoTri,
+    this.trangThaiHoSo,
   });
 
   bool get daTaoHoSo => maHoSoBaoTri != null;
+
+  /// Nhãn hiển thị: ưu tiên trạng thái hồ sơ nếu đã tạo, ngược lại "Chưa tạo hồ sơ".
+  String get nhanTrangThaiHienThi =>
+      daTaoHoSo ? (trangThaiHoSo?.isNotEmpty == true ? trangThaiHoSo! : 'Đã tạo hồ sơ') : 'Chưa tạo hồ sơ';
 
   factory ChiTietKeHoach.fromJson(Map<String, dynamic> j) => ChiTietKeHoach(
     maChiTietKeHoach: (j['maChiTietKeHoach'] as num?)?.toInt() ?? 0,
@@ -79,6 +87,7 @@ class ChiTietKeHoach {
     tenThietBi: j['tenThietBi']?.toString() ?? '',
     ngayDuKienBaoTri: DateTime.parse(j['ngayDuKienBaoTri'].toString()),
     maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt(),
+    trangThaiHoSo: j['trangThaiHoSo']?.toString(),
   );
 }
 
@@ -126,14 +135,17 @@ class MucThietBiTrongThang {
   MucThietBiTrongThang({required this.keHoach, required this.chiTiet});
 }
 
-enum TrangThaiKeHoach { daDuyet, tuChoi, choXuLy }
+enum TrangThaiKeHoach { daDuyet, tuChoi, choXuLy, chuaTao }
 
 TrangThaiKeHoach phanLoaiTrangThai(String tt) {
   switch (tt) {
     case 'Đã duyệt':
+    case 'Hoàn thành':
       return TrangThaiKeHoach.daDuyet;
     case 'Từ chối':
       return TrangThaiKeHoach.tuChoi;
+    case 'Chưa tạo hồ sơ':
+      return TrangThaiKeHoach.chuaTao;
     default:
       return TrangThaiKeHoach.choXuLy;
   }
@@ -200,14 +212,26 @@ class MaintenancePlanService {
     required int nam,
     required int maThietBi,
     required DateTime ngay,
+    required String noiDungCongViec,
+    required int thoiGianDuKien,
+    required TimeOfDay gioBatDau,
+    required TimeOfDay gioKetThuc,
   }) async {
+    String fmtGio(TimeOfDay t) =>
+        '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
+
     await ApiClient.instance.post<dynamic>(ApiConstants.themThietBiVaoNam, {
       'nam': nam,
       'maThietBi': maThietBi,
       'ngayDuKienBaoTri': _dateOnly(ngay),
+      'noiDungCongViec': noiDungCongViec,
+      'thoiGianDuKien': thoiGianDuKien,
+      'gioBatDauDuKien': fmtGio(gioBatDau),
+      'gioKetThucDuKien': fmtGio(gioKetThuc),
     });
   }
 }
+
 
 
 // ============================================================
@@ -375,7 +399,7 @@ class MaintenancePlanMonthDetailController extends ChangeNotifier {
 }
 
 class CreateMaintenancePlanController extends ChangeNotifier {
-  final int nam;   // ← truyền vào từ màn danh sách (năm đang xem trên lịch), KHÔNG cho sửa
+  final int nam;
   CreateMaintenancePlanController({required this.nam});
 
   List<ThietBiRutGon> dsThietBi = [];
@@ -383,26 +407,35 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   ThietBiRutGon? thietBiChon;
   ChiTietKeHoachInput? chiTietChon;
   int thang = DateTime.now().month;
-  /// Ngày lập kế hoạch năm — ngày dự kiến phải lớn hơn ngày này
   DateTime? ngayLapKeHoach;
 
   bool dangTai = true;
   bool dangLuu = false;
   String? loi;
+  /// Lỗi đỏ ngay dưới ô "Giờ dự kiến bảo trì"
+  String? loiThoiGianDuKien;
 
   DateTime get ngayBatDau => DateTime(nam, thang, 1);
   DateTime get ngayKetThuc => DateTime(nam, thang + 1, 0);
 
-  /// Ngày sớm nhất được chọn: sau ngày lập kế hoạch và trong tháng
+  /// Ngày tối thiểu: phải SAU ngày hiện tại (không chọn hôm nay / quá khứ),
+  /// và vẫn trong tháng đã chọn; đồng thời sau ngày lập kế hoạch nếu có.
   DateTime get ngayDuKienToiThieu {
-    final dauThang = ngayBatDau;
-    if (ngayLapKeHoach == null) return dauThang;
-    final sauNgayLap = DateTime(
-      ngayLapKeHoach!.year,
-      ngayLapKeHoach!.month,
-      ngayLapKeHoach!.day,
-    ).add(const Duration(days: 1));
-    return sauNgayLap.isAfter(dauThang) ? sauNgayLap : dauThang;
+    final now = DateTime.now();
+    final ngayMai = DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+    var min = ngayMai;
+    // Không sớm hơn đầu tháng đã chọn
+    if (ngayBatDau.isAfter(min)) min = ngayBatDau;
+    // Phải sau ngày lập kế hoạch
+    if (ngayLapKeHoach != null) {
+      final sauNgayLap = DateTime(
+        ngayLapKeHoach!.year,
+        ngayLapKeHoach!.month,
+        ngayLapKeHoach!.day,
+      ).add(const Duration(days: 1));
+      if (sauNgayLap.isAfter(min)) min = sauNgayLap;
+    }
+    return min;
   }
 
   Future<void> taiDuLieuBanDau() async {
@@ -419,7 +452,6 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       final dsKeHoach = results[2] as List<KeHoachBaoTri>;
       final khNam = dsKeHoach.where((k) => k.nam == nam).toList();
       if (khNam.isNotEmpty) {
-        // Lấy ngày lập sớm nhất của năm (nếu có nhiều bản ghi)
         khNam.sort((a, b) => a.ngayLapKeHoach.compareTo(b.ngayLapKeHoach));
         ngayLapKeHoach = DateTime(
           khNam.first.ngayLapKeHoach.year,
@@ -435,7 +467,6 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     }
   }
 
-
   ChuKyBaoTriModel? get chuKyCoDinh {
     if (thietBiChon == null) return null;
     try {
@@ -448,7 +479,6 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   void chonThietBi(ThietBiRutGon? tb) {
     if (tb == null) return;
     thietBiChon = tb;
-    // Mặc định: ngày tối thiểu hợp lệ trong tháng
     var macDinh = ngayDuKienToiThieu;
     if (macDinh.isAfter(ngayKetThuc)) macDinh = ngayKetThuc;
     chiTietChon = ChiTietKeHoachInput(thietBi: tb, ngayDuKienBaoTri: macDinh);
@@ -468,8 +498,17 @@ class CreateMaintenancePlanController extends ChangeNotifier {
 
   void datNgayDuKien(DateTime ngay) {
     if (chiTietChon == null) return;
-    if (ngay.isBefore(ngayBatDau) || ngay.isAfter(ngayKetThuc)) {
-      loi = 'Ngày dự kiến phải nằm trong tháng $thang';
+    final ngayChon = DateTime(ngay.year, ngay.month, ngay.day);
+    final homNay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    if (ngayChon.month != thang || ngayChon.year != nam ||
+        ngayChon.isBefore(ngayBatDau) || ngayChon.isAfter(ngayKetThuc)) {
+      loi = 'Ngày dự kiến bảo trì phải nằm trong tháng $thang/$nam';
+      notifyListeners();
+      return;
+    }
+    // Không được chọn hôm nay hoặc ngày trong quá khứ
+    if (!ngayChon.isAfter(homNay)) {
+      loi = 'Ngày dự kiến bảo trì phải lớn hơn ngày hiện tại (không chọn hôm nay hoặc ngày trước).';
       notifyListeners();
       return;
     }
@@ -479,16 +518,75 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         ngayLapKeHoach!.month,
         ngayLapKeHoach!.day,
       );
-      if (!ngay.isAfter(lap)) {
+      if (!ngayChon.isAfter(lap)) {
         loi =
         'Ngày dự kiến bảo trì phải lớn hơn ngày lập kế hoạch (${lap.day.toString().padLeft(2, '0')}/${lap.month.toString().padLeft(2, '0')}/${lap.year}).';
         notifyListeners();
         return;
       }
     }
-    chiTietChon!.ngayDuKienBaoTri = ngay;
+    chiTietChon!.ngayDuKienBaoTri = ngayChon;
     loi = null;
     notifyListeners();
+  }
+
+  final noiDungCongViecController = TextEditingController();
+  int? thoiGianDuKien;
+  TimeOfDay? gioBatDau;
+
+  TimeOfDay? get gioKetThucTuTinh {
+    if (gioBatDau == null || thoiGianDuKien == null) return null;
+    final tongPhut = gioBatDau!.hour * 60 + gioBatDau!.minute + thoiGianDuKien! * 60;
+    return TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
+  }
+
+  /// Validate realtime — chỉ số dương
+  void datThoiGianDuKienTuChuoi(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) {
+      thoiGianDuKien = null;
+      loiThoiGianDuKien = 'Vui lòng nhập giờ dự kiến bảo trì';
+      notifyListeners();
+      return;
+    }
+    if (!RegExp(r'^\d+$').hasMatch(v)) {
+      thoiGianDuKien = null;
+      loiThoiGianDuKien = 'Chỉ được nhập số dương (không chữ, không ký tự đặc biệt)';
+      notifyListeners();
+      return;
+    }
+    final so = int.tryParse(v);
+    if (so == null || so <= 0) {
+      thoiGianDuKien = null;
+      loiThoiGianDuKien = 'Giờ dự kiến phải là số dương lớn hơn 0';
+      notifyListeners();
+      return;
+    }
+    thoiGianDuKien = so;
+    loiThoiGianDuKien = null;
+    notifyListeners();
+  }
+
+  void datThoiGianDuKien(int? gio) {
+    thoiGianDuKien = gio;
+    loiThoiGianDuKien =
+    (gio == null || gio <= 0) ? 'Vui lòng nhập giờ dự kiến bảo trì (số dương)' : null;
+    notifyListeners();
+  }
+
+  void datGioBatDau(TimeOfDay t) {
+    gioBatDau = t;
+    notifyListeners();
+  }
+
+  String? kiemTraGio() {
+    if (loiThoiGianDuKien != null) return loiThoiGianDuKien;
+    if (thoiGianDuKien == null || thoiGianDuKien! <= 0) {
+      return 'Vui lòng nhập giờ dự kiến bảo trì (số dương)';
+    }
+    if (gioBatDau == null) return 'Vui lòng chọn giờ bắt đầu';
+    if (gioKetThucTuTinh == gioBatDau) return 'Giờ bắt đầu và kết thúc không được trùng nhau';
+    return null;
   }
 
   Future<bool> luuKeHoach() async {
@@ -497,13 +595,36 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    final ngay = DateTime(
+      chiTietChon!.ngayDuKienBaoTri.year,
+      chiTietChon!.ngayDuKienBaoTri.month,
+      chiTietChon!.ngayDuKienBaoTri.day,
+    );
+    if (ngay.year != nam || ngay.month != thang) {
+      loi = 'Ngày dự kiến bảo trì phải nằm trong tháng $thang/$nam';
+      notifyListeners();
+      return false;
+    }
+    final homNay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    if (!ngay.isAfter(homNay)) {
+      loi = 'Ngày dự kiến bảo trì phải lớn hơn ngày hiện tại (không chọn hôm nay hoặc ngày trước).';
+      notifyListeners();
+      return false;
+    }
+    if (noiDungCongViecController.text.trim().isEmpty) {
+      loi = 'Vui lòng nhập nội dung công việc';
+      notifyListeners();
+      return false;
+    }
+    final loiGio = kiemTraGio();
+    if (loiGio != null) {
+      loi = loiGio;
+      notifyListeners();
+      return false;
+    }
     if (ngayLapKeHoach != null) {
-      final lap = DateTime(
-        ngayLapKeHoach!.year,
-        ngayLapKeHoach!.month,
-        ngayLapKeHoach!.day,
-      );
-      if (!chiTietChon!.ngayDuKienBaoTri.isAfter(lap)) {
+      final lap = DateTime(ngayLapKeHoach!.year, ngayLapKeHoach!.month, ngayLapKeHoach!.day);
+      if (!ngay.isAfter(lap)) {
         loi =
         'Ngày dự kiến bảo trì phải lớn hơn ngày lập kế hoạch (${lap.day.toString().padLeft(2, '0')}/${lap.month.toString().padLeft(2, '0')}/${lap.year}).';
         notifyListeners();
@@ -518,6 +639,10 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         nam: nam,
         maThietBi: thietBiChon!.maThietBi,
         ngay: chiTietChon!.ngayDuKienBaoTri,
+        noiDungCongViec: noiDungCongViecController.text.trim(),
+        thoiGianDuKien: thoiGianDuKien!,
+        gioBatDau: gioBatDau!,
+        gioKetThuc: gioKetThucTuTinh!,
       );
       return true;
     } on ApiException catch (e) {
@@ -533,5 +658,33 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       dangLuu = false;
       notifyListeners();
     }
+  }
+
+  String tuKhoaTimKiem = '';
+  String? danhMucChon;
+
+  List<String> get danhSachDanhMuc =>
+      dsThietBi.map((t) => t.loaiThietBi ?? 'Chưa phân loại').toSet().toList()..sort();
+
+  List<ThietBiRutGon> get dsThietBiDaLoc {
+    return dsThietBi.where((tb) {
+      final khopDanhMuc = danhMucChon == null || (tb.loaiThietBi ?? 'Chưa phân loại') == danhMucChon;
+      final khopTuKhoa = tuKhoaTimKiem.isEmpty ||
+          tb.tenThietBi.toLowerCase().contains(tuKhoaTimKiem.toLowerCase()) ||
+          (tb.loaiThietBi ?? '').toLowerCase().contains(tuKhoaTimKiem.toLowerCase());
+      return khopDanhMuc && khopTuKhoa;
+    }).toList();
+  }
+
+  void datTuKhoaTimKiem(String tk) {
+    tuKhoaTimKiem = tk;
+    notifyListeners();
+  }
+
+  void chonDanhMuc(String? dm) {
+    danhMucChon = dm;
+    thietBiChon = null;
+    chiTietChon = null;
+    notifyListeners();
   }
 }

@@ -466,6 +466,8 @@ class _MaintenanceMonthDetailScreenState extends State<MaintenanceMonthDetailScr
         return AppColors.success;
       case TrangThaiKeHoach.tuChoi:
         return AppColors.danger;
+      case TrangThaiKeHoach.chuaTao:
+        return Colors.grey;
       case TrangThaiKeHoach.choXuLy:
         return AppColors.warning;
     }
@@ -515,7 +517,9 @@ class _MaintenanceMonthDetailScreenState extends State<MaintenanceMonthDetailScr
             itemBuilder: (context, i) {
               final muc = list[i];
               final ct = muc.chiTiet;
-              final mau = _mauTT(muc.keHoach.trangThai);
+              // Ưu tiên trạng thái HỒ SƠ bảo trì (giống màn hồ sơ), không dùng trạng thái kế hoạch năm
+              final nhanTT = ct.nhanTrangThaiHienThi;
+              final mau = _mauTT(nhanTT);
               return Material(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
@@ -562,7 +566,7 @@ class _MaintenanceMonthDetailScreenState extends State<MaintenanceMonthDetailScr
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
-                                muc.keHoach.trangThai,
+                                nhanTT,
                                 style: TextStyle(color: mau, fontSize: 11, fontWeight: FontWeight.w700),
                               ),
                             ),
@@ -593,15 +597,30 @@ class _MaintenanceMonthDetailScreenState extends State<MaintenanceMonthDetailScr
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                 decoration: BoxDecoration(
-                                  color: AppColors.success.withValues(alpha: 0.12),
+                                  color: mau.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    Icon(Icons.check_circle, size: 16, color: AppColors.success),
-                                    SizedBox(width: 6),
-                                    Text('Đã tạo hồ sơ', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600, fontSize: 12.5)),
+                                    Icon(
+                                      ct.trangThaiHoSo == 'Đã duyệt' || ct.trangThaiHoSo == 'Hoàn thành'
+                                          ? Icons.check_circle
+                                          : ct.trangThaiHoSo == 'Từ chối'
+                                          ? Icons.cancel
+                                          : Icons.info_outline,
+                                      size: 16,
+                                      color: mau,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Hồ sơ: $nhanTT',
+                                      style: TextStyle(
+                                        color: mau,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 12.5,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               )
@@ -658,6 +677,7 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
 
   @override
   void dispose() {
+    _controller.noiDungCongViecController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -666,7 +686,6 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
     var first = _controller.ngayDuKienToiThieu;
     final last = _controller.ngayKetThuc;
     if (first.isAfter(last)) {
-      // Tháng đã qua hết so với ngày lập KH — không cho chọn
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -689,13 +708,13 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
     if (ngay != null) _controller.datNgayDuKien(ngay);
   }
 
-
   Future<void> _luu() async {
     final ok = await _controller.luuKeHoach();
     if (ok && mounted) Navigator.pop(context, true);
   }
 
-  String _fmt(DateTime d) => '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  String _fmt(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   @override
   Widget build(BuildContext context) {
@@ -709,7 +728,9 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
-          if (_controller.dangTai) return const Center(child: CircularProgressIndicator());
+          if (_controller.dangTai) {
+            return const Center(child: CircularProgressIndicator());
+          }
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Center(
@@ -718,13 +739,42 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    TextField(
+                      decoration: const InputDecoration(
+                        hintText: 'Tìm theo tên thiết bị hoặc danh mục',
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: _controller.datTuKhoaTimKiem,
+                    ),
+                    const SizedBox(height: 12),
+                    const Text('Danh mục thiết bị', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    DropdownButtonFormField<String>(
+                      value: _controller.danhMucChon,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.category_outlined),
+                      ),
+                      hint: const Text('Tất cả danh mục'),
+                      items: _controller.danhSachDanhMuc
+                          .map((dm) => DropdownMenuItem(value: dm, child: Text(dm)))
+                          .toList(),
+                      onChanged: _controller.chonDanhMuc,
+                    ),
+                    const SizedBox(height: 16),
                     const Text('Thiết bị', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ThietBiRutGon>(
-                      initialValue: _controller.thietBiChon,
-                      decoration: const InputDecoration(border: OutlineInputBorder(), prefixIcon: Icon(Icons.precision_manufacturing_outlined)),
+                      value: _controller.thietBiChon,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.precision_manufacturing_outlined),
+                      ),
                       hint: const Text('Chọn thiết bị'),
-                      items: _controller.dsThietBi.map((tb) => DropdownMenuItem(value: tb, child: Text(tb.tenThietBi))).toList(),
+                      items: _controller.dsThietBiDaLoc
+                          .map((tb) => DropdownMenuItem(value: tb, child: Text(tb.tenThietBi)))
+                          .toList(),
                       onChanged: _controller.chonThietBi,
                     ),
                     const SizedBox(height: 16),
@@ -732,14 +782,24 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
                       value: _controller.thang,
-                      decoration: const InputDecoration(border: OutlineInputBorder(), prefixIcon: Icon(Icons.calendar_view_month)),
-                      items: List.generate(12, (i) => DropdownMenuItem(value: i + 1, child: Text('Tháng ${i + 1}'))),
-                      onChanged: (v) { if (v != null) _controller.doiThang(v); },
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.calendar_view_month),
+                      ),
+                      items: List.generate(
+                        12,
+                            (i) => DropdownMenuItem(value: i + 1, child: Text('Tháng ${i + 1}')),
+                      ),
+                      onChanged: (v) {
+                        if (v != null) _controller.doiThang(v);
+                      },
                     ),
                     if (_controller.chuKyCoDinh != null) ...[
                       const SizedBox(height: 8),
-                      Text('Chu kỳ đề xuất: ${_controller.chuKyCoDinh!.soThangChuKyDeXuat} tháng/lần',
-                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                      Text(
+                        'Chu kỳ đề xuất: ${_controller.chuKyCoDinh!.soThangChuKyDeXuat} tháng/lần',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
                     ],
                     if (_controller.chiTietChon != null) ...[
                       const SizedBox(height: 20),
@@ -749,21 +809,90 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                         child: ListTile(
                           title: Text(_controller.chiTietChon!.thietBi.tenThietBi),
                           subtitle: Text('Dự kiến: ${_fmt(_controller.chiTietChon!.ngayDuKienBaoTri)}'),
-                          trailing: IconButton(icon: const Icon(Icons.edit_calendar), onPressed: _chonNgay),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.edit_calendar),
+                            onPressed: _chonNgay,
+                          ),
                         ),
                       ),
                     ],
+                    const SizedBox(height: 20),
+                    const Text('Nội dung công việc', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      controller: _controller.noiDungCongViecController,
+                      maxLines: 3,
+                      decoration: const InputDecoration(
+                        border: OutlineInputBorder(),
+                        hintText: 'Mô tả công việc cần bảo trì...',
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Giờ dự kiến bảo trì (số giờ)', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        suffixText: 'giờ',
+                        errorText: _controller.loiThoiGianDuKien,
+                      ),
+                      onChanged: _controller.datThoiGianDuKienTuChuoi,
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            onTap: () async {
+                              final t = await showTimePicker(
+                                context: context,
+                                initialTime: _controller.gioBatDau ?? TimeOfDay.now(),
+                              );
+                              if (t != null) _controller.datGioBatDau(t);
+                            },
+                            child: InputDecorator(
+                              decoration: const InputDecoration(
+                                labelText: 'Giờ bắt đầu',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: Text(_controller.gioBatDau?.format(context) ?? 'Chọn giờ'),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: InputDecorator(
+                            decoration: const InputDecoration(
+                              labelText: 'Giờ kết thúc (tự tính)',
+                              border: OutlineInputBorder(),
+                            ),
+                            child: Text(
+                              _controller.gioKetThucTuTinh?.format(context) ?? '—',
+                              style: const TextStyle(color: Colors.grey),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     if (_controller.loi != null) ...[
                       const SizedBox(height: 12),
                       Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
                     ],
                     const SizedBox(height: 24),
                     FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 16)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                      ),
                       onPressed: _controller.dangLuu ? null : _luu,
                       child: _controller.dangLuu
-                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Text('Lưu kế hoạch', style: TextStyle(fontWeight: FontWeight.w700)),
+                          ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                          : const Text('Tạo Bảo Trì', style: TextStyle(fontWeight: FontWeight.w700)),
                     ),
                   ],
                 ),

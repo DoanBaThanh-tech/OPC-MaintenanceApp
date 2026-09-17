@@ -151,14 +151,30 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                         const SizedBox(height: 8),
                         TextFormField(
                           controller: _thoiGianController,
-                          keyboardType: TextInputType.number,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
                           decoration: const InputDecoration(
                             hintText: 'Ví dụ: 4',
                             border: OutlineInputBorder(),
                             prefixIcon: Icon(Icons.schedule),
+                            suffixText: 'giờ',
                           ),
-                          validator: (v) =>
-                          (v == null || int.tryParse(v) == null) ? 'Vui lòng nhập số giờ hợp lệ' : null,
+                          // Chỉ cho số dương; chữ / ký tự đặc biệt / số âm → báo lỗi đỏ ngay dưới ô
+                          validator: (v) {
+                            final raw = v?.trim() ?? '';
+                            if (raw.isEmpty) {
+                              return 'Vui lòng nhập giờ dự kiến bảo trì';
+                            }
+                            // Chỉ chấp nhận chuỗi toàn chữ số (không dấu âm, không chữ, không ký tự đặc biệt)
+                            if (!RegExp(r'^\d+$').hasMatch(raw)) {
+                              return 'Chỉ được nhập số dương (không chữ, không ký tự đặc biệt)';
+                            }
+                            final so = int.tryParse(raw);
+                            if (so == null || so <= 0) {
+                              return 'Giờ dự kiến phải là số dương lớn hơn 0';
+                            }
+                            return null;
+                          },
+                          autovalidateMode: AutovalidateMode.onUserInteraction,
                         ),
                         AnimatedBuilder(
                           animation: _controller,
