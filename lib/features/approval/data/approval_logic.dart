@@ -14,6 +14,8 @@ class HoSoBaoTriDuyet {
   final String? tenNguoiLap;
   final String? noiDungCongViec;
   final String? thoiGianDuKien;
+  final String? gioBatDauDuKien;
+  final String? gioKetThucDuKien;
   final DateTime? ngayDuKienBaoTri;
   final DateTime ngayTao;
   final String trangThai;
@@ -28,6 +30,8 @@ class HoSoBaoTriDuyet {
     this.tenNguoiLap,
     this.noiDungCongViec,
     this.thoiGianDuKien,
+    this.gioBatDauDuKien,
+    this.gioKetThucDuKien,
     this.ngayDuKienBaoTri,
     required this.ngayTao,
     required this.trangThai,
@@ -45,6 +49,8 @@ class HoSoBaoTriDuyet {
         tenNguoiLap: j['tenNhanVienTao']?.toString(),
         noiDungCongViec: j['noiDungCongViec']?.toString(),
         thoiGianDuKien: j['thoiGianDuKien']?.toString(),
+        gioBatDauDuKien: j['gioBatDauDuKien']?.toString(),
+        gioKetThucDuKien: j['gioKetThucDuKien']?.toString(),
         ngayDuKienBaoTri: j['ngayDuKienBaoTri'] != null ? DateTime.tryParse(j['ngayDuKienBaoTri'].toString()) : null,
         ngayTao: DateTime.parse(j['ngayTao'].toString()),
         trangThai: j['trangThai']?.toString() ?? '',

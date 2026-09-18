@@ -403,6 +403,16 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
                   'Thời gian dự kiến',
                   '${hs.thoiGianDuKien ?? '—'} giờ',
                 ),
+                const Divider(height: 20),
+                _dong(
+                  'Giờ bắt đầu',
+                  hs.gioBatDauDuKien ?? '—',
+                ),
+                const Divider(height: 20),
+                _dong(
+                  'Giờ kết thúc',
+                  hs.gioKetThucDuKien ?? '—',
+                ),
               ],
             ),
           ),
