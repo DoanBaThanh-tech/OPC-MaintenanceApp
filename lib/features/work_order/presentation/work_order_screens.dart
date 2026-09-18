@@ -1208,6 +1208,7 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
 class PhanCongBaoTriScreen extends StatefulWidget {
   final int maHoSoBaoTri;
   const PhanCongBaoTriScreen({super.key, required this.maHoSoBaoTri});
+
   @override
   State<PhanCongBaoTriScreen> createState() => _PhanCongBaoTriScreenState();
 }
@@ -1218,7 +1219,7 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.taiNhanVien();
+    _controller.khoiTao(widget.maHoSoBaoTri);
   }
 
   @override
@@ -1232,37 +1233,25 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
     if (ok && mounted) Navigator.pop(context, true);
   }
 
-  String _fmtTime(TimeOfDay t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  String _fmtTime(TimeOfDay? t) {
+    if (t == null) return '—';
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
 
-  Future<void> _chonGio({required bool isBatDau}) async {
-    final initial = isBatDau ? _controller.gioBatDau : _controller.gioKetThuc;
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: initial,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
-          child: child!,
-        );
-      },
-    );
-    if (picked != null) {
-      if (isBatDau) {
-        _controller.datGioBatDau(picked);
-      } else {
-        _controller.datGioKetThuc(picked);
-      }
-    }
+  String _fmtDate(DateTime? d) {
+    if (d == null) return '—';
+    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Phân công công việc'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: AnimatedBuilder(
         animation: _controller,
@@ -1271,176 +1260,388 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ===== Người phân công =====
-                Card(
-                  child: ListTile(
-                    leading: const CircleAvatar(child: Icon(Icons.person_outline)),
-                    title: const Text('Người phân công', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                    subtitle: Text(
-                      _controller.tenNguoiPhanCong ?? '—',
+          final hs = _controller.hoSo;
+
+          return Column(
+            children: [
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  children: [
+                    // ===== Header hồ sơ =====
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            AppColors.primary,
+                            AppColors.primary.withValues(alpha: 0.85),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.28),
+                            blurRadius: 16,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Icon(Icons.precision_manufacturing_rounded,
+                                    color: Colors.white, size: 22),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      hs?.tenThietBi ?? 'Thiết bị',
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Hồ sơ #${widget.maHoSoBaoTri}',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.85),
+                                        fontSize: 12.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.person_outline, color: Colors.white, size: 18),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Người phân công: ${_controller.tenNguoiPhanCong ?? '—'}',
+                                    style: const TextStyle(color: Colors.white, fontSize: 12.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // ===== Khung giờ từ hồ sơ (chỉ đọc) =====
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: Colors.grey.shade200),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.04),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.lock_clock_rounded, color: AppColors.primary, size: 20),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Khung giờ theo hồ sơ',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Giờ lấy đúng từ hồ sơ bảo trì đã tạo — không chỉnh tại đây',
+                            style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.3),
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _TimeInfoChip(
+                                  icon: Icons.calendar_today_rounded,
+                                  label: 'Ngày bảo trì',
+                                  value: _fmtDate(_controller.ngayDuKien),
+                                  color: const Color(0xFF0068A9),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _TimeInfoChip(
+                                  icon: Icons.play_circle_rounded,
+                                  label: 'Giờ bắt đầu',
+                                  value: _fmtTime(_controller.gioBatDau),
+                                  color: const Color(0xFF059669),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _TimeInfoChip(
+                                  icon: Icons.stop_circle_rounded,
+                                  label: 'Giờ kết thúc',
+                                  value: _fmtTime(_controller.gioKetThuc),
+                                  color: const Color(0xFFDC2626),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 20),
+
+                    // ===== Chọn NVKT =====
+                    const Text(
+                      'Chọn nhân viên thực hiện',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Có thể chọn mọi NVKT. Hệ thống chỉ chặn khi trùng khung giờ (phía server).',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                    const SizedBox(height: 12),
+
+                    if (_controller.dsNhanVien.isEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.orange.shade50,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.orange.shade200),
+                        ),
+                        child: Column(
+                          children: [
+                            Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 36),
+                            const SizedBox(height: 8),
+                            Text(
+                              _controller.loi ?? 'Không có nhân viên kỹ thuật trong hệ thống.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.orange.shade900),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      ..._controller.dsNhanVien.map((nv) {
+                        final dangChon = _controller.chon?.maNhanVien == nv.maNhanVien;
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: Material(
+                            color: dangChon
+                                ? AppColors.primary.withValues(alpha: 0.08)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            child: InkWell(
+                              onTap: () => _controller.chonNhanVien(nv), // luôn cho chọn
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(
+                                    color: dangChon ? AppColors.primary : Colors.grey.shade200,
+                                    width: dangChon ? 1.6 : 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 22,
+                                      backgroundColor:
+                                      dangChon ? AppColors.primary : Colors.grey.shade200,
+                                      child: Text(
+                                        nv.hoTen.isNotEmpty ? nv.hoTen[0].toUpperCase() : '?',
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          color: dangChon ? Colors.white : Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            nv.hoTen,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 14.5,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            [
+                                              if (nv.chucVu != null && nv.chucVu!.isNotEmpty) nv.chucVu!,
+                                              if (nv.soDienThoai != null && nv.soDienThoai!.isNotEmpty)
+                                                nv.soDienThoai!,
+                                              if (nv.soCongViecDangLam > 0)
+                                                'Đang làm ${nv.soCongViecDangLam} việc',
+                                            ].where((s) => s.isNotEmpty).join(' · '),
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    if (dangChon)
+                                      const Icon(Icons.check_circle_rounded,
+                                          color: AppColors.primary, size: 26)
+                                    else
+                                      Icon(Icons.circle_outlined, color: Colors.grey.shade400),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+
+                    if (_controller.loi != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+
+              // ===== Nút xác nhận cố định dưới =====
+              Container(
+                padding: EdgeInsets.fromLTRB(
+                  16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 12,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
+                ),
+                child: SizedBox(
+                  height: 52,
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: _controller.dangLuu ? null : _xacNhan,
+                    icon: _controller.dangLuu
+                        ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                        : const Icon(Icons.assignment_ind_rounded),
+                    label: Text(
+                      _controller.dangLuu ? 'Đang phân công...' : 'Xác nhận phân công',
                       style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
                     ),
                   ),
                 ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
 
-                const SizedBox(height: 20),
+class _TimeInfoChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
 
-                // ===== Nhân viên thực hiện =====
-                const Text('Nhân viên thực hiện', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                const SizedBox(height: 8),
+  const _TimeInfoChip({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.color,
+  });
 
-                if (_controller.dsNhanVien.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.orange.shade200),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 32),
-                        const SizedBox(height: 8),
-                        Text(
-                          _controller.loi ?? 'Không có nhân viên kỹ thuật nào trong hệ thống.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.orange.shade800),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  ..._controller.dsNhanVien.map((nv) {
-                    final dangChon = _controller.chon?.maNhanVien == nv.maNhanVien;
-                    final ban = nv.dangBan;
-                    return Opacity(
-                      opacity: ban ? 0.55 : 1,
-                      child: Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        elevation: dangChon ? 2 : 0,
-                        color: ban
-                            ? Colors.grey.shade100
-                            : (dangChon ? AppColors.primary.withValues(alpha: 0.08) : Colors.white),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          side: BorderSide(
-                            color: ban
-                                ? Colors.orange.shade300
-                                : (dangChon ? AppColors.primary : Colors.grey.shade200),
-                            width: dangChon ? 1.5 : 1,
-                          ),
-                        ),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: ban
-                                ? Colors.orange.shade200
-                                : (dangChon ? AppColors.primary : Colors.grey.shade300),
-                            child: Text(
-                              nv.hoTen.isNotEmpty ? nv.hoTen[0].toUpperCase() : '?',
-                              style: TextStyle(
-                                color: dangChon && !ban ? Colors.white : Colors.black87,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            nv.hoTen,
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: ban ? Colors.grey.shade700 : null,
-                            ),
-                          ),
-                          subtitle: Text(
-                            ban
-                                ? (nv.ghiChuBan ??
-                                'Đang có việc ${nv.soCongViecDangLam}/${nv.soCongViecToiDa} — về 0 mới chọn lại')
-                                : [
-                              if (nv.chucVu != null && nv.chucVu!.isNotEmpty) nv.chucVu!,
-                              if (nv.soDienThoai != null && nv.soDienThoai!.isNotEmpty)
-                                nv.soDienThoai!,
-                              if (nv.soCongViecDangLam > 0)
-                                'Đang làm ${nv.soCongViecDangLam}/${nv.soCongViecToiDa}',
-                            ].where((s) => s.isNotEmpty).join(' · '),
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: ban ? Colors.orange.shade800 : Colors.grey.shade600,
-                            ),
-                          ),
-
-                          trailing: ban
-                              ? Icon(Icons.block_rounded, color: Colors.orange.shade700)
-                              : (dangChon
-                              ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
-                              : const Icon(Icons.circle_outlined, color: Colors.grey)),
-                          onTap: ban ? null : () => _controller.chonNhanVien(nv),
-                        ),
-                      ),
-                    );
-                  }),
-
-                const SizedBox(height: 24),
-
-                // ===== Thời gian (chỉ giờ) =====
-                const Text('Thời gian thực hiện', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _PickerField(
-                        label: 'Giờ bắt đầu',
-                        value: _fmtTime(_controller.gioBatDau),
-                        icon: Icons.access_time_rounded,
-                        onTap: () => _chonGio(isBatDau: true),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _PickerField(
-                        label: 'Giờ kết thúc',
-                        value: _fmtTime(_controller.gioKetThuc),
-                        icon: Icons.access_time_rounded,
-                        onTap: () => _chonGio(isBatDau: false),
-                      ),
-                    ),
-                  ],
-                ),
-
-                if (_controller.loi != null) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
-                  ),
-                ],
-
-                const SizedBox(height: 28),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
-                  onPressed: _controller.dangLuu ? null : _xacNhan,
-                  child: _controller.dangLuu
-                      ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                      : const Text('Xác nhận phân công', style: TextStyle(fontSize: 15)),
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: color),
                 ),
               ],
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }

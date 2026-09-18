@@ -18,10 +18,6 @@ class NhanVienRutGon {
   final String? tenVaiTro;
   /// Số thiết bị đang BT/SC (Đang thực hiện)
   final int soCongViecDangLam;
-  final int soCongViecToiDa;
-  /// true = đã đủ tối đa (3) → không phân công thêm
-  final bool dangBan;
-  final String? ghiChuBan;
 
   NhanVienRutGon({
     required this.maNhanVien,
@@ -31,9 +27,6 @@ class NhanVienRutGon {
     this.chucVu,
     this.tenVaiTro,
     this.soCongViecDangLam = 0,
-    this.soCongViecToiDa = 3,
-    this.dangBan = false,
-    this.ghiChuBan,
   });
 
   factory NhanVienRutGon.fromJson(Map<String, dynamic> j) => NhanVienRutGon(
@@ -44,9 +37,6 @@ class NhanVienRutGon {
     chucVu: j['chucVu']?.toString(),
     tenVaiTro: j['tenVaiTro']?.toString(),
     soCongViecDangLam: (j['soCongViecDangLam'] as num?)?.toInt() ?? 0,
-    soCongViecToiDa: (j['soCongViecToiDa'] as num?)?.toInt() ?? 3,
-    dangBan: j['dangBan'] == true,
-    ghiChuBan: j['ghiChuBan']?.toString(),
   );
 }
 
@@ -391,31 +381,49 @@ class PhanCongBaoTriController extends ChangeNotifier {
   List<NhanVienRutGon> dsNhanVien = [];
   NhanVienRutGon? chon;
 
-  // Người phân công (lấy từ user đang đăng nhập)
   String? tenNguoiPhanCong;
   int? maNguoiPhanCong;
 
-  DateTime ngayBatDau = DateTime.now();
-  TimeOfDay gioBatDau = const TimeOfDay(hour: 8, minute: 0);
-
-  DateTime ngayKetThuc = DateTime.now();
-  TimeOfDay gioKetThuc = const TimeOfDay(hour: 17, minute: 0);
+  // Lấy từ hồ sơ bảo trì — chỉ đọc, không cho sửa
+  HoSoBaoTri? hoSo;
+  TimeOfDay? gioBatDau;
+  TimeOfDay? gioKetThuc;
+  DateTime? ngayDuKien; // ngày bảo trì dự kiến trên hồ sơ
 
   bool dangTai = true;
   bool dangLuu = false;
   String? loi;
 
-  Future<void> taiNhanVien() async {
+  TimeOfDay? _parseGio(String? s) {
+    if (s == null || s.trim().isEmpty) return null;
+    final p = s.trim().split(':');
+    if (p.length < 2) return null;
+    final h = int.tryParse(p[0]);
+    final m = int.tryParse(p[1]);
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
+  }
+
+  Future<void> khoiTao(int maHoSoBaoTri) async {
     dangTai = true;
     loi = null;
     notifyListeners();
     try {
-      dsNhanVien = await WorkOrderService.layDanhSachNhanVienKyThuat();
+      // 1) Lấy hồ sơ → giờ bắt đầu / kết thúc cố định
+      hoSo = await WorkOrderService.layChiTietHoSoBaoTri(maHoSoBaoTri);
+      gioBatDau = _parseGio(hoSo!.gioBatDauDuKien);
+      gioKetThuc = _parseGio(hoSo!.gioKetThucDuKien);
+      ngayDuKien = hoSo!.ngayDuKienBaoTri ?? DateTime.now();
 
-      // TODO: Lấy thông tin người đang đăng nhập từ AuthService / SharedPreferences
-      tenNguoiPhanCong = 'Tổ trưởng đang đăng nhập'; // tạm thời
+      if (gioBatDau == null || gioKetThuc == null) {
+        loi = 'Hồ sơ chưa có giờ bắt đầu/kết thúc. Vui lòng sửa hồ sơ trước khi phân công.';
+      }
+
+      // 2) Danh sách NVKT
+      dsNhanVien = await WorkOrderService.layDanhSachNhanVienKyThuat();
+      tenNguoiPhanCong = 'Tổ trưởng đang đăng nhập'; // TODO: lấy từ TokenStorage
     } catch (e) {
-      loi = 'Không tải được danh sách nhân viên: $e';
+      loi = 'Không tải được dữ liệu: $e';
     } finally {
       dangTai = false;
       notifyListeners();
@@ -423,55 +431,23 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   void chonNhanVien(NhanVienRutGon nv) {
-    if (nv.dangBan) {
-      loi = nv.ghiChuBan ??
-          'Nhân viên đang có việc chưa xong (${nv.soCongViecDangLam}/${nv.soCongViecToiDa}). '
-              'Chỉ được chọn lại khi đã về 0/${nv.soCongViecToiDa}.';
-      notifyListeners();
-      return;
-    }
+    // Bỏ ràng buộc max 3 / dangBan — luôn cho chọn
     chon = nv;
     loi = null;
     notifyListeners();
   }
 
-
-
-  void datNgayBatDau(DateTime d) {
-    ngayBatDau = d;
-    notifyListeners();
+  DateTime get thoiDiemBatDau {
+    final d = ngayDuKien ?? DateTime.now();
+    final g = gioBatDau ?? const TimeOfDay(hour: 8, minute: 0);
+    return DateTime(d.year, d.month, d.day, g.hour, g.minute);
   }
 
-  void datGioBatDau(TimeOfDay t) {
-    gioBatDau = t;
-    notifyListeners();
+  DateTime get thoiDiemKetThuc {
+    final d = ngayDuKien ?? DateTime.now();
+    final g = gioKetThuc ?? const TimeOfDay(hour: 17, minute: 0);
+    return DateTime(d.year, d.month, d.day, g.hour, g.minute);
   }
-
-  void datNgayKetThuc(DateTime d) {
-    ngayKetThuc = d;
-    notifyListeners();
-  }
-
-  void datGioKetThuc(TimeOfDay t) {
-    gioKetThuc = t;
-    notifyListeners();
-  }
-
-  DateTime get thoiDiemBatDau => DateTime(
-    ngayBatDau.year,
-    ngayBatDau.month,
-    ngayBatDau.day,
-    gioBatDau.hour,
-    gioBatDau.minute,
-  );
-
-  DateTime get thoiDiemKetThuc => DateTime(
-    ngayKetThuc.year,
-    ngayKetThuc.month,
-    ngayKetThuc.day,
-    gioKetThuc.hour,
-    gioKetThuc.minute,
-  );
 
   Future<bool> xacNhan(int maHoSoBaoTri) async {
     if (chon == null) {
@@ -479,8 +455,13 @@ class PhanCongBaoTriController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    if (gioBatDau == null || gioKetThuc == null) {
+      loi = 'Hồ sơ thiếu giờ bắt đầu/kết thúc — không thể phân công';
+      notifyListeners();
+      return false;
+    }
     if (thoiDiemKetThuc.isBefore(thoiDiemBatDau)) {
-      loi = 'Thời điểm kết thúc phải sau thời điểm bắt đầu';
+      loi = 'Giờ kết thúc phải sau giờ bắt đầu (theo hồ sơ)';
       notifyListeners();
       return false;
     }
