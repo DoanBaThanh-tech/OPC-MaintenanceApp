@@ -96,28 +96,38 @@ class HoSoBaoTri {
   bool get daDuyetChoXacNhan => trangThai == 'Đã duyệt' && maPhanCong != null;
   bool get dangThucHien => trangThai == 'Đang thực hiện';
   bool get biTuChoi => trangThai == 'Từ chối';
+  bool get daHoanThanh => trangThai == 'Đã hoàn thành';
 
-  factory HoSoBaoTri.fromJson(Map<String, dynamic> j) => HoSoBaoTri(
-    maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
-    maThietBi: (j['maThietBi'] as num?)?.toInt() ?? (j['maThieBi'] as num?)?.toInt() ?? 0,
-    tenThietBi: j['tenThietBi']?.toString() ?? '',
-    tenNhanVienTao: j['tenNhanVienTao']?.toString(),
-    noiDungCongViec: j['noiDungCongViec']?.toString(),
-    thoiGianDuKien: j['thoiGianDuKien']?.toString(),
-    gioBatDauDuKien: j['gioBatDauDuKien']?.toString(),
-    gioKetThucDuKien: j['gioKetThucDuKien']?.toString(),
-    ngayDuKienBaoTri: j['ngayDuKienBaoTri'] != null
-        ? DateTime.tryParse(j['ngayDuKienBaoTri'].toString())
-        : null,
-    ngayTao: DateTime.parse(j['ngayTao'].toString()),
-    ngayDuyet: j['ngayDuyet'] != null ? DateTime.tryParse(j['ngayDuyet'].toString()) : null,
-    trangThai: j['trangThai']?.toString() ?? '',
-    lyDoTuChoi: j['lyDoTuChoi']?.toString(),
-    maPhanCong: (j['maPhanCong'] as num?)?.toInt(),
-    nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
-    namTuKeHoach: j['namTuKeHoach'] == true,
-    rowVersion: j['rowVersion']?.toString(),
-  );
+  factory HoSoBaoTri.fromJson(Map<String, dynamic> j) {
+    int asInt(dynamic v) => (v as num?)?.toInt() ?? 0;
+    int? asIntN(dynamic v) => (v as num?)?.toInt();
+    DateTime? asDate(dynamic v) {
+      if (v == null) return null;
+      return DateTime.tryParse(v.toString());
+    }
+
+    final ngayTao = asDate(j['ngayTao'] ?? j['NgayTao']) ?? DateTime.now();
+
+    return HoSoBaoTri(
+      maHoSoBaoTri: asInt(j['maHoSoBaoTri'] ?? j['MaHoSoBaoTri']),
+      maThietBi: asInt(j['maThietBi'] ?? j['MaThietBi'] ?? j['maThieBi'] ?? j['MaThieBi']),
+      tenThietBi: (j['tenThietBi'] ?? j['TenThietBi'])?.toString() ?? '',
+      tenNhanVienTao: (j['tenNhanVienTao'] ?? j['TenNhanVienTao'])?.toString(),
+      noiDungCongViec: (j['noiDungCongViec'] ?? j['NoiDungCongViec'])?.toString(),
+      thoiGianDuKien: (j['thoiGianDuKien'] ?? j['ThoiGianDuKien'])?.toString(),
+      gioBatDauDuKien: (j['gioBatDauDuKien'] ?? j['GioBatDauDuKien'])?.toString(),
+      gioKetThucDuKien: (j['gioKetThucDuKien'] ?? j['GioKetThucDuKien'])?.toString(),
+      ngayDuKienBaoTri: asDate(j['ngayDuKienBaoTri'] ?? j['NgayDuKienBaoTri']),
+      ngayTao: ngayTao,
+      ngayDuyet: asDate(j['ngayDuyet'] ?? j['NgayDuyet']),
+      trangThai: (j['trangThai'] ?? j['TrangThai'])?.toString() ?? '',
+      lyDoTuChoi: (j['lyDoTuChoi'] ?? j['LyDoTuChoi'])?.toString(),
+      maPhanCong: asIntN(j['maPhanCong'] ?? j['MaPhanCong']),
+      nam: asInt(j['nam'] ?? j['Nam'] ?? ngayTao.year),
+      namTuKeHoach: (j['namTuKeHoach'] ?? j['NamTuKeHoach']) == true,
+      rowVersion: (j['rowVersion'] ?? j['RowVersion'])?.toString(),
+    );
+  }
 }
 
 /// Phân loại trạng thái thành nhóm cố định — presentation tự map ra màu,
@@ -155,12 +165,19 @@ class WorkOrderService {
   }
 
   static Future<HoSoBaoTri> layChiTietHoSoBaoTri(int id) async {
-    final data = await ApiClient.instance.get<Map<String, dynamic>>('${ApiConstants.workOrder}/bao-tri/$id');
-    return HoSoBaoTri.fromJson(data);
+    final data = await ApiClient.instance.get<dynamic>(
+      '${ApiConstants.workOrder}/bao-tri/$id',
+    );
+    if (data is! Map) {
+      throw Exception('API không trả về object');
+    }
+    return HoSoBaoTri.fromJson(Map<String, dynamic>.from(data));
   }
 
   static Future<List<int>> layDanhSachNamCoKeHoach() async {
-    final data = await ApiClient.instance.get<List<dynamic>>('${ApiConstants.maintenancePlan}/nam-da-lap');
+    final data = await ApiClient.instance.get<List<dynamic>>(
+      '${ApiConstants.maintenancePlan}/nam-da-lap',
+    );
     return data.map((e) => (e as num).toInt()).toList();
   }
 
@@ -218,12 +235,22 @@ class WorkOrderService {
     required int maHoSoBaoTri,
     required String noiDungCongViec,
     String? thoiGianDuKien,
+    String? gioBatDauDuKien,
+    String? gioKetThucDuKien,
+    DateTime? ngayDuKienBaoTri,
   }) async {
     await ApiClient.instance.put<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/sua-tu-choi',
       {
         'noiDungCongViec': noiDungCongViec,
         if (thoiGianDuKien != null) 'thoiGianDuKien': thoiGianDuKien,
+        if (gioBatDauDuKien != null) 'gioBatDauDuKien': gioBatDauDuKien,
+        if (gioKetThucDuKien != null) 'gioKetThucDuKien': gioKetThucDuKien,
+        if (ngayDuKienBaoTri != null)
+          'ngayDuKienBaoTri':
+          '${ngayDuKienBaoTri.year.toString().padLeft(4, '0')}-'
+              '${ngayDuKienBaoTri.month.toString().padLeft(2, '0')}-'
+              '${ngayDuKienBaoTri.day.toString().padLeft(2, '0')}',
       },
     );
   }
@@ -297,6 +324,7 @@ class WorkOrderBaoTriListController extends ChangeNotifier {
     namLoc = nam;
     taiDanhSach();
   }
+
 
   List<HoSoBaoTri> locTheoTab(String tab) =>
       tab == 'Tất cả' ? danhSach : danhSach.where((h) => h.trangThai == tab).toList();
@@ -502,16 +530,137 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
   bool dangLuu = false;
   String? loi;
 
+  int? thoiGianDuKien;          // số giờ > 0
+  String? loiThoiGianDuKien;    // lỗi đỏ dưới ô giờ
+  TimeOfDay? gioBatDau;
+  TimeOfDay? gioKetThuc;        // chỉ tự tính, không chọn tay
+  DateTime? ngayDuKienBaoTri;
+
+  /// true khi số giờ hợp lệ → mới cho chọn giờ bắt đầu
+  bool get choPhepChonGioBatDau =>
+      thoiGianDuKien != null && thoiGianDuKien! > 0 && loiThoiGianDuKien == null;
+
+  void khoiTaoTuHoSo({
+    String? thoiGianDuKienStr,
+    String? gioBatDauStr,   // "15:00"
+    String? gioKetThucStr,
+    DateTime? ngayDuKien,
+  }) {
+    ngayDuKienBaoTri = ngayDuKien;
+    if (thoiGianDuKienStr != null && thoiGianDuKienStr.trim().isNotEmpty) {
+      datThoiGianDuKienTuChuoi(thoiGianDuKienStr);
+    }
+    if (gioBatDauStr != null) {
+      final p = gioBatDauStr.split(':');
+      if (p.length >= 2) {
+        final h = int.tryParse(p[0]);
+        final m = int.tryParse(p[1]);
+        if (h != null && m != null) {
+          gioBatDau = TimeOfDay(hour: h, minute: m);
+          _tinhGioKetThuc();
+        }
+      }
+    }
+    notifyListeners();
+  }
+
+  /// Chỉ chấp nhận chuỗi toàn chữ số dương
+  void datThoiGianDuKienTuChuoi(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) {
+      thoiGianDuKien = null;
+      loiThoiGianDuKien = 'Vui lòng nhập số giờ dự kiến';
+      gioKetThuc = null;
+      notifyListeners();
+      return;
+    }
+    if (!RegExp(r'^\d+$').hasMatch(v)) {
+      thoiGianDuKien = null;
+      loiThoiGianDuKien = 'Chỉ được nhập số dương (không chữ, không ký tự đặc biệt)';
+      gioKetThuc = null;
+      notifyListeners();
+      return;
+    }
+    final so = int.tryParse(v);
+    if (so == null || so <= 0) {
+      thoiGianDuKien = null;
+      loiThoiGianDuKien = 'Giờ dự kiến phải lớn hơn 0';
+      gioKetThuc = null;
+      notifyListeners();
+      return;
+    }
+    thoiGianDuKien = so;
+    loiThoiGianDuKien = null;
+    _tinhGioKetThuc();
+    notifyListeners();
+  }
+
+  void datGioBatDau(TimeOfDay t) {
+    if (!choPhepChonGioBatDau) {
+      loi = 'Nhập đúng số giờ dự kiến trước khi chọn giờ bắt đầu';
+      notifyListeners();
+      return;
+    }
+    gioBatDau = t;
+    loi = null;
+    _tinhGioKetThuc();
+    notifyListeners();
+  }
+
+  void datNgayDuKien(DateTime d) {
+    ngayDuKienBaoTri = d;
+    notifyListeners();
+  }
+
+  void _tinhGioKetThuc() {
+    if (gioBatDau == null || thoiGianDuKien == null) {
+      gioKetThuc = null;
+      return;
+    }
+    final tongPhut = gioBatDau!.hour * 60 + gioBatDau!.minute + thoiGianDuKien! * 60;
+    gioKetThuc = TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
+  }
+
+  String? _fmtGio(TimeOfDay? t) {
+    if (t == null) return null;
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
   Future<bool> luu({
     required int maHoSoBaoTri,
     required String noiDungCongViec,
     String? thoiGianDuKien,
+    String? gioBatDauDuKien,
+    String? gioKetThucDuKien,
+    DateTime? ngayDuKienBaoTri,
   }) async {
     if (noiDungCongViec.trim().isEmpty) {
       loi = 'Vui lòng nhập nội dung công việc';
       notifyListeners();
       return false;
     }
+
+    final soGio = thoiGianDuKien ?? this.thoiGianDuKien?.toString();
+    final gbd = gioBatDauDuKien ?? _fmtGio(gioBatDau);
+    final gkt = gioKetThucDuKien ?? _fmtGio(gioKetThuc);
+    final ngay = ngayDuKienBaoTri ?? this.ngayDuKienBaoTri;
+
+    if (soGio == null || soGio.isEmpty) {
+      loi = 'Vui lòng nhập số giờ dự kiến hợp lệ';
+      notifyListeners();
+      return false;
+    }
+    if (gbd == null) {
+      loi = 'Vui lòng chọn giờ bắt đầu';
+      notifyListeners();
+      return false;
+    }
+    if (gkt == null) {
+      loi = 'Chưa tính được giờ kết thúc';
+      notifyListeners();
+      return false;
+    }
+
     dangLuu = true;
     loi = null;
     notifyListeners();
@@ -519,7 +668,10 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
       await WorkOrderService.suaHoSoBiTuChoi(
         maHoSoBaoTri: maHoSoBaoTri,
         noiDungCongViec: noiDungCongViec.trim(),
-        thoiGianDuKien: thoiGianDuKien,
+        thoiGianDuKien: soGio,
+        gioBatDauDuKien: gbd,
+        gioKetThucDuKien: gkt,
+        ngayDuKienBaoTri: ngay,
       );
       return true;
     } on ApiException catch (e) {

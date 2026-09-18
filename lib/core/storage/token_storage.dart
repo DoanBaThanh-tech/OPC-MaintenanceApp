@@ -33,16 +33,16 @@ class TokenStorage {
     final v = await _storage.read(key: _keyMaVaiTro);
     return v == null ? null : int.tryParse(v);
   }
-
-  static Future<bool> daDangNhap() async {
-    final token = await getToken();
-    return token != null && token.isNotEmpty;
-  }
   static Future<int?> getMaNguoiDung() async {
     final v = await _storage.read(key: _keyMaNguoiDung);
     return v == null ? null : int.tryParse(v);
   }
 
   static Future<String?> getEmail() => _storage.read(key: _keyEmail);
+  static Future<bool> daDangNhap() async {
+    final token = await getToken();
+    return token != null && token.isNotEmpty;
+  }
+
   static Future<void> xoaPhienDangNhap() => _storage.deleteAll();
 }

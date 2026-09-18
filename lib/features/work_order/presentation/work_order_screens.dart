@@ -251,7 +251,7 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
   final _controller = WorkOrderBaoTriListController();
   late TabController _tab;
 
-  final _tabs = const ['Tất cả', 'Chờ duyệt', 'Đã duyệt', 'Đang thực hiện','Đang hoàn thành','Từ chối'];
+  final _tabs = const ['Tất cả', 'Chờ duyệt', 'Đã duyệt', 'Đang thực hiện','Đã hoàn thành','Từ chối'];
 
   @override
   void initState() {
@@ -496,14 +496,13 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
 
   bool get _laToTruong =>
       _vaiTro == 'Tổ trưởng kỹ thuật' || _vaiTro == 'Tổ trưởng';
-
   bool get _laNvkt => _vaiTro == 'Nhân viên kỹ thuật';
 
   @override
   void initState() {
     super.initState();
-    _controller = WorkOrderBaoTriDetailController(widget.maHoSoBaoTri);
-    _controller.taiChiTiet();
+    _controller = WorkOrderBaoTriDetailController(widget.maHoSoBaoTri); // 1) gán trước
+    _controller.taiChiTiet();                                           // 2) gọi sau
     TokenStorage.getVaiTro().then((v) {
       if (mounted) setState(() => _vaiTro = v);
     });
@@ -760,12 +759,29 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
   final _controller = SuaHoSoBiTuChoiController();
   late final TextEditingController _noiDung;
   late final TextEditingController _thoiGian;
+  DateTime? _ngayDuKien;
+  TimeOfDay? _gioBatDau;
+  TimeOfDay? _gioKetThuc;
+  String? _loiThoiGian; // lỗi đỏ dưới ô số giờ
+
+  bool get _choPhepChonGioBatDau =>
+      _loiThoiGian == null &&
+          _thoiGian.text.trim().isNotEmpty &&
+          (int.tryParse(_thoiGian.text.trim()) ?? 0) > 0;
 
   @override
   void initState() {
     super.initState();
     _noiDung = TextEditingController(text: widget.hoSo.noiDungCongViec ?? '');
     _thoiGian = TextEditingController(text: widget.hoSo.thoiGianDuKien ?? '');
+    _ngayDuKien = widget.hoSo.ngayDuKienBaoTri;
+    _gioBatDau = _parseTime(widget.hoSo.gioBatDauDuKien);
+    _gioKetThuc = _parseTime(widget.hoSo.gioKetThucDuKien);
+    // Validate sẵn nếu đã có số giờ cũ
+    if (_thoiGian.text.trim().isNotEmpty) {
+      _validateThoiGian(_thoiGian.text);
+      _tinhGioKetThuc();
+    }
   }
 
   @override
@@ -776,11 +792,126 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
     super.dispose();
   }
 
+  TimeOfDay? _parseTime(String? s) {
+    if (s == null || s.trim().isEmpty) return null;
+    final parts = s.trim().split(':');
+    if (parts.length < 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null) return null;
+    return TimeOfDay(hour: h, minute: m);
+  }
+
+  String? _fmtTime(TimeOfDay? t) {
+    if (t == null) return null;
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
+  void _validateThoiGian(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) {
+      _loiThoiGian = 'Vui lòng nhập số giờ dự kiến';
+      return;
+    }
+    if (!RegExp(r'^\d+$').hasMatch(v)) {
+      _loiThoiGian = 'Chỉ được nhập số dương (không chữ, không ký tự đặc biệt)';
+      return;
+    }
+    final so = int.tryParse(v);
+    if (so == null || so <= 0) {
+      _loiThoiGian = 'Giờ dự kiến phải lớn hơn 0';
+      return;
+    }
+    _loiThoiGian = null;
+  }
+
+  void _tinhGioKetThuc() {
+    if (!_choPhepChonGioBatDau || _gioBatDau == null) {
+      // Giữ null nếu chưa đủ dữ liệu hợp lệ
+      if (!_choPhepChonGioBatDau) _gioKetThuc = null;
+      return;
+    }
+    final soGio = int.parse(_thoiGian.text.trim());
+    final tongPhut = _gioBatDau!.hour * 60 + _gioBatDau!.minute + soGio * 60;
+    _gioKetThuc = TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
+  }
+
+  void _onThoiGianChanged(String v) {
+    setState(() {
+      _validateThoiGian(v);
+      if (_loiThoiGian != null) {
+        _gioKetThuc = null;
+      } else {
+        _tinhGioKetThuc();
+      }
+    });
+  }
+
+  Future<void> _chonNgay() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _ngayDuKien ?? now,
+      firstDate: now,
+      lastDate: DateTime(now.year + 5),
+    );
+    if (picked != null) setState(() => _ngayDuKien = picked);
+  }
+
+  Future<void> _chonGioBatDau() async {
+    if (!_choPhepChonGioBatDau) {
+      setState(() {
+        _loiThoiGian ??= 'Nhập đúng số giờ dự kiến trước khi chọn giờ bắt đầu';
+      });
+      return;
+    }
+    final initial = _gioBatDau ?? const TimeOfDay(hour: 8, minute: 0);
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+    if (picked == null) return;
+    setState(() {
+      _gioBatDau = picked;
+      _tinhGioKetThuc();
+    });
+  }
+
   Future<void> _luu() async {
+    _validateThoiGian(_thoiGian.text);
+    if (_loiThoiGian != null) {
+      setState(() {});
+      return;
+    }
+    if (_gioBatDau == null) {
+      setState(() => _controller.loi = 'Vui lòng chọn giờ bắt đầu');
+      // loi is on controller - need set via method; show local message:
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn giờ bắt đầu')),
+      );
+      return;
+    }
+    _tinhGioKetThuc();
+    if (_gioKetThuc == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chưa tính được giờ kết thúc')),
+      );
+      return;
+    }
+
     final ok = await _controller.luu(
       maHoSoBaoTri: widget.hoSo.maHoSoBaoTri,
       noiDungCongViec: _noiDung.text,
-      thoiGianDuKien: _thoiGian.text.trim().isEmpty ? null : _thoiGian.text.trim(),
+      thoiGianDuKien: _thoiGian.text.trim(),
+      gioBatDauDuKien: _fmtTime(_gioBatDau),
+      gioKetThucDuKien: _fmtTime(_gioKetThuc),
+      ngayDuKienBaoTri: _ngayDuKien,
     );
     if (ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -793,65 +924,281 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Sửa hồ sơ bị từ chối'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             children: [
-              if (widget.hoSo.lyDoTuChoi != null) ...[
-                Card(
-                  color: AppColors.danger.withValues(alpha: 0.06),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(
-                      'Lý do từ chối: ${widget.hoSo.lyDoTuChoi}',
-                      style: const TextStyle(color: AppColors.danger),
-                    ),
+              if (widget.hoSo.lyDoTuChoi != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.info_outline_rounded, color: AppColors.danger, size: 22),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Lý do từ chối',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12.5,
+                                color: AppColors.danger,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              widget.hoSo.lyDoTuChoi!,
+                              style: TextStyle(color: Colors.red.shade800, height: 1.35),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 12),
-              ],
-              TextField(
-                controller: _noiDung,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Nội dung công việc *',
-                  border: OutlineInputBorder(),
+
+              _sectionCard(
+                title: 'Nội dung công việc',
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    TextField(
+                      controller: _noiDung,
+                      maxLines: 4,
+                      decoration: _inputDeco(
+                        hint: 'Mô tả công việc bảo trì…',
+                        icon: Icons.description_outlined,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _thoiGian,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: false,
+                        signed: false,
+                      ),
+                      onChanged: _onThoiGianChanged,
+                      decoration: _inputDeco(
+                        hint: 'Ví dụ: 2',
+                        icon: Icons.timelapse_rounded,
+                        suffix: 'giờ',
+                        label: 'Thời gian dự kiến',
+                        errorText: _loiThoiGian,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _thoiGian,
-                decoration: const InputDecoration(
-                  labelText: 'Thời gian dự kiến (giờ)',
-                  border: OutlineInputBorder(),
+              const SizedBox(height: 14),
+
+              _sectionCard(
+                title: 'Lịch bảo trì dự kiến',
+                child: Column(
+                  children: [
+                    _pickerTile(
+                      icon: Icons.calendar_month_rounded,
+                      iconColor: const Color(0xFF0068A9),
+                      label: 'Ngày bảo trì dự kiến',
+                      value: _ngayDuKien == null
+                          ? 'Chạm để chọn ngày'
+                          : '${_ngayDuKien!.day.toString().padLeft(2, '0')}/${_ngayDuKien!.month.toString().padLeft(2, '0')}/${_ngayDuKien!.year}',
+                      onTap: _chonNgay,
+                    ),
+                    const Divider(height: 20),
+                    Opacity(
+                      opacity: _choPhepChonGioBatDau ? 1 : 0.45,
+                      child: _pickerTile(
+                        icon: Icons.play_circle_outline_rounded,
+                        iconColor: const Color(0xFF059669),
+                        label: 'Thời gian bắt đầu',
+                        value: _fmtTime(_gioBatDau) ??
+                            (_choPhepChonGioBatDau
+                                ? 'Chạm để chọn giờ'
+                                : 'Nhập số giờ hợp lệ trước'),
+                        onTap: _chonGioBatDau,
+                      ),
+                    ),
+                    const Divider(height: 20),
+                    // Chỉ hiển thị — không cho chọn tay
+                    _pickerTile(
+                      icon: Icons.stop_circle_outlined,
+                      iconColor: const Color(0xFFDC2626),
+                      label: 'Thời gian kết thúc (tự tính)',
+                      value: _fmtTime(_gioKetThuc) ?? '—',
+                      onTap: () {}, // không làm gì
+                      showChevron: false,
+                    ),
+                  ],
                 ),
               ),
+
               if (_controller.loi != null) ...[
-                const SizedBox(height: 12),
-                Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    _controller.loi!,
+                    style: const TextStyle(color: AppColors.danger),
+                  ),
+                ),
               ],
+
               const SizedBox(height: 24),
-              ElevatedButton.icon(
-                icon: _controller.dangLuu
-                    ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                )
-                    : const Icon(Icons.send_rounded),
-                label: Text(_controller.dangLuu ? 'Đang gửi...' : 'Gửi lại duyệt'),
-                onPressed: _controller.dangLuu ? null : _luu,
+              SizedBox(
+                height: 50,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  onPressed: _controller.dangLuu ? null : _luu,
+                  icon: _controller.dangLuu
+                      ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : const Icon(Icons.send_rounded),
+                  label: Text(
+                    _controller.dangLuu ? 'Đang gửi...' : 'Gửi lại duyệt',
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _sectionCard({required String title, required Widget child}) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5)),
+          const SizedBox(height: 12),
+          child,
+        ],
+      ),
+    );
+  }
+
+  InputDecoration _inputDeco({
+    required String hint,
+    required IconData icon,
+    String? suffix,
+    String? label,
+    String? errorText,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: Icon(icon, size: 20),
+      suffixText: suffix,
+      errorText: errorText,
+      filled: true,
+      fillColor: Colors.grey.shade50,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+      ),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    );
+  }
+
+  Widget _pickerTile({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+    bool showChevron = true,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+          if (showChevron)
+            Icon(Icons.chevron_right_rounded, color: Colors.grey.shade400),
+        ],
       ),
     );
   }
