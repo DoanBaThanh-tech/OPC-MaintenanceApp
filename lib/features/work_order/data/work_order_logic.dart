@@ -93,6 +93,7 @@ class HoSoBaoTri {
 
   bool get choDuyet => trangThai == 'Chờ duyệt';
   bool get daDuyetChuaPhanCong => trangThai == 'Đã duyệt' && maPhanCong == null;
+  bool get daDuyetChoXacNhan => trangThai == 'Đã duyệt' && maPhanCong != null;
   bool get dangThucHien => trangThai == 'Đang thực hiện';
   bool get biTuChoi => trangThai == 'Từ chối';
 
@@ -204,7 +205,28 @@ class WorkOrderService {
       },
     );
   }
+  /// NVKT xác nhận nhận việc → backend: Đã duyệt → Đang thực hiện
+  static Future<void> nhanVienXacNhanBaoTri(int maHoSoBaoTri) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/nhan-viec',
+      {},
+    );
+  }
 
+  /// Tổ trưởng sửa hồ sơ bị từ chối rồi gửi lại duyệt
+  static Future<void> suaHoSoBiTuChoi({
+    required int maHoSoBaoTri,
+    required String noiDungCongViec,
+    String? thoiGianDuKien,
+  }) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/sua-tu-choi',
+      {
+        'noiDungCongViec': noiDungCongViec,
+        if (thoiGianDuKien != null) 'thoiGianDuKien': thoiGianDuKien,
+      },
+    );
+  }
   static Future<List<LichSuPhanCong>> layLichSuPhanCong() async {
     final data = await ApiClient.instance.get<List<dynamic>>('${ApiConstants.workOrder}/phan-cong');
     return data.map((e) => LichSuPhanCong.fromJson(Map<String, dynamic>.from(e as Map))).toList();
@@ -471,6 +493,40 @@ class LichSuPhanCongController extends ChangeNotifier {
       loi = 'Không tải được lịch sử: $e';
     } finally {
       dangTai = false;
+      notifyListeners();
+    }
+  }
+}
+
+class SuaHoSoBiTuChoiController extends ChangeNotifier {
+  bool dangLuu = false;
+  String? loi;
+
+  Future<bool> luu({
+    required int maHoSoBaoTri,
+    required String noiDungCongViec,
+    String? thoiGianDuKien,
+  }) async {
+    if (noiDungCongViec.trim().isEmpty) {
+      loi = 'Vui lòng nhập nội dung công việc';
+      notifyListeners();
+      return false;
+    }
+    dangLuu = true;
+    loi = null;
+    notifyListeners();
+    try {
+      await WorkOrderService.suaHoSoBiTuChoi(
+        maHoSoBaoTri: maHoSoBaoTri,
+        noiDungCongViec: noiDungCongViec.trim(),
+        thoiGianDuKien: thoiGianDuKien,
+      );
+      return true;
+    } on ApiException catch (e) {
+      loi = e.message;
+      return false;
+    } finally {
+      dangLuu = false;
       notifyListeners();
     }
   }

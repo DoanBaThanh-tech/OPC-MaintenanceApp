@@ -461,10 +461,16 @@ class _MaintenanceMonthDetailScreenState extends State<MaintenanceMonthDetailScr
 
   Color _mauTT(String tt) {
     switch (phanLoaiTrangThai(tt)) {
+      case TrangThaiKeHoach.choDuyet:
+        return AppColors.warning;
       case TrangThaiKeHoach.daDuyet:
-        return AppColors.success;
+        return const Color(0xFF0068A9);
       case TrangThaiKeHoach.tuChoi:
         return AppColors.danger;
+      case TrangThaiKeHoach.dangThucHien:
+        return const Color(0xFF1D4ED8);
+      case TrangThaiKeHoach.daHoanThanh:
+        return AppColors.success;
       case TrangThaiKeHoach.chuaTao:
         return Colors.grey;
       case TrangThaiKeHoach.choXuLy:

@@ -38,6 +38,11 @@ class TokenStorage {
     final token = await getToken();
     return token != null && token.isNotEmpty;
   }
+  static Future<int?> getMaNguoiDung() async {
+    final v = await _storage.read(key: _keyMaNguoiDung);
+    return v == null ? null : int.tryParse(v);
+  }
 
+  static Future<String?> getEmail() => _storage.read(key: _keyEmail);
   static Future<void> xoaPhienDangNhap() => _storage.deleteAll();
 }

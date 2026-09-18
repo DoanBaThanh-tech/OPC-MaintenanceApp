@@ -135,15 +135,29 @@ class MucThietBiTrongThang {
   MucThietBiTrongThang({required this.keHoach, required this.chiTiet});
 }
 
-enum TrangThaiKeHoach { daDuyet, tuChoi, choXuLy, chuaTao }
+enum TrangThaiKeHoach {
+  choDuyet,
+  daDuyet,
+  tuChoi,
+  dangThucHien,
+  daHoanThanh,
+  choXuLy,
+  chuaTao,
+}
 
 TrangThaiKeHoach phanLoaiTrangThai(String tt) {
   switch (tt) {
+    case 'Chờ duyệt':
+      return TrangThaiKeHoach.choDuyet;
     case 'Đã duyệt':
-    case 'Hoàn thành':
       return TrangThaiKeHoach.daDuyet;
     case 'Từ chối':
       return TrangThaiKeHoach.tuChoi;
+    case 'Đang thực hiện':
+      return TrangThaiKeHoach.dangThucHien;
+    case 'Đã hoàn thành':
+    case 'Hoàn thành':
+      return TrangThaiKeHoach.daHoanThanh;
     case 'Chưa tạo hồ sơ':
       return TrangThaiKeHoach.chuaTao;
     default:
