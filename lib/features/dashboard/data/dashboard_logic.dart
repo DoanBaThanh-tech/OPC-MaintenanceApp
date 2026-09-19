@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/storage/token_storage.dart';
+import '../../maintenance_request/presentation/maintenance_request_screens.dart';
 import '../../maintenance_plan/presentation/maintenance_plan_screens.dart';
 import '../../work_order/presentation/work_order_screens.dart';
 import '../../work_order/presentation/technician_screens.dart';
@@ -66,8 +67,26 @@ class DashboardLogic {
           ]),
         ];
 
+      case 'Tổ trưởng sản xuất':
+        return [
+          MenuGroup(tieuDe: 'Yêu cầu bảo trì', muc: [
+            MenuItemData(
+              icon: Icons.send_rounded,
+              label: 'Tạo yêu cầu bảo trì',
+              screenBuilder: () => const TaoYeuCauBaoTriScreen(),
+            ),
+          ]),
+        ];
+
       case 'Tổ trưởng kỹ thuật':
         return [
+          MenuGroup(tieuDe: 'Yêu cầu từ sản xuất', muc: [
+            MenuItemData(
+              icon: Icons.fact_check_rounded,
+              label: 'Xác nhận yêu cầu bảo trì',
+              screenBuilder: () => const XacNhanYeuCauBaoTriScreen(),
+            ),
+          ]),
           MenuGroup(tieuDe: 'Thiết bị', muc: [
             MenuItemData(icon: Icons.precision_manufacturing_rounded, label: 'Danh sách thiết bị', screenBuilder: () => const EquipmentListScreen()),
             MenuItemData(icon: Icons.event_note_rounded, label: 'Kế hoạch bảo trì', screenBuilder: () => const MaintenancePlanListScreen()),

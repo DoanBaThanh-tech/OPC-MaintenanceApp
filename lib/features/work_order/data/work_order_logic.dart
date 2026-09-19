@@ -339,6 +339,9 @@ class LichSuPhanCong {
     this.loai,
   });
 
+  bool get laBaoTri => loai == 'Bảo trì';
+  bool get laSuaChua => loai == 'Sửa chữa';
+
   factory LichSuPhanCong.fromJson(Map<String, dynamic> j) => LichSuPhanCong(
     maPhanCong: (j['maPhanCong'] as num?)?.toInt() ?? 0,
     tenNhanVienPhanCong: j['tenNhanVienPhanCong']?.toString(),
@@ -630,19 +633,36 @@ class PhanCongBaoTriController extends ChangeNotifier {
 }
 
 class LichSuPhanCongController extends ChangeNotifier {
-  List<LichSuPhanCong> danhSach = [];
+  List<LichSuPhanCong> _tatCa = [];
   bool dangTai = true;
   bool dangHuy = false;
   String? loi;
+  /// 'Bảo trì' | 'Sửa chữa' | null = tất cả
+  String? tabLoai = 'Bảo trì';
+
+  List<LichSuPhanCong> get danhSach {
+    if (tabLoai == null) return _tatCa;
+    return _tatCa.where((e) => (e.loai ?? '') == tabLoai).toList();
+  }
+
+  int demTheoLoai(String loai) =>
+      _tatCa.where((e) => (e.loai ?? '') == loai).length;
+
+  void doiTab(String? loai) {
+    if (tabLoai == loai) return;
+    tabLoai = loai;
+    notifyListeners();
+  }
 
   Future<void> tai() async {
     dangTai = true;
     loi = null;
     notifyListeners();
     try {
-      danhSach = await WorkOrderService.layLichSuPhanCong();
+      _tatCa = await WorkOrderService.layLichSuPhanCong();
     } catch (e) {
       loi = 'Không tải được lịch sử: $e';
+      _tatCa = [];
     } finally {
       dangTai = false;
       notifyListeners();
