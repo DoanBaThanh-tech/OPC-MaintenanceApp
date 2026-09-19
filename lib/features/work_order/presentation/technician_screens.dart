@@ -168,6 +168,7 @@ class _YeuCauCard extends StatelessWidget {
       case 'Xác nhận':
         return AppColors.success;
       case 'Từ chối':
+      case 'Đã hủy':
         return AppColors.danger;
       case 'Hoàn thành':
         return AppColors.primary;
@@ -502,11 +503,38 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                         ),
                       ),
                     ],
+                    if (y.daHuy) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.danger.withValues(alpha: 0.35)),
+                        ),
+                        child: const Row(
+                          children: [
+                            Icon(Icons.block_rounded, color: AppColors.danger),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Yêu cầu bảo trì này được hủy bởi tổ trưởng kỹ thuật',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.danger,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
-            if (y.choXacNhan)
+            if (y.choXacNhan && !y.daHuy)
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 decoration: BoxDecoration(

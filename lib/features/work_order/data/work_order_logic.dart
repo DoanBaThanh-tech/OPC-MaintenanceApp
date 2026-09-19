@@ -249,6 +249,11 @@ class WorkOrderService {
     return data.map((e) => LichSuPhanCong.fromJson(Map<String, dynamic>.from(e as Map))).toList();
   }
 
+  /// Tổ trưởng hủy phân công đang Chờ xác nhận / Từ chối
+  static Future<void> huyPhanCong(int maPhanCong) async {
+    await ApiClient.instance.delete('${ApiConstants.workOrder}/phan-cong/$maPhanCong');
+  }
+
   /// Yêu cầu được phân công cho NVKT đang đăng nhập
   static Future<List<YeuCauPhanCong>> layYeuCauCuaToi({String? loai, String? trangThai}) async {
     final query = <String, dynamic>{};
@@ -390,6 +395,7 @@ class YeuCauPhanCong {
       trangThaiPhanCong == 'Chờ xác nhận' || trangThaiPhanCong == 'Đã phân công';
   bool get daXacNhan => trangThaiPhanCong == 'Xác nhận';
   bool get biTuChoi => trangThaiPhanCong == 'Từ chối';
+  bool get daHuy => trangThaiPhanCong == 'Đã hủy';
   bool get laBaoTri => loai == 'Bảo trì';
 
   factory YeuCauPhanCong.fromJson(Map<String, dynamic> j) {
@@ -626,6 +632,7 @@ class PhanCongBaoTriController extends ChangeNotifier {
 class LichSuPhanCongController extends ChangeNotifier {
   List<LichSuPhanCong> danhSach = [];
   bool dangTai = true;
+  bool dangHuy = false;
   String? loi;
 
   Future<void> tai() async {
@@ -638,6 +645,26 @@ class LichSuPhanCongController extends ChangeNotifier {
       loi = 'Không tải được lịch sử: $e';
     } finally {
       dangTai = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> huyPhanCong(int maPhanCong) async {
+    dangHuy = true;
+    loi = null;
+    notifyListeners();
+    try {
+      await WorkOrderService.huyPhanCong(maPhanCong);
+      await tai();
+      return true;
+    } on ApiException catch (e) {
+      loi = e.message;
+      return false;
+    } catch (e) {
+      loi = '$e';
+      return false;
+    } finally {
+      dangHuy = false;
       notifyListeners();
     }
   }

@@ -1709,6 +1709,37 @@ class _LichSuPhanCongScreenState extends State<LichSuPhanCongScreen> {
     return '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
+  Future<void> _huyPhanCong(LichSuPhanCong item) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Hủy phân công?'),
+        content: Text(
+          'Phân công #${item.maPhanCong} sẽ bị xóa.\n'
+              'Hồ sơ bảo trì/sửa chữa sẽ về trạng thái Đã duyệt và có thể phân công lại.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Không')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Hủy phân công'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final success = await _controller.huyPhanCong(item.maPhanCong);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(success ? 'Đã hủy phân công. Có thể phân công lại trên hồ sơ.' : (_controller.loi ?? 'Lỗi')),
+        backgroundColor: success ? AppColors.success : AppColors.danger,
+      ),
+    );
+  }
+
   Color _mauTrangThai(String tt) {
     switch (tt) {
       case 'Hoàn thành':
@@ -1907,6 +1938,24 @@ class _LichSuPhanCongScreenState extends State<LichSuPhanCongScreen> {
                               ),
                             ],
                           ),
+                          if (item.trangThai == 'Chờ xác nhận' ||
+                              item.trangThai == 'Từ chối') ...[
+                            const SizedBox(height: 14),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: _controller.dangHuy ? null : () => _huyPhanCong(item),
+                                icon: const Icon(Icons.cancel_outlined, size: 18),
+                                label: const Text('Hủy phân công'),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppColors.danger,
+                                  side: const BorderSide(color: AppColors.danger),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ),
