@@ -339,163 +339,163 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
           final hs = _controller.hoSo!;
 
           return ResponsiveCenteredContent(
-  maxContentWidth: 600,
-  child: SingleChildScrollView(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                hs.tenThietBi,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: 5,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.warning.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text(
-                'Chờ duyệt',
-                style: TextStyle(
-                  color: AppColors.warning,
-                  fontSize: 11.5,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 16),
-
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _dong(
-                  'Người lập',
-                  hs.tenNguoiLap ?? '—',
-                ),
-                const Divider(height: 20),
-                _dong(
-                  'Ngày tạo hồ sơ',
-                  _fmt(hs.ngayTao),
-                ),
-                const Divider(height: 20),
-                _dong(
-                  'Ngày dự kiến bảo trì',
-                  _fmt(hs.ngayDuKienBaoTri),
-                ),
-                const Divider(height: 20),
-                _dong(
-                  'Thời gian dự kiến',
-                  '${hs.thoiGianDuKien ?? '—'} giờ',
-                ),
-                const Divider(height: 20),
-                _dong(
-                  'Giờ bắt đầu',
-                  hs.gioBatDauDuKien ?? '—',
-                ),
-                const Divider(height: 20),
-                _dong(
-                  'Giờ kết thúc',
-                  hs.gioKetThucDuKien ?? '—',
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        const SizedBox(height: 12),
-
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Nội dung công việc',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey,
-                    fontWeight: FontWeight.w700,
+            maxContentWidth: 600,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          hs.tenThietBi,
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Chờ duyệt',
+                          style: TextStyle(
+                            color: AppColors.warning,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(height: 6),
-                Text(hs.noiDungCongViec ?? '—'),
-              ],
-            ),
-          ),
-        ),
 
-        if (_controller.loi != null) ...[
-          const SizedBox(height: 12),
-          Text(
-            _controller.loi!,
-            style: const TextStyle(
-              color: AppColors.danger,
-            ),
-          ),
-        ],
+                  const SizedBox(height: 16),
 
-        const SizedBox(height: 24),
-
-        if (_controller.dangXuLy)
-          const Center(
-            child: CircularProgressIndicator(),
-          )
-        else
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.danger,
-                    side: const BorderSide(
-                      color: AppColors.danger,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 14,
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _dong(
+                            'Người lập',
+                            hs.tenNguoiLap ?? '—',
+                          ),
+                          const Divider(height: 20),
+                          _dong(
+                            'Ngày tạo hồ sơ',
+                            _fmt(hs.ngayTao),
+                          ),
+                          const Divider(height: 20),
+                          _dong(
+                            'Ngày dự kiến bảo trì',
+                            _fmt(hs.ngayDuKienBaoTri),
+                          ),
+                          const Divider(height: 20),
+                          _dong(
+                            'Thời gian dự kiến',
+                            '${hs.thoiGianDuKien ?? '—'} giờ',
+                          ),
+                          const Divider(height: 20),
+                          _dong(
+                            'Giờ bắt đầu',
+                            hs.gioBatDauDuKien ?? '—',
+                          ),
+                          const Divider(height: 20),
+                          _dong(
+                            'Giờ kết thúc',
+                            hs.gioKetThucDuKien ?? '—',
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                  icon: const Icon(Icons.close_rounded),
-                  label: const Text('Từ chối'),
-                  onPressed: _tuChoi,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 14,
+
+                  const SizedBox(height: 12),
+
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Nội dung công việc',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(hs.noiDungCongViec ?? '—'),
+                        ],
+                      ),
                     ),
                   ),
-                  icon: const Icon(Icons.check_rounded),
-                  label: const Text('Phê duyệt'),
-                  onPressed: _duyet,
-                ),
+
+                  if (_controller.loi != null) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      _controller.loi!,
+                      style: const TextStyle(
+                        color: AppColors.danger,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+
+                  if (_controller.dangXuLy)
+                    const Center(
+                      child: CircularProgressIndicator(),
+                    )
+                  else
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppColors.danger,
+                              side: const BorderSide(
+                                color: AppColors.danger,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                              ),
+                            ),
+                            icon: const Icon(Icons.close_rounded),
+                            label: const Text('Từ chối'),
+                            onPressed: _tuChoi,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.success,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 14,
+                              ),
+                            ),
+                            icon: const Icon(Icons.check_rounded),
+                            label: const Text('Phê duyệt'),
+                            onPressed: _duyet,
+                          ),
+                        ),
+                      ],
+                    ),
+                ],
               ),
-            ],
-          ),
-      ],
-    ),
-  ),
-);
+            ),
+          );
         },
       ),
     );
@@ -508,6 +508,361 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
         Text(nhan, style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5)),
         Flexible(
           child: Text(giaTri, textAlign: TextAlign.right, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+        ),
+      ],
+    );
+  }
+}
+// ============ LỊCH SỬ PHÊ DUYỆT (Giám đốc) ============
+
+class LichSuPheDuyetScreen extends StatefulWidget {
+  const LichSuPheDuyetScreen({super.key});
+
+  @override
+  State<LichSuPheDuyetScreen> createState() => _LichSuPheDuyetScreenState();
+}
+
+class _LichSuPheDuyetScreenState extends State<LichSuPheDuyetScreen>
+    with SingleTickerProviderStateMixin {
+  final _ctrl = LichSuPheDuyetController();
+  late TabController _tabCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl.addListener(() {
+      if (!_tabCtrl.indexIsChanging) {
+        _ctrl.doiTab(_tabCtrl.index == 0 ? 'Bảo trì' : 'Sửa chữa');
+      }
+    });
+    _ctrl.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _ctrl.tai();
+  }
+
+  @override
+  void dispose() {
+    _tabCtrl.dispose();
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  String _fmtNgay(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  String _fmtGio(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Lịch sử phê duyệt'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        bottom: TabBar(
+          controller: _tabCtrl,
+          indicatorColor: Colors.white,
+          indicatorWeight: 3,
+          labelColor: Colors.white,
+          unselectedLabelColor: Colors.white70,
+          tabs: const [
+            Tab(text: 'Bảo trì'),
+            Tab(text: 'Sửa chữa'),
+          ],
+        ),
+      ),
+      body: Column(
+        children: [
+          _buildYearFilter(),
+          Expanded(child: _buildBody()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildYearFilter() {
+    final years = _ctrl.cacNam;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Lọc theo năm',
+            style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _yearChip('Tất cả', null),
+                ...years.map((y) => _yearChip('$y', y)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _yearChip(String label, int? value) {
+    final selected = _ctrl.namLoc == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: Material(
+        color: selected ? AppColors.primary : Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+          onTap: () => _ctrl.datNam(value),
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : Colors.grey.shade700,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_ctrl.dangTai) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_ctrl.loi != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.error_outline, size: 48, color: AppColors.danger.withValues(alpha: 0.7)),
+              const SizedBox(height: 12),
+              Text(_ctrl.loi!, textAlign: TextAlign.center),
+              const SizedBox(height: 16),
+              FilledButton(onPressed: _ctrl.tai, child: const Text('Thử lại')),
+            ],
+          ),
+        ),
+      );
+    }
+    if (_ctrl.danhSach.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _ctrl.tai,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.22),
+            Icon(Icons.history_toggle_off_rounded, size: 64, color: Colors.grey.shade300),
+            const SizedBox(height: 12),
+            Text(
+              'Chưa có lịch sử phê duyệt\n${_ctrl.tabLoai.toLowerCase()}'
+                  '${_ctrl.namLoc != null ? ' năm ${_ctrl.namLoc}' : ''}',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade600, height: 1.4),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _ctrl.tai,
+      child: ListView.builder(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        itemCount: _ctrl.danhSach.length,
+        itemBuilder: (context, i) {
+          final item = _ctrl.danhSach[i];
+          return TweenAnimationBuilder<double>(
+            tween: Tween(begin: 0, end: 1),
+            duration: Duration(milliseconds: 280 + (i % 6) * 40),
+            curve: Curves.easeOutCubic,
+            builder: (context, v, child) => Opacity(
+              opacity: v,
+              child: Transform.translate(offset: Offset(0, 12 * (1 - v)), child: child),
+            ),
+            child: _LichSuCard(
+              item: item,
+              fmtNgay: _fmtNgay,
+              fmtGio: _fmtGio,
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LichSuCard extends StatelessWidget {
+  final LichSuPheDuyetItem item;
+  final String Function(DateTime) fmtNgay;
+  final String Function(DateTime) fmtGio;
+
+  const _LichSuCard({
+    required this.item,
+    required this.fmtNgay,
+    required this.fmtGio,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final daDuyet = item.daDuyet;
+    final mau = daDuyet ? AppColors.success : AppColors.danger;
+    final nhanTrangThai = daDuyet ? 'Đã duyệt' : 'Từ chối';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        elevation: 0,
+        child: Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [mau.withValues(alpha: 0.12), mau.withValues(alpha: 0.03)],
+                  ),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: mau.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        daDuyet ? Icons.check_circle_rounded : Icons.cancel_rounded,
+                        color: mau,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item.tenThietBi ?? 'Hồ sơ #${item.maHoSo ?? '—'}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${item.loai} · HS #${item.maHoSo ?? '—'} · ${fmtNgay(item.ngayDuyet)} ${fmtGio(item.ngayDuyet)}',
+                            style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: mau.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        nhanTrangThai,
+                        style: TextStyle(color: mau, fontSize: 11.5, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _infoRow(Icons.person_outline, 'Người lập', item.tenNguoiLap ?? '—'),
+                    const SizedBox(height: 8),
+                    _infoRow(Icons.verified_user_outlined, 'Người duyệt', item.tenNguoiDuyet ?? '—'),
+                    if (item.noiDung != null && item.noiDung!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      _infoRow(Icons.notes_rounded, 'Nội dung', item.noiDung!),
+                    ],
+                    if (item.tuChoi && item.lyDo != null && item.lyDo!.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.danger.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline, size: 16, color: AppColors.danger.withValues(alpha: 0.9)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Lý do từ chối: ${item.lyDo}',
+                                style: TextStyle(fontSize: 12.5, color: Colors.grey.shade800, height: 1.35),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _infoRow(IconData icon, String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: Colors.grey.shade500),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 88,
+          child: Text(label, style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
         ),
       ],
     );

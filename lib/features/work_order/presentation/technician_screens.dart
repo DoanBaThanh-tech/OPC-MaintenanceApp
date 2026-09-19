@@ -472,9 +472,9 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                         _row('Ngày dự kiến BT', _fmtDt(y.ngayDuKienBaoTri!)),
                       if (y.thoiGianDuKien != null) _row('Thời gian dự kiến', '${y.thoiGianDuKien} giờ'),
                       if (y.ngayBatDauDuKien != null)
-                        _row('Bắt đầu dự kiến', _fmtDt(y.ngayBatDauDuKien!)),
+                        _row('Giờ bắt đầu dự kiến', _fmtGio(y.ngayBatDauDuKien!)),
                       if (y.ngayKetThucDuKien != null)
-                        _row('Kết thúc dự kiến', _fmtDt(y.ngayKetThucDuKien!)),
+                        _row('Giờ kết thúc dự kiến', _fmtGio(y.ngayKetThucDuKien!)),
                     ]),
                     if (y.noiDung != null && y.noiDung!.isNotEmpty) ...[
                       const SizedBox(height: 16),
@@ -621,6 +621,9 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
 
   String _fmtDt(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  String _fmtGio(DateTime d) =>
+      '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
 // ============ KẾT QUẢ THỰC HIỆN ============

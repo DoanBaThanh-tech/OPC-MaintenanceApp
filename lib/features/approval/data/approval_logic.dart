@@ -5,7 +5,7 @@ import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_exception.dart';
 
 // ============================================================
-// MODEL (giữ nguyên)
+// MODEL
 // ============================================================
 
 class HoSoBaoTriDuyet {
@@ -44,21 +44,76 @@ class HoSoBaoTriDuyet {
   bool get choDuyet => trangThai == 'Chờ duyệt';
 
   factory HoSoBaoTriDuyet.fromJson(Map<String, dynamic> j) => HoSoBaoTriDuyet(
-        maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
-        tenThietBi: j['tenThietBi']?.toString() ?? '',
-        tenNguoiLap: j['tenNhanVienTao']?.toString(),
-        noiDungCongViec: j['noiDungCongViec']?.toString(),
-        thoiGianDuKien: j['thoiGianDuKien']?.toString(),
-        gioBatDauDuKien: j['gioBatDauDuKien']?.toString(),
-        gioKetThucDuKien: j['gioKetThucDuKien']?.toString(),
-        ngayDuKienBaoTri: j['ngayDuKienBaoTri'] != null ? DateTime.tryParse(j['ngayDuKienBaoTri'].toString()) : null,
-        ngayTao: DateTime.parse(j['ngayTao'].toString()),
-        trangThai: j['trangThai']?.toString() ?? '',
-        lyDoTuChoi: j['lyDoTuChoi']?.toString(),
-        rowVersion: j['rowVersion']?.toString(),
-        nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
-        namTuKeHoach: j['namTuKeHoach'] == true,
-      );
+    maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
+    tenThietBi: j['tenThietBi']?.toString() ?? '',
+    tenNguoiLap: j['tenNhanVienTao']?.toString(),
+    noiDungCongViec: j['noiDungCongViec']?.toString(),
+    thoiGianDuKien: j['thoiGianDuKien']?.toString(),
+    gioBatDauDuKien: j['gioBatDauDuKien']?.toString(),
+    gioKetThucDuKien: j['gioKetThucDuKien']?.toString(),
+    ngayDuKienBaoTri: j['ngayDuKienBaoTri'] != null
+        ? DateTime.tryParse(j['ngayDuKienBaoTri'].toString())
+        : null,
+    ngayTao: DateTime.parse(j['ngayTao'].toString()),
+    trangThai: j['trangThai']?.toString() ?? '',
+    lyDoTuChoi: j['lyDoTuChoi']?.toString(),
+    rowVersion: j['rowVersion']?.toString(),
+    nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
+    namTuKeHoach: j['namTuKeHoach'] == true,
+  );
+}
+
+class LichSuPheDuyetItem {
+  final int maPheDuyet;
+  final String loai;
+  final int? maHoSo;
+  final String? tenThietBi;
+  final String? tenNguoiLap;
+  final String? noiDung;
+  final String? tenNguoiDuyet;
+  final String quyetDinh;
+  final String trangThaiHoSo;
+  final String? lyDo;
+  final DateTime ngayDuyet;
+  final int nam;
+
+  LichSuPheDuyetItem({
+    required this.maPheDuyet,
+    required this.loai,
+    this.maHoSo,
+    this.tenThietBi,
+    this.tenNguoiLap,
+    this.noiDung,
+    this.tenNguoiDuyet,
+    required this.quyetDinh,
+    required this.trangThaiHoSo,
+    this.lyDo,
+    required this.ngayDuyet,
+    required this.nam,
+  });
+
+  bool get daDuyet => trangThaiHoSo == 'Đã duyệt' || quyetDinh == 'Duyệt';
+  bool get tuChoi => trangThaiHoSo == 'Từ chối' || quyetDinh == 'Từ chối';
+
+  factory LichSuPheDuyetItem.fromJson(Map<String, dynamic> j) {
+    DateTime? asDate(dynamic v) =>
+        v == null ? null : DateTime.tryParse(v.toString());
+    final ngay = asDate(j['ngayDuyet']) ?? DateTime.now();
+    return LichSuPheDuyetItem(
+      maPheDuyet: (j['maPheDuyet'] as num?)?.toInt() ?? 0,
+      loai: j['loai']?.toString() ?? 'Bảo trì',
+      maHoSo: (j['maHoSo'] as num?)?.toInt(),
+      tenThietBi: j['tenThietBi']?.toString(),
+      tenNguoiLap: j['tenNguoiLap']?.toString(),
+      noiDung: j['noiDung']?.toString(),
+      tenNguoiDuyet: j['tenNguoiDuyet']?.toString(),
+      quyetDinh: j['quyetDinh']?.toString() ?? '',
+      trangThaiHoSo: j['trangThaiHoSo']?.toString() ?? '',
+      lyDo: j['lyDo']?.toString(),
+      ngayDuyet: ngay,
+      nam: (j['nam'] as num?)?.toInt() ?? ngay.year,
+    );
+  }
 }
 
 // ============================================================
@@ -66,17 +121,19 @@ class HoSoBaoTriDuyet {
 // ============================================================
 
 class ApprovalService {
-  /// Luôn tải TOÀN BỘ hồ sơ chờ duyệt (không lọc năm ở API) - lọc năm làm ở client
   static Future<List<HoSoBaoTriDuyet>> layDanhSachBaoTri({String? trangThai}) async {
     final data = await ApiClient.instance.get<List<dynamic>>(
       '${ApiConstants.workOrder}/bao-tri',
       query: trangThai != null ? {'trangThai': trangThai} : null,
     );
-    return data.map((e) => HoSoBaoTriDuyet.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    return data
+        .map((e) => HoSoBaoTriDuyet.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
   }
 
   static Future<HoSoBaoTriDuyet> layChiTietBaoTri(int id) async {
-    final data = await ApiClient.instance.get<Map<String, dynamic>>('${ApiConstants.workOrder}/bao-tri/$id');
+    final data = await ApiClient.instance
+        .get<Map<String, dynamic>>('${ApiConstants.workOrder}/bao-tri/$id');
     return HoSoBaoTriDuyet.fromJson(data);
   }
 
@@ -86,33 +143,58 @@ class ApprovalService {
     String? lyDo,
     required String rowVersion,
   }) async {
-    await ApiClient.instance.put<Map<String, dynamic>>('${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/duyet', {
-      'quyetDinh': quyetDinh,
-      'lyDo': lyDo,
-      'rowVersion': rowVersion,
-    });
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/duyet',
+      {
+        'quyetDinh': quyetDinh,
+        'lyDo': lyDo,
+        'rowVersion': rowVersion,
+      },
+    );
+  }
+
+  static Future<List<LichSuPheDuyetItem>> layLichSuPheDuyet({
+    String? loai,
+    int? nam,
+  }) async {
+    final query = <String, dynamic>{};
+    if (loai != null) query['loai'] = loai;
+    if (nam != null) query['nam'] = nam;
+    final data = await ApiClient.instance.get<List<dynamic>>(
+      '${ApiConstants.workOrder}/lich-su-phe-duyet',
+      query: query.isEmpty ? null : query,
+    );
+    return data
+        .map((e) =>
+        LichSuPheDuyetItem.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
+  static Future<List<int>> layNamCoLichSu({String? loai}) async {
+    final data = await ApiClient.instance.get<List<dynamic>>(
+      '${ApiConstants.workOrder}/lich-su-phe-duyet/nam',
+      query: loai != null ? {'loai': loai} : null,
+    );
+    return data.map((e) => (e as num).toInt()).toList();
   }
 }
 
 // ============================================================
-// CONTROLLER: danh sách + lọc năm (LỌC PHÍA CLIENT)
+// CONTROLLERS
 // ============================================================
 
 class ApprovalBaoTriListController extends ChangeNotifier {
-  List<HoSoBaoTriDuyet> _tatCa = []; // toàn bộ dữ liệu tải về, KHÔNG lọc năm
+  List<HoSoBaoTriDuyet> _tatCa = [];
   bool dangTai = true;
   String? loi;
-  int? namLoc; // null = "Tất cả năm"
+  int? namLoc;
 
-  /// Danh sách hiện ra màn hình - luôn lọc từ _tatCa, không gọi mạng lại
   List<HoSoBaoTriDuyet> get danhSach =>
       namLoc == null ? _tatCa : _tatCa.where((h) => h.nam == namLoc).toList();
 
-  /// Chỉ những năm THỰC SỰ có hồ sơ - lấy trực tiếp từ dữ liệu vừa tải,
-  /// không đoán/hardcode -> luôn khớp đúng dữ liệu thật, tự thêm năm mới khi có hồ sơ năm đó
   List<int> get cacNamCoDuLieu {
     final nams = _tatCa.map((h) => h.nam).toSet().toList();
-    nams.sort((a, b) => b.compareTo(a)); // mới nhất trước
+    nams.sort((a, b) => b.compareTo(a));
     return nams;
   }
 
@@ -130,16 +212,11 @@ class ApprovalBaoTriListController extends ChangeNotifier {
     }
   }
 
-  /// Chỉ đổi bộ lọc hiển thị - KHÔNG gọi mạng, nên không có độ trễ/lỗi thời điểm
   void datNamLoc(int? nam) {
     namLoc = nam;
     notifyListeners();
   }
 }
-
-// ============================================================
-// CONTROLLER: chi tiết + duyệt (giữ nguyên, không đổi)
-// ============================================================
 
 class ApprovalBaoTriDetailController extends ChangeNotifier {
   final int maHoSoBaoTri;
@@ -193,5 +270,46 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
       dangXuLy = false;
       notifyListeners();
     }
+  }
+}
+
+class LichSuPheDuyetController extends ChangeNotifier {
+  List<LichSuPheDuyetItem> danhSach = [];
+  List<int> cacNam = [];
+  bool dangTai = true;
+  String? loi;
+  String tabLoai = 'Bảo trì';
+  int? namLoc;
+
+  Future<void> tai() async {
+    dangTai = true;
+    loi = null;
+    notifyListeners();
+    try {
+      final results = await Future.wait([
+        ApprovalService.layLichSuPheDuyet(loai: tabLoai, nam: namLoc),
+        ApprovalService.layNamCoLichSu(loai: tabLoai),
+      ]);
+      danhSach = results[0] as List<LichSuPheDuyetItem>;
+      cacNam = results[1] as List<int>;
+    } catch (e) {
+      loi = 'Không tải được lịch sử: $e';
+      danhSach = [];
+    } finally {
+      dangTai = false;
+      notifyListeners();
+    }
+  }
+
+  void doiTab(String loai) {
+    if (tabLoai == loai) return;
+    tabLoai = loai;
+    namLoc = null;
+    tai();
+  }
+
+  void datNam(int? nam) {
+    namLoc = nam;
+    tai();
   }
 }
