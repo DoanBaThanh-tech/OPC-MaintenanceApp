@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../maintenance_plan/presentation/maintenance_plan_screens.dart';
 import '../../work_order/presentation/work_order_screens.dart';
+import '../../work_order/presentation/technician_screens.dart';
 import '../../approval/presentation/approval_screens.dart';
 import '../../equipment/presentation/equipment_screens.dart';
 // ============ MODEL ============
@@ -81,7 +82,16 @@ class DashboardLogic {
       case 'Nhân viên kỹ thuật':
         return [
           MenuGroup(tieuDe: 'Công việc của tôi', muc: [
-            MenuItemData(icon: Icons.assignment_rounded, label: 'Công việc được giao', screenBuilder: () => const _ChuaLamScreen(ten: 'Công việc được giao')),
+            MenuItemData(
+              icon: Icons.assignment_rounded,
+              label: 'Quản lý yêu cầu',
+              screenBuilder: () => const QuanLyYeuCauScreen(),
+            ),
+            MenuItemData(
+              icon: Icons.task_alt_rounded,
+              label: 'Kết quả thực hiện',
+              screenBuilder: () => const KetQuaThucHienScreen(),
+            ),
             MenuItemData(icon: Icons.handyman_rounded, label: 'Tạo hồ sơ sửa chữa', screenBuilder: () => const _ChuaLamScreen(ten: 'Tạo hồ sơ sửa chữa')),
             MenuItemData(icon: Icons.inventory_2_rounded, label: 'Yêu cầu vật tư', screenBuilder: () => const _ChuaLamScreen(ten: 'Yêu cầu vật tư')),
           ]),

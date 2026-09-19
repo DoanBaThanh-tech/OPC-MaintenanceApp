@@ -248,6 +248,65 @@ class WorkOrderService {
     final data = await ApiClient.instance.get<List<dynamic>>('${ApiConstants.workOrder}/phan-cong');
     return data.map((e) => LichSuPhanCong.fromJson(Map<String, dynamic>.from(e as Map))).toList();
   }
+
+  /// Yêu cầu được phân công cho NVKT đang đăng nhập
+  static Future<List<YeuCauPhanCong>> layYeuCauCuaToi({String? loai, String? trangThai}) async {
+    final query = <String, dynamic>{};
+    if (loai != null) query['loai'] = loai;
+    if (trangThai != null) query['trangThai'] = trangThai;
+    final data = await ApiClient.instance.get<List<dynamic>>(
+      '${ApiConstants.workOrder}/yeu-cau-cua-toi',
+      query: query.isEmpty ? null : query,
+    );
+    return data.map((e) => YeuCauPhanCong.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+  }
+
+  static Future<List<YeuCauPhanCong>> layYeuCauDaXacNhan({String? loai}) async {
+    final data = await ApiClient.instance.get<List<dynamic>>(
+      '${ApiConstants.workOrder}/yeu-cau-da-xac-nhan',
+      query: loai != null ? {'loai': loai} : null,
+    );
+    return data.map((e) => YeuCauPhanCong.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+  }
+
+  static Future<void> nhanVienTuChoiBaoTri({required int maHoSo, required String lyDo}) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSo/tu-choi-nhan-viec',
+      {'lyDo': lyDo},
+    );
+  }
+
+  static Future<void> nhanVienXacNhanSuaChua(int maHoSo) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/sua-chua/$maHoSo/nhan-viec',
+      {},
+    );
+  }
+
+  static Future<void> nhanVienTuChoiSuaChua({required int maHoSo, required String lyDo}) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/sua-chua/$maHoSo/tu-choi-nhan-viec',
+      {'lyDo': lyDo},
+    );
+  }
+
+  static Future<void> ghiNhanKetQua({
+    required int maPhanCong,
+    required int maNhanVienGhiNhan,
+    String? ghiChu,
+    DateTime? ngayGhiNhan,
+    String? soLieuGhiNhan,
+  }) async {
+    await ApiClient.instance.post<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/phan-cong/$maPhanCong/ket-qua',
+      {
+        'maNhanVienGhiNhan': maNhanVienGhiNhan,
+        if (ghiChu != null) 'ghiChu': ghiChu,
+        if (soLieuGhiNhan != null) 'soLieuGhiNhan': soLieuGhiNhan,
+        if (ngayGhiNhan != null) 'ngayGhiNhan': ngayGhiNhan.toIso8601String(),
+      },
+    );
+  }
 }
 
 class LichSuPhanCong {
@@ -255,18 +314,24 @@ class LichSuPhanCong {
   final String? tenNhanVienPhanCong;
   final String? tenNhanVienThucHien;
   final String trangThai;
+  final String? lyDoTuChoi;
   final DateTime ngayPhanCong;
   final DateTime? gioBatDau;
   final DateTime? gioKetThuc;
+  final String? tenThietBi;
+  final String? loai;
 
   LichSuPhanCong({
     required this.maPhanCong,
     this.tenNhanVienPhanCong,
     this.tenNhanVienThucHien,
     required this.trangThai,
+    this.lyDoTuChoi,
     required this.ngayPhanCong,
     this.gioBatDau,
     this.gioKetThuc,
+    this.tenThietBi,
+    this.loai,
   });
 
   factory LichSuPhanCong.fromJson(Map<String, dynamic> j) => LichSuPhanCong(
@@ -274,10 +339,81 @@ class LichSuPhanCong {
     tenNhanVienPhanCong: j['tenNhanVienPhanCong']?.toString(),
     tenNhanVienThucHien: j['tenNhanVienThucHien']?.toString(),
     trangThai: j['trangThai']?.toString() ?? '',
+    lyDoTuChoi: j['lyDoTuChoi']?.toString(),
     ngayPhanCong: DateTime.tryParse(j['ngayPhanCong']?.toString() ?? '') ?? DateTime.now(),
     gioBatDau: j['gioBatDau'] != null ? DateTime.tryParse(j['gioBatDau'].toString()) : null,
     gioKetThuc: j['gioKetThuc'] != null ? DateTime.tryParse(j['gioKetThuc'].toString()) : null,
+    tenThietBi: j['tenThietBi']?.toString(),
+    loai: j['loai']?.toString(),
   );
+}
+
+/// Yêu cầu phân công gửi tới NVKT
+class YeuCauPhanCong {
+  final int maPhanCong;
+  final String trangThaiPhanCong;
+  final String? lyDoTuChoi;
+  final DateTime ngayPhanCong;
+  final DateTime? ngayBatDauDuKien;
+  final DateTime? ngayKetThucDuKien;
+  final String? tenNhanVienPhanCong;
+  final String loai; // Bảo trì | Sửa chữa
+  final int? maHoSo;
+  final int? maThietBi;
+  final String? tenThietBi;
+  final String? noiDung;
+  final String? thoiGianDuKien;
+  final String? trangThaiHoSo;
+  final DateTime? ngayDuKienBaoTri;
+  final DateTime? ngayTaoHoSo;
+
+  YeuCauPhanCong({
+    required this.maPhanCong,
+    required this.trangThaiPhanCong,
+    this.lyDoTuChoi,
+    required this.ngayPhanCong,
+    this.ngayBatDauDuKien,
+    this.ngayKetThucDuKien,
+    this.tenNhanVienPhanCong,
+    required this.loai,
+    this.maHoSo,
+    this.maThietBi,
+    this.tenThietBi,
+    this.noiDung,
+    this.thoiGianDuKien,
+    this.trangThaiHoSo,
+    this.ngayDuKienBaoTri,
+    this.ngayTaoHoSo,
+  });
+
+  bool get choXacNhan =>
+      trangThaiPhanCong == 'Chờ xác nhận' || trangThaiPhanCong == 'Đã phân công';
+  bool get daXacNhan => trangThaiPhanCong == 'Xác nhận';
+  bool get biTuChoi => trangThaiPhanCong == 'Từ chối';
+  bool get laBaoTri => loai == 'Bảo trì';
+
+  factory YeuCauPhanCong.fromJson(Map<String, dynamic> j) {
+    DateTime? asDate(dynamic v) =>
+        v == null ? null : DateTime.tryParse(v.toString());
+    return YeuCauPhanCong(
+      maPhanCong: (j['maPhanCong'] as num?)?.toInt() ?? 0,
+      trangThaiPhanCong: j['trangThaiPhanCong']?.toString() ?? '',
+      lyDoTuChoi: j['lyDoTuChoi']?.toString(),
+      ngayPhanCong: asDate(j['ngayPhanCong']) ?? DateTime.now(),
+      ngayBatDauDuKien: asDate(j['ngayBatDauDuKien']),
+      ngayKetThucDuKien: asDate(j['ngayKetThucDuKien']),
+      tenNhanVienPhanCong: j['tenNhanVienPhanCong']?.toString(),
+      loai: j['loai']?.toString() ?? 'Bảo trì',
+      maHoSo: (j['maHoSo'] as num?)?.toInt(),
+      maThietBi: (j['maThietBi'] as num?)?.toInt(),
+      tenThietBi: j['tenThietBi']?.toString(),
+      noiDung: j['noiDung']?.toString(),
+      thoiGianDuKien: j['thoiGianDuKien']?.toString(),
+      trangThaiHoSo: j['trangThaiHoSo']?.toString(),
+      ngayDuKienBaoTri: asDate(j['ngayDuKienBaoTri']),
+      ngayTaoHoSo: asDate(j['ngayTaoHoSo']),
+    );
+  }
 }
 
 // ============================================================
@@ -657,6 +793,131 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
       return true;
     } on ApiException catch (e) {
       loi = e.message;
+      return false;
+    } finally {
+      dangLuu = false;
+      notifyListeners();
+    }
+  }
+}
+class QuanLyYeuCauController extends ChangeNotifier {
+  List<YeuCauPhanCong> danhSach = [];
+  bool dangTai = true;
+  String? loi;
+  String tabLoai = 'Bảo trì'; // Bảo trì | Sửa chữa
+
+  Future<void> tai() async {
+    dangTai = true;
+    loi = null;
+    notifyListeners();
+    try {
+      danhSach = await WorkOrderService.layYeuCauCuaToi(loai: tabLoai);
+    } catch (e) {
+      loi = 'Không tải được yêu cầu: $e';
+      danhSach = [];
+    } finally {
+      dangTai = false;
+      notifyListeners();
+    }
+  }
+
+  void doiTab(String loai) {
+    if (tabLoai == loai) return;
+    tabLoai = loai;
+    tai();
+  }
+
+  List<YeuCauPhanCong> get choXacNhan =>
+      danhSach.where((e) => e.choXacNhan).toList();
+  List<YeuCauPhanCong> get khac =>
+      danhSach.where((e) => !e.choXacNhan).toList();
+}
+
+class KetQuaThucHienController extends ChangeNotifier {
+  List<YeuCauPhanCong> dsXacNhan = [];
+  YeuCauPhanCong? chon;
+  DateTime? ngayGhiNhan;
+  String ghiChu = '';
+  bool dangTai = true;
+  bool dangLuu = false;
+  String? loi;
+  String? loiNgay; // chữ đỏ dưới ngày
+
+  Future<void> tai() async {
+    dangTai = true;
+    loi = null;
+    notifyListeners();
+    try {
+      dsXacNhan = await WorkOrderService.layYeuCauDaXacNhan();
+    } catch (e) {
+      loi = 'Không tải danh sách: $e';
+      dsXacNhan = [];
+    } finally {
+      dangTai = false;
+      notifyListeners();
+    }
+  }
+
+  void chonYeuCau(YeuCauPhanCong? y) {
+    chon = y;
+    ngayGhiNhan = null;
+    loiNgay = null;
+    loi = null;
+    notifyListeners();
+  }
+
+  void datNgayGhiNhan(DateTime d) {
+    ngayGhiNhan = d;
+    loiNgay = null;
+    if (chon?.ngayDuKienBaoTri != null) {
+      final dk = chon!.ngayDuKienBaoTri!;
+      if (d.year != dk.year || d.month != dk.month) {
+        loiNgay =
+        'Ngày ghi nhận phải nằm trong tháng ${dk.month}/${dk.year} (tháng dự kiến bảo trì).';
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<bool> xacNhanHoanThanh({required int maNhanVienGhiNhan}) async {
+    if (chon == null) {
+      loi = 'Vui lòng chọn hồ sơ bảo trì';
+      notifyListeners();
+      return false;
+    }
+    if (ngayGhiNhan == null) {
+      loi = 'Vui lòng chọn ngày ghi nhận';
+      notifyListeners();
+      return false;
+    }
+    if (loiNgay != null) {
+      loi = loiNgay;
+      notifyListeners();
+      return false;
+    }
+
+    dangLuu = true;
+    loi = null;
+    notifyListeners();
+    try {
+      await WorkOrderService.ghiNhanKetQua(
+        maPhanCong: chon!.maPhanCong,
+        maNhanVienGhiNhan: maNhanVienGhiNhan,
+        ghiChu: ghiChu.trim().isEmpty ? null : ghiChu.trim(),
+        ngayGhiNhan: ngayGhiNhan,
+        soLieuGhiNhan: 'Hoàn thành',
+      );
+      // Làm mới danh sách
+      await tai();
+      chon = null;
+      ngayGhiNhan = null;
+      ghiChu = '';
+      return true;
+    } on ApiException catch (e) {
+      loi = e.message;
+      return false;
+    } catch (e) {
+      loi = '$e';
       return false;
     } finally {
       dangLuu = false;

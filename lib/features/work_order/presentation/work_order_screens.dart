@@ -1713,8 +1713,13 @@ class _LichSuPhanCongScreenState extends State<LichSuPhanCongScreen> {
     switch (tt) {
       case 'Hoàn thành':
         return AppColors.success;
+      case 'Xác nhận':
+        return AppColors.success;
       case 'Đã phân công':
-        return const Color(0xFF2563EB);
+      case 'Chờ xác nhận':
+        return AppColors.warning;
+      case 'Từ chối':
+        return AppColors.danger;
       case 'Đang thực hiện':
         return const Color(0xFF7C3AED);
       default:
@@ -1864,6 +1869,22 @@ class _LichSuPhanCongScreenState extends State<LichSuPhanCongScreen> {
                             label: 'Nhân viên thực hiện',
                             value: item.tenNhanVienThucHien ?? '—',
                           ),
+                          if (item.tenThietBi != null && item.tenThietBi!.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            _HistoryRow(
+                              icon: Icons.precision_manufacturing_outlined,
+                              label: 'Thiết bị',
+                              value: item.tenThietBi!,
+                            ),
+                          ],
+                          if (item.lyDoTuChoi != null && item.lyDoTuChoi!.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            _HistoryRow(
+                              icon: Icons.info_outline_rounded,
+                              label: 'Lý do từ chối',
+                              value: item.lyDoTuChoi!,
+                            ),
+                          ],
                           const Divider(height: 22),
                           Row(
                             children: [
