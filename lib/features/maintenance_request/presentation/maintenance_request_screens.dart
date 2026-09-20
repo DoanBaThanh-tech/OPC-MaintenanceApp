@@ -22,9 +22,8 @@ class _QuanLyYeuCauSanXuatScreenState extends State<QuanLyYeuCauSanXuatScreen>
     super.initState();
     _tab = TabController(length: 2, vsync: this);
     _tab.addListener(() {
-      if (!_tab.indexIsChanging) {
-        _c.doiTab(_tab.index == 0 ? 'Bảo trì' : 'Sửa chữa');
-      }
+      if (_tab.indexIsChanging) return;
+      _c.doiTab(_tab.index == 0 ? 'Bảo trì' : 'Sửa chữa');
     });
     _c.addListener(() {
       if (mounted) setState(() {});
@@ -46,13 +45,13 @@ class _QuanLyYeuCauSanXuatScreenState extends State<QuanLyYeuCauSanXuatScreen>
     switch (tt) {
       case 'Đã xác nhận':
       case 'Đã tạo hồ sơ':
-        return AppColors.success;
+        return const Color(0xFF2E7D32);
       case 'Chờ xác nhận':
-        return AppColors.warning;
+        return const Color(0xFFED6C02);
       case 'Từ chối':
-        return AppColors.danger;
+        return const Color(0xFFC62828);
       default:
-        return Colors.blueGrey;
+        return const Color(0xFF546E7A);
     }
   }
 
@@ -60,131 +59,176 @@ class _QuanLyYeuCauSanXuatScreenState extends State<QuanLyYeuCauSanXuatScreen>
     final ok = await Navigator.of(context).push<bool>(
       MaterialPageRoute(builder: (_) => const TaoYeuCauBaoTriScreen()),
     );
-    if (ok == true) _c.tai();
+    if (ok == true && mounted) await _c.tai();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Material(
-          color: AppColors.primary,
-          child: TabBar(
-            controller: _tab,
-            indicatorColor: Colors.white,
-            indicatorWeight: 3,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            tabs: const [
-              Tab(text: 'Bảo trì'),
-              Tab(text: 'Sửa chữa'),
-            ],
+    final isBaoTri = _tab.index == 0;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      floatingActionButton: isBaoTri
+          ? FloatingActionButton(
+        onPressed: _moTao,
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 3,
+        tooltip: 'Tạo yêu cầu bảo trì',
+        child: const Icon(Icons.add_rounded, size: 28),
+      )
+          : null,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            color: AppColors.primary,
+            child: TabBar(
+              controller: _tab,
+              indicatorColor: Colors.white,
+              indicatorWeight: 2.5,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white70,
+              labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5),
+              tabs: const [
+                Tab(text: 'Bảo trì'),
+                Tab(text: 'Sửa chữa'),
+              ],
+            ),
           ),
+          Expanded(child: _buildBody()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (_c.dangTai) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_c.loi != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(_c.loi!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.danger)),
         ),
-        Expanded(
-          child: Stack(
-            children: [
-              if (_c.dangTai)
-                const Center(child: CircularProgressIndicator())
-              else if (_c.loi != null)
-                Center(child: Text(_c.loi!))
-              else if (_c.danhSach.isEmpty)
-                  RefreshIndicator(
-                    onRefresh: _c.tai,
-                    child: ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(height: MediaQuery.of(context).size.height * 0.18),
-                        Icon(Icons.inbox_outlined, size: 56, color: Colors.grey.shade400),
-                        const SizedBox(height: 12),
-                        Text(
-                          _c.tab == 'Sửa chữa'
-                              ? 'Chưa có yêu cầu sửa chữa'
-                              : 'Chưa có yêu cầu bảo trì.\nBấm + để tạo mới.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.grey.shade600, height: 1.4),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  RefreshIndicator(
-                    onRefresh: _c.tai,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
-                      itemCount: _c.danhSach.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, i) {
-                        final y = _c.danhSach[i];
-                        final mau = _mauTT(y.trangThai);
-                        return Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.grey.shade200),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      y.tenThietBi ?? 'TB #${y.maThietBi}',
-                                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14.5),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: mau.withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      y.trangThai,
-                                      style: TextStyle(color: mau, fontSize: 11.5, fontWeight: FontWeight.w700),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'YC #${y.maYeuCauBaoTri} · ${y.danhMuc ?? '—'}',
-                                style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Ngày BT: ${_fmtNgay(y.ngayBaoTri)} · ${y.thoiGianDuKien}h · ${y.gioBatDau ?? ''}–${y.gioKetThuc ?? ''}',
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
+      );
+    }
+
+    if (_c.danhSach.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _c.tai,
+        color: AppColors.primary,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          children: [
+            const SizedBox(height: 80),
+            Icon(Icons.description_outlined, size: 52, color: Colors.grey.shade400),
+            const SizedBox(height: 14),
+            Text(
+              _tab.index == 1 ? 'Chưa có yêu cầu sửa chữa' : 'Chưa có yêu cầu bảo trì',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              _tab.index == 1
+                  ? 'Phần sửa chữa sẽ được bổ sung sau.'
+                  : 'Nhấn nút + góc dưới để tạo yêu cầu mới.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade500, height: 1.35),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _c.tai,
+      color: AppColors.primary,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(14, 12, 14, 88),
+        itemCount: _c.danhSach.length,
+        itemBuilder: (context, i) {
+          final y = _c.danhSach[i];
+          final mau = _mauTT(y.trangThai);
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Material(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              elevation: 0,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {},
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
                   ),
-              if (_c.tab == 'Bảo trì')
-                Positioned(
-                  right: 18,
-                  bottom: 18,
-                  child: FloatingActionButton(
-                    onPressed: _moTao,
-                    backgroundColor: AppColors.primary,
-                    child: const Icon(Icons.add, color: Colors.white),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              y.tenThietBi ?? 'Thiết bị #${y.maThietBi}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14.5,
+                                height: 1.25,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: mau.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              y.trangThai,
+                              style: TextStyle(
+                                color: mau,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'YC #${y.maYeuCauBaoTri}  ·  ${y.danhMuc ?? '—'}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${_fmtNgay(y.ngayBaoTri)}  ·  ${y.thoiGianDuKien}h  ·  ${y.gioBatDau ?? '—'}–${y.gioKetThuc ?? '—'}',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Colors.grey.shade800,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-            ],
-          ),
-        ),
-      ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }
