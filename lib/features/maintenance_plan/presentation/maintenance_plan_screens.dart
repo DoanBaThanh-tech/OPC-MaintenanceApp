@@ -727,13 +727,28 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                         prefixIcon: Icon(Icons.category_outlined),
                       ),
                       hint: const Text('Tất cả danh mục'),
-                      items: _controller.danhSachDanhMuc
-                          .map((dm) => DropdownMenuItem(value: dm, child: Text(dm)))
-                          .toList(),
+                      items: [
+                        const DropdownMenuItem<String>(value: null, child: Text('Tất cả danh mục')),
+                        ..._controller.danhSachDanhMuc.map((dm) {
+                          final coYc = _controller.danhMucCoYeuCau(dm);
+                          return DropdownMenuItem(
+                            value: dm,
+                            child: Text(
+                              coYc ? '$dm · có yêu cầu' : dm,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          );
+                        }),
+                      ],
                       onChanged: _controller.chonDanhMuc,
                     ),
                     const SizedBox(height: 16),
                     const Text('Thiết bị', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Chỉ hiện thiết bị đã có yêu cầu bảo trì (Đã xác nhận) trong tháng đang chọn.',
+                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.3),
+                    ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ThietBiRutGon>(
                       value: _controller.thietBiChon,
@@ -741,12 +756,40 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.precision_manufacturing_outlined),
                       ),
-                      hint: const Text('Chọn thiết bị'),
-                      items: _controller.dsThietBiDaLoc
-                          .map((tb) => DropdownMenuItem(value: tb, child: Text(tb.tenThietBi)))
-                          .toList(),
+                      hint: Text(
+                        _controller.dsThietBiDaLoc.isEmpty
+                            ? 'Không có thiết bị có YC trong tháng này'
+                            : 'Chọn thiết bị',
+                      ),
+                      items: _controller.dsThietBiDaLoc.map((tb) {
+                        final yc = _controller.yeuCauChoThietBi(tb.maThietBi);
+                        final nhan = yc == null
+                            ? tb.tenThietBi
+                            : '${tb.tenThietBi} · có YC #${yc.maYeuCauBaoTri}';
+                        return DropdownMenuItem(value: tb, child: Text(nhan, overflow: TextOverflow.ellipsis));
+                      }).toList(),
                       onChanged: _controller.chonThietBi,
                     ),
+                    if (_controller.yeuCauChon != null) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFECFDF5),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFA7F3D0)),
+                        ),
+                        child: Text(
+                          'YC #${_controller.yeuCauChon!.maYeuCauBaoTri} · '
+                              '${_controller.yeuCauChon!.ngayBaoTri.day.toString().padLeft(2, '0')}/'
+                              '${_controller.yeuCauChon!.ngayBaoTri.month.toString().padLeft(2, '0')}/'
+                              '${_controller.yeuCauChon!.namBaoTri} · '
+                              '${_controller.yeuCauChon!.thoiGianDuKien}h · '
+                              'Người gửi: ${_controller.yeuCauChon!.tenNguoiYeuCau ?? "—"}',
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     const Text('Tháng', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 8),

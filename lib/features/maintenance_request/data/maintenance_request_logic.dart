@@ -47,8 +47,7 @@ class YeuCauBaoTriItem {
   factory YeuCauBaoTriItem.fromJson(Map<String, dynamic> j) {
     DateTime parseDate(dynamic v) {
       if (v == null) return DateTime.now();
-      final s = v.toString();
-      return DateTime.tryParse(s) ?? DateTime.now();
+      return DateTime.tryParse(v.toString()) ?? DateTime.now();
     }
 
     return YeuCauBaoTriItem(
@@ -142,12 +141,14 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
   bool dangTai = true;
   bool dangGui = false;
   String? loi;
+  String? loiThoiGian;
+  String? loiNgay;
 
   List<ThietBiModel> get thietBiTheoDanhMuc {
     if (danhMucChon == null) return [];
     final nhom = nhomThietBi.where((n) => n.tenDanhMuc == danhMucChon);
     if (nhom.isEmpty) return [];
-    var list = nhom.first.danhSach;
+    var list = List<ThietBiModel>.from(nhom.first.danhSach);
     final q = (timKiem ?? '').trim().toLowerCase();
     if (q.isNotEmpty) {
       list = list.where((t) => t.tenThietBi.toLowerCase().contains(q)).toList();
@@ -157,9 +158,29 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
 
   List<String> get cacDanhMuc => nhomThietBi.map((e) => e.tenDanhMuc).toList();
 
+  /// Số > 0, không chữ / ký tự lạ (cho phép gõ sai để hiện lỗi đỏ)
   bool get thoiGianHopLe {
-    final v = double.tryParse(thoiGianCtrl.text.replaceAll(',', '.'));
+    final raw = thoiGianCtrl.text.trim().replaceAll(',', '.');
+    if (raw.isEmpty) return false;
+    if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(raw)) return false;
+    final v = double.tryParse(raw);
     return v != null && v > 0;
+  }
+
+  String? get thongBaoLoiThoiGian {
+    final raw = thoiGianCtrl.text.trim();
+    if (raw.isEmpty) return null;
+    if (thoiGianHopLe) return null;
+    return 'Chỉ nhập số dương (không âm, không chữ, không ký tự đặc biệt)';
+  }
+
+  void onThoiGianChanged(String _) {
+    loiThoiGian = thongBaoLoiThoiGian;
+    if (!thoiGianHopLe) {
+      gioBatDau = null;
+      gioKetThuc = null;
+    }
+    notifyListeners();
   }
 
   Future<void> taiThietBi() async {
@@ -198,6 +219,36 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
     if (ngayBaoTri != null && (ngayBaoTri!.month != t || ngayBaoTri!.year != n)) {
       ngayBaoTri = null;
     }
+    loiNgay = null;
+    notifyListeners();
+  }
+
+  void setNgayBaoTri(DateTime d) {
+    final homNay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    if (!d.isAfter(homNay)) {
+      loiNgay = 'Ngày bảo trì phải lớn hơn ngày tạo yêu cầu (${homNay.day.toString().padLeft(2, '0')}/${homNay.month.toString().padLeft(2, '0')}/${homNay.year})';
+      ngayBaoTri = null;
+    } else {
+      loiNgay = null;
+      ngayBaoTri = d;
+    }
+    notifyListeners();
+  }
+
+  void resetForm() {
+    danhMucChon = null;
+    thietBiChon = null;
+    thang = DateTime.now().month;
+    nam = DateTime.now().year;
+    ngayBaoTri = null;
+    thoiGianCtrl.clear();
+    gioBatDau = null;
+    gioKetThuc = null;
+    ghiChuCtrl.clear();
+    timKiem = '';
+    loi = null;
+    loiThoiGian = null;
+    loiNgay = null;
     notifyListeners();
   }
 
@@ -209,12 +260,19 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
       return false;
     }
     if (ngayBaoTri == null) {
-      loi = 'Chọn ngày bảo trì.';
+      loi = loiNgay ?? 'Chọn ngày bảo trì (phải sau ngày hôm nay).';
+      notifyListeners();
+      return false;
+    }
+    final homNay = DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
+    if (!ngayBaoTri!.isAfter(homNay)) {
+      loi = 'Ngày bảo trì phải lớn hơn ngày tạo yêu cầu.';
       notifyListeners();
       return false;
     }
     if (!thoiGianHopLe) {
-      loi = 'Thời gian dự kiến phải là số > 0.';
+      loiThoiGian = thongBaoLoiThoiGian ?? 'Thời gian dự kiến không hợp lệ.';
+      loi = 'Sửa thời gian dự kiến trước khi gửi.';
       notifyListeners();
       return false;
     }
@@ -241,11 +299,12 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
         thang: thang,
         nam: nam,
         ngayBaoTri: ngayBaoTri!,
-        thoiGianDuKien: double.parse(thoiGianCtrl.text.replaceAll(',', '.')),
+        thoiGianDuKien: double.parse(thoiGianCtrl.text.trim().replaceAll(',', '.')),
         gioBatDau: fmt(gioBatDau!),
         gioKetThuc: fmt(gioKetThuc!),
         ghiChu: ghiChuCtrl.text.trim().isEmpty ? null : ghiChuCtrl.text.trim(),
       );
+      resetForm();
       return true;
     } on ApiException catch (e) {
       loi = e.message;
@@ -264,6 +323,42 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
     thoiGianCtrl.dispose();
     ghiChuCtrl.dispose();
     super.dispose();
+  }
+}
+
+class QuanLyYeuCauController extends ChangeNotifier {
+  List<YeuCauBaoTriItem> danhSach = [];
+  bool dangTai = true;
+  String? loi;
+  String tab = 'Bảo trì'; // Bảo trì | Sửa chữa
+
+  Future<void> tai() async {
+    dangTai = true;
+    loi = null;
+    notifyListeners();
+    try {
+      if (tab == 'Sửa chữa') {
+        // Khuôn sẵn — chưa có API sửa chữa
+        danhSach = [];
+      } else {
+        final all = await MaintenanceRequestService.layDanhSach();
+        danhSach = all
+            .where((e) => e.trangThai == 'Chờ xác nhận' || e.trangThai == 'Đã xác nhận' || e.trangThai == 'Đã tạo hồ sơ' || e.trangThai == 'Từ chối')
+            .toList();
+      }
+    } catch (e) {
+      loi = '$e';
+      danhSach = [];
+    } finally {
+      dangTai = false;
+      notifyListeners();
+    }
+  }
+
+  void doiTab(String t) {
+    if (tab == t) return;
+    tab = t;
+    tai();
   }
 }
 
@@ -287,9 +382,9 @@ class XacNhanYeuCauController extends ChangeNotifier {
     }
   }
 
-  Future<bool> xuLy(int maYeuCau, {required String quyetDinh, String? lyDo}) async {
+  Future<bool> xacNhan(int maYeuCau) async {
     try {
-      await MaintenanceRequestService.xacNhan(maYeuCau: maYeuCau, quyetDinh: quyetDinh, lyDo: lyDo);
+      await MaintenanceRequestService.xacNhan(maYeuCau: maYeuCau, quyetDinh: 'Xác nhận');
       await tai();
       return true;
     } on ApiException catch (e) {

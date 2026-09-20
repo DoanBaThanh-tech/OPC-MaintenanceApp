@@ -71,9 +71,9 @@ class DashboardLogic {
         return [
           MenuGroup(tieuDe: 'Yêu cầu bảo trì', muc: [
             MenuItemData(
-              icon: Icons.send_rounded,
-              label: 'Tạo yêu cầu bảo trì',
-              screenBuilder: () => const TaoYeuCauBaoTriScreen(),
+              icon: Icons.assignment_outlined,
+              label: 'Quản lý yêu cầu',
+              screenBuilder: () => const QuanLyYeuCauScreen(),
             ),
           ]),
         ];
