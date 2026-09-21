@@ -57,6 +57,11 @@ class HoSoBaoTri {
   final String trangThai;
   final String? lyDoTuChoi;
   final int? maPhanCong;
+  /// Trạng thái phân công: Chờ xác nhận | Xác nhận | Từ chối | …
+  final String? trangThaiPhanCong;
+  final String? lyDoTuChoiPhanCong;
+  final String? tenNhanVienThucHien;
+  final DateTime? ngayPhanCong;
   final int nam;
   final bool namTuKeHoach;
   final String? rowVersion;
@@ -76,14 +81,28 @@ class HoSoBaoTri {
     required this.trangThai,
     this.lyDoTuChoi,
     this.maPhanCong,
+    this.trangThaiPhanCong,
+    this.lyDoTuChoiPhanCong,
+    this.tenNhanVienThucHien,
+    this.ngayPhanCong,
     required this.nam,
     required this.namTuKeHoach,
     this.rowVersion,
   });
 
   bool get choDuyet => trangThai == 'Chờ duyệt';
-  bool get daDuyetChuaPhanCong => trangThai == 'Đã duyệt' && maPhanCong == null;
-  bool get daDuyetChoXacNhan => trangThai == 'Đã duyệt' && maPhanCong != null;
+  bool get daDuyetChuaPhanCong =>
+      trangThai == 'Đã duyệt' &&
+          (maPhanCong == null || trangThaiPhanCong == null || trangThaiPhanCong == 'Đã hủy');
+  /// NVKT đã từ chối nhận việc — tổ trưởng thấy lý do và phân công lại
+  bool get phanCongBiTuChoi =>
+      trangThai == 'Đã duyệt' && trangThaiPhanCong == 'Từ chối';
+  bool get daDuyetChoXacNhan =>
+      trangThai == 'Đã duyệt' &&
+          maPhanCong != null &&
+          (trangThaiPhanCong == 'Chờ xác nhận' ||
+              trangThaiPhanCong == 'Đã phân công' ||
+              trangThaiPhanCong == null);
   bool get dangThucHien => trangThai == 'Đang thực hiện';
   bool get biTuChoi => trangThai == 'Từ chối';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
@@ -113,6 +132,10 @@ class HoSoBaoTri {
       trangThai: (j['trangThai'] ?? j['TrangThai'])?.toString() ?? '',
       lyDoTuChoi: (j['lyDoTuChoi'] ?? j['LyDoTuChoi'])?.toString(),
       maPhanCong: asIntN(j['maPhanCong'] ?? j['MaPhanCong']),
+      trangThaiPhanCong: (j['trangThaiPhanCong'] ?? j['TrangThaiPhanCong'])?.toString(),
+      lyDoTuChoiPhanCong: (j['lyDoTuChoiPhanCong'] ?? j['LyDoTuChoiPhanCong'])?.toString(),
+      tenNhanVienThucHien: (j['tenNhanVienThucHien'] ?? j['TenNhanVienThucHien'])?.toString(),
+      ngayPhanCong: asDate(j['ngayPhanCong'] ?? j['NgayPhanCong']),
       nam: asInt(j['nam'] ?? j['Nam'] ?? ngayTao.year),
       namTuKeHoach: (j['namTuKeHoach'] ?? j['NamTuKeHoach']) == true,
       rowVersion: (j['rowVersion'] ?? j['RowVersion'])?.toString(),

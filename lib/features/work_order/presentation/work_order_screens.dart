@@ -633,7 +633,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                   ),
                 ),
 
-                // Lý do từ chối (chỉ hiện khi bị từ chối)
+                // Lý do từ chối hồ sơ (GĐ từ chối duyệt)
                 if (hs.biTuChoi && hs.lyDoTuChoi != null) ...[
                   const SizedBox(height: 12),
                   Card(
@@ -643,7 +643,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Lý do từ chối',
+                          const Text('Lý do từ chối (duyệt hồ sơ)',
                               style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w700)),
                           const SizedBox(height: 6),
                           Text(hs.lyDoTuChoi!, style: const TextStyle(color: AppColors.danger)),
@@ -653,14 +653,69 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                   ),
                 ],
 
+                // NVKT từ chối nhận phân công — hiện rõ để tổ trưởng không bị mất thông tin
+                if (hs.phanCongBiTuChoi) ...[
+                  const SizedBox(height: 12),
+                  Card(
+                    color: AppColors.danger.withValues(alpha: 0.07),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: AppColors.danger.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Text(
+                                  'Phân công: Từ chối',
+                                  style: TextStyle(
+                                    color: AppColors.danger,
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          _dong('Nhân viên từ chối', hs.tenNhanVienThucHien ?? '—'),
+                          if (hs.ngayPhanCong != null) ...[
+                            const Divider(height: 18),
+                            _dong('Ngày phân công', _fmt(hs.ngayPhanCong)),
+                          ],
+                          const Divider(height: 18),
+                          const Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Lý do từ chối nhận việc',
+                              style: TextStyle(fontSize: 11, color: AppColors.danger, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            (hs.lyDoTuChoiPhanCong != null && hs.lyDoTuChoiPhanCong!.isNotEmpty)
+                                ? hs.lyDoTuChoiPhanCong!
+                                : '—',
+                            style: const TextStyle(color: AppColors.danger, height: 1.35),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 24),
 
-                // Nút hành động
                 // Nút hành động theo trạng thái + vai trò
-                if (hs.daDuyetChuaPhanCong && _laToTruong)
+                if ((hs.daDuyetChuaPhanCong || hs.phanCongBiTuChoi) && _laToTruong)
                   ElevatedButton.icon(
                     icon: const Icon(Icons.groups_rounded),
-                    label: const Text('Phân công nhân viên'),
+                    label: Text(hs.phanCongBiTuChoi ? 'Phân công lại nhân viên khác' : 'Phân công nhân viên'),
                     onPressed: () async {
                       final ok = await Navigator.push(
                         context,
@@ -700,12 +755,16 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         color: AppColors.primary.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Icon(Icons.hourglass_top_rounded, size: 20),
-                          SizedBox(width: 8),
+                          const Icon(Icons.hourglass_top_rounded, size: 20),
+                          const SizedBox(width: 8),
                           Expanded(
-                            child: Text('Đã phân công — chờ nhân viên kỹ thuật xác nhận nhận việc'),
+                            child: Text(
+                              hs.tenNhanVienThucHien != null
+                                  ? 'Đã phân công ${hs.tenNhanVienThucHien} — chờ xác nhận nhận việc'
+                                  : 'Đã phân công — chờ nhân viên kỹ thuật xác nhận nhận việc',
+                            ),
                           ),
                         ],
                       ),
@@ -1030,6 +1089,12 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
                           ? 'Chạm để chọn ngày'
                           : '${_ngayDuKien!.day.toString().padLeft(2, '0')}/${_ngayDuKien!.month.toString().padLeft(2, '0')}/${_ngayDuKien!.year}',
                       onTap: _chonNgay,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Mỗi thiết bị chỉ 1 lần bảo trì trong 1 tháng. '
+                          'Nếu tháng đích đã có kế hoạch/hồ sơ thì không đổi được sang tháng đó.',
+                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, height: 1.3),
                     ),
                     const Divider(height: 20),
                     Opacity(
@@ -2019,27 +2084,6 @@ class _LichSuPhanCongScreenState extends State<LichSuPhanCongScreen>
                                     ),
                                   ],
                                 ),
-                                if (item.trangThai == 'Chờ xác nhận' ||
-                                    item.trangThai == 'Từ chối') ...[
-                                  const SizedBox(height: 14),
-                                  SizedBox(
-                                    width: double.infinity,
-                                    child: OutlinedButton.icon(
-                                      onPressed:
-                                      _controller.dangHuy ? null : () => _huyPhanCong(item),
-                                      icon: const Icon(Icons.cancel_outlined, size: 18),
-                                      label: const Text('Hủy phân công'),
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppColors.danger,
-                                        side: const BorderSide(color: AppColors.danger),
-                                        padding: const EdgeInsets.symmetric(vertical: 12),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ],
                             ),
                           ),
