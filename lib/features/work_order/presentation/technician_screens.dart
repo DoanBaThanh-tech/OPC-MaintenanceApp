@@ -677,13 +677,31 @@ class _KetQuaThucHienScreenState extends State<KetQuaThucHienScreen> {
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
-    final initial = _ctrl.ngayGhiNhan ?? now;
+    // Không cho chọn ngày/tháng trước ngày dự kiến bảo trì trong hồ sơ
+    DateTime firstDate = DateTime(now.year - 2);
+    DateTime lastDate = DateTime(now.year + 2);
+    DateTime initial = _ctrl.ngayGhiNhan ?? now;
+
+    final dk = _ctrl.chon?.ngayDuKienBaoTri;
+    if (dk != null) {
+      // firstDate = đúng ngày dự kiến bảo trì (không cho chọn trước)
+      firstDate = DateTime(dk.year, dk.month, dk.day);
+      // Chỉ cho chọn trong tháng dự kiến bảo trì
+      lastDate = DateTime(dk.year, dk.month + 1, 0); // ngày cuối tháng dự kiến
+      // initialDate phải nằm trong [firstDate, lastDate]
+      if (initial.isBefore(firstDate)) {
+        initial = firstDate;
+      } else if (initial.isAfter(lastDate)) {
+        initial = lastDate;
+      }
+    }
+
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: DateTime(now.year - 2),
-      lastDate: DateTime(now.year + 2),
-      helpText: 'Chọn ngày ghi nhận',
+      firstDate: firstDate,
+      lastDate: lastDate,
+      helpText: 'Chọn ngày ghi nhận (không trước ngày dự kiến bảo trì)',
     );
     if (picked != null) _ctrl.datNgayGhiNhan(picked);
   }
@@ -770,7 +788,7 @@ class _KetQuaThucHienScreenState extends State<KetQuaThucHienScreen> {
                       Text('Thiết bị: ${_ctrl.chon!.tenThietBi ?? '—'}', style: const TextStyle(fontWeight: FontWeight.w600)),
                       if (_ctrl.chon!.ngayDuKienBaoTri != null)
                         Text(
-                          'Tháng dự kiến: ${_ctrl.chon!.ngayDuKienBaoTri!.month}/${_ctrl.chon!.ngayDuKienBaoTri!.year}',
+                          'Ngày dự kiến bảo trì: ${_ctrl.chon!.ngayDuKienBaoTri!.day.toString().padLeft(2, '0')}/${_ctrl.chon!.ngayDuKienBaoTri!.month.toString().padLeft(2, '0')}/${_ctrl.chon!.ngayDuKienBaoTri!.year}',
                           style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
                         ),
                     ],

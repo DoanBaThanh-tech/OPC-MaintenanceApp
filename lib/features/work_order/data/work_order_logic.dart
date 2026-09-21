@@ -982,9 +982,15 @@ class KetQuaThucHienController extends ChangeNotifier {
 
   void chonYeuCau(YeuCauPhanCong? y) {
     chon = y;
-    ngayGhiNhan = null;
     loiNgay = null;
     loi = null;
+    // Tự gán ngày ghi nhận = ngày dự kiến bảo trì theo hồ sơ (nếu có)
+    if (y?.ngayDuKienBaoTri != null) {
+      final dk = y!.ngayDuKienBaoTri!;
+      ngayGhiNhan = DateTime(dk.year, dk.month, dk.day);
+    } else {
+      ngayGhiNhan = null;
+    }
     notifyListeners();
   }
 
@@ -993,9 +999,16 @@ class KetQuaThucHienController extends ChangeNotifier {
     loiNgay = null;
     if (chon?.ngayDuKienBaoTri != null) {
       final dk = chon!.ngayDuKienBaoTri!;
-      if (d.year != dk.year || d.month != dk.month) {
+      final ngayDk = DateTime(dk.year, dk.month, dk.day);
+      final ngayChon = DateTime(d.year, d.month, d.day);
+      // Không được chọn ngày/tháng trước ngày dự kiến bảo trì
+      if (ngayChon.isBefore(ngayDk)) {
         loiNgay =
-        'Ngày ghi nhận phải nằm trong tháng ${dk.month}/${dk.year} (tháng dự kiến bảo trì).';
+        'Ngày ghi nhận không được trước ngày dự kiến bảo trì (${ngayDk.day.toString().padLeft(2, '0')}/${ngayDk.month.toString().padLeft(2, '0')}/${ngayDk.year}).';
+      } else if (d.year != dk.year || d.month != dk.month) {
+        // Phải nằm đúng tháng/năm dự kiến bảo trì theo hồ sơ
+        loiNgay =
+        'Ngày ghi nhận phải nằm trong tháng ${dk.month}/${dk.year} (tháng dự kiến bảo trì theo hồ sơ).';
       }
     }
     notifyListeners();
