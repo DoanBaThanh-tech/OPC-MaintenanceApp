@@ -60,6 +60,7 @@ class HoSoBaoTri {
   /// Trạng thái phân công: Chờ xác nhận | Xác nhận | Từ chối | …
   final String? trangThaiPhanCong;
   final String? lyDoTuChoiPhanCong;
+  final int? maNhanVienThucHien;
   final String? tenNhanVienThucHien;
   final DateTime? ngayPhanCong;
   final int nam;
@@ -83,6 +84,7 @@ class HoSoBaoTri {
     this.maPhanCong,
     this.trangThaiPhanCong,
     this.lyDoTuChoiPhanCong,
+    this.maNhanVienThucHien,
     this.tenNhanVienThucHien,
     this.ngayPhanCong,
     required this.nam,
@@ -134,6 +136,7 @@ class HoSoBaoTri {
       maPhanCong: asIntN(j['maPhanCong'] ?? j['MaPhanCong']),
       trangThaiPhanCong: (j['trangThaiPhanCong'] ?? j['TrangThaiPhanCong'])?.toString(),
       lyDoTuChoiPhanCong: (j['lyDoTuChoiPhanCong'] ?? j['LyDoTuChoiPhanCong'])?.toString(),
+      maNhanVienThucHien: asIntN(j['maNhanVienThucHien'] ?? j['MaNhanVienThucHien']),
       tenNhanVienThucHien: (j['tenNhanVienThucHien'] ?? j['TenNhanVienThucHien'])?.toString(),
       ngayPhanCong: asDate(j['ngayPhanCong'] ?? j['NgayPhanCong']),
       nam: asInt(j['nam'] ?? j['Nam'] ?? ngayTao.year),
@@ -551,6 +554,9 @@ class PhanCongBaoTriController extends ChangeNotifier {
 
   String? tenNguoiPhanCong;
   int? maNguoiPhanCong;
+  /// NV vừa từ chối đúng hồ sơ này (không áp dụng thiết bị khác)
+  int? maNhanVienBiTuChoi;
+  String? tenNhanVienBiLoai;
 
   // Lấy từ hồ sơ bảo trì — chỉ đọc, không cho sửa
   HoSoBaoTri? hoSo;
@@ -587,8 +593,15 @@ class PhanCongBaoTriController extends ChangeNotifier {
         loi = 'Hồ sơ chưa có giờ bắt đầu/kết thúc. Vui lòng sửa hồ sơ trước khi phân công.';
       }
 
-      // 2) Danh sách NVKT
+      // 2) Danh sách NVKT đầy đủ — người vừa từ chối hồ sơ NÀY vẫn hiện nhưng không chọn được
       dsNhanVien = await WorkOrderService.layDanhSachNhanVienKyThuat();
+      if (hoSo?.phanCongBiTuChoi == true && hoSo?.maNhanVienThucHien != null) {
+        maNhanVienBiTuChoi = hoSo!.maNhanVienThucHien;
+        tenNhanVienBiLoai = hoSo?.tenNhanVienThucHien;
+      } else {
+        maNhanVienBiTuChoi = null;
+        tenNhanVienBiLoai = null;
+      }
       tenNguoiPhanCong = 'Tổ trưởng đang đăng nhập'; // TODO: lấy từ TokenStorage
     } catch (e) {
       loi = 'Không tải được dữ liệu: $e';
@@ -599,11 +612,22 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   void chonNhanVien(NhanVienRutGon nv) {
-    // Bỏ ràng buộc max 3 / dangBan — luôn cho chọn
+    // Chỉ chặn trên hồ sơ này nếu NV vừa từ chối phân công hồ sơ này
+    if (maNhanVienBiTuChoi != null && nv.maNhanVien == maNhanVienBiTuChoi) {
+      chon = null;
+      loi =
+      '${tenNhanVienBiLoai ?? "Nhân viên này"} đã từ chối nhận việc trên hồ sơ này. '
+          'Vui lòng chọn nhân viên khác.';
+      notifyListeners();
+      return;
+    }
     chon = nv;
     loi = null;
     notifyListeners();
   }
+
+  bool laNhanVienBiTuChoi(int maNhanVien) =>
+      maNhanVienBiTuChoi != null && maNhanVien == maNhanVienBiTuChoi;
 
   DateTime get thoiDiemBatDau {
     final d = ngayDuKien ?? DateTime.now();
@@ -620,6 +644,13 @@ class PhanCongBaoTriController extends ChangeNotifier {
   Future<bool> xacNhan(int maHoSoBaoTri) async {
     if (chon == null) {
       loi = 'Vui lòng chọn nhân viên thực hiện';
+      notifyListeners();
+      return false;
+    }
+    if (hoSo?.phanCongBiTuChoi == true &&
+        hoSo?.maNhanVienThucHien != null &&
+        chon!.maNhanVien == hoSo!.maNhanVienThucHien) {
+      loi = 'Nhân viên này đã từ chối. Vui lòng chọn người khác.';
       notifyListeners();
       return false;
     }
