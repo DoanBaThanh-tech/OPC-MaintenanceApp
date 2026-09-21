@@ -221,23 +221,22 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
         .toList();
   }
 
-  /// Cho phép gõ số âm / ký tự lạ — nhưng chỉ hợp lệ khi là số > 0
+  /// Bảo trì trong ngày: chỉ hợp lệ khi 0 < số giờ ≤ 24
+  static const double maxGioTrongNgay = 24;
+
   bool get thoiGianHopLe {
     final raw = thoiGianCtrl.text.trim().replaceAll(',', '.');
     if (raw.isEmpty) return false;
     final v = double.tryParse(raw);
-    return v != null && v > 0;
+    return v != null && v > 0 && v <= maxGioTrongNgay;
   }
 
   void validateThoiGian() {
     final raw = thoiGianCtrl.text.trim();
     if (raw.isEmpty) {
       loiThoiGian = null;
-      // Xoá giờ đã chọn nếu không còn hợp lệ
-      if (!thoiGianHopLe) {
-        gioBatDau = null;
-        gioKetThuc = null;
-      }
+      gioBatDau = null;
+      gioKetThuc = null;
       notifyListeners();
       return;
     }
@@ -249,6 +248,10 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
       gioKetThuc = null;
     } else if (v <= 0) {
       loiThoiGian = 'Thời gian dự kiến phải lớn hơn 0';
+      gioBatDau = null;
+      gioKetThuc = null;
+    } else if (v > maxGioTrongNgay) {
+      loiThoiGian = 'Bảo trì trong ngày — tối đa $maxGioTrongNgay giờ';
       gioBatDau = null;
       gioKetThuc = null;
     } else {
@@ -376,7 +379,8 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
       return false;
     }
     if (!thoiGianHopLe) {
-      loi = 'Thời gian dự kiến phải là số lớn hơn 0.';
+      loi = loiThoiGian ??
+          'Thời gian dự kiến phải lớn hơn 0 và không quá $maxGioTrongNgay giờ trong ngày.';
       notifyListeners();
       return false;
     }

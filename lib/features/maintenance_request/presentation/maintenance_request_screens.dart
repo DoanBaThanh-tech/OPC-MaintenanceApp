@@ -553,6 +553,7 @@ class _TaoYeuCauBaoTriScreenState extends State<TaoYeuCauBaoTriScreen> {
               keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
               decoration: InputDecoration(
                 labelText: 'Thời gian dự kiến (giờ)',
+                helperText: 'Trong ngày — lớn hơn 0 và tối đa 24 giờ',
                 border: const OutlineInputBorder(),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 errorText: _c.loiThoiGian,
@@ -593,7 +594,7 @@ class _TaoYeuCauBaoTriScreenState extends State<TaoYeuCauBaoTriScreen> {
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  'Sửa thời gian dự kiến hợp lệ để chọn giờ bắt đầu / kết thúc.',
+                  'Nhập số giờ hợp lệ (0 < giờ ≤ 24) để chọn giờ bắt đầu / kết thúc.',
                   style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
                 ),
               ),
