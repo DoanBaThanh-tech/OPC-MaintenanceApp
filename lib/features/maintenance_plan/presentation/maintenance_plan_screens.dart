@@ -883,11 +883,24 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                         child: ListTile(
                           title: Text(_controller.chiTietChon!.thietBi.tenThietBi),
                           subtitle: Text('Dự kiến: ${_fmt(_controller.chiTietChon!.ngayDuKienBaoTri)}'),
-                          trailing: IconButton(
+                          trailing: _controller.dangKhoaTheoYeuCau
+                              ? Tooltip(
+                            message: 'Khóa theo yêu cầu xưởng đã xác nhận',
+                            child: Icon(Icons.lock_outline, color: Colors.grey.shade500),
+                          )
+                              : IconButton(
                             icon: const Icon(Icons.edit_calendar),
                             onPressed: _chonNgay,
                           ),
                         ),
+                      ),
+                    ],
+                    if (_controller.dangKhoaTheoYeuCau) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Các trường dưới đây đã tự điền từ yêu cầu xưởng xác nhận và bị khóa để tránh sai sót. '
+                            'Chỉ chỉnh sửa được khi giám đốc từ chối hồ sơ và yêu cầu sửa lại.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.35),
                       ),
                     ],
                     const SizedBox(height: 20),
@@ -896,9 +909,15 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                     TextField(
                       controller: _controller.noiDungCongViecController,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
+                      readOnly: _controller.dangKhoaTheoYeuCau,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
                         hintText: 'Mô tả công việc cần bảo trì...',
+                        filled: _controller.dangKhoaTheoYeuCau,
+                        fillColor: _controller.dangKhoaTheoYeuCau ? Colors.grey.shade100 : null,
+                        suffixIcon: _controller.dangKhoaTheoYeuCau
+                            ? Icon(Icons.lock_outline, size: 18, color: Colors.grey.shade500)
+                            : null,
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -907,20 +926,27 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                     TextField(
                       controller: _controller.thoiGianTextController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
+                      readOnly: _controller.dangKhoaTheoYeuCau,
                       decoration: InputDecoration(
                         border: const OutlineInputBorder(),
                         suffixText: 'giờ',
-                        helperText: 'Trong ngày — lớn hơn 0 và tối đa 24 giờ',
+                        helperText: _controller.dangKhoaTheoYeuCau
+                            ? 'Khóa theo yêu cầu đã xác nhận'
+                            : 'Trong ngày — lớn hơn 0 và tối đa 24 giờ',
                         errorText: _controller.loiThoiGianDuKien,
+                        filled: _controller.dangKhoaTheoYeuCau,
+                        fillColor: _controller.dangKhoaTheoYeuCau ? Colors.grey.shade100 : null,
                       ),
-                      onChanged: _controller.datThoiGianDuKienTuChuoi,
+                      onChanged: _controller.dangKhoaTheoYeuCau ? null : _controller.datThoiGianDuKienTuChuoi,
                     ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
                           child: InkWell(
-                            onTap: () async {
+                            onTap: _controller.dangKhoaTheoYeuCau
+                                ? null
+                                : () async {
                               final hopLe = _controller.thoiGianDuKien != null &&
                                   _controller.thoiGianDuKien! > 0 &&
                                   _controller.thoiGianDuKien! <= 24 &&
@@ -933,9 +959,11 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                               if (t != null) _controller.datGioBatDau(t);
                             },
                             child: InputDecorator(
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Giờ bắt đầu',
-                                border: OutlineInputBorder(),
+                                border: const OutlineInputBorder(),
+                                filled: _controller.dangKhoaTheoYeuCau,
+                                fillColor: _controller.dangKhoaTheoYeuCau ? Colors.grey.shade100 : null,
                               ),
                               child: Text(_controller.gioBatDau?.format(context) ?? 'Chọn giờ'),
                             ),

@@ -154,9 +154,81 @@ class MaintenanceRequestService {
 
 /// Danh sách yêu cầu của Tổ trưởng cơ điện (tab Bảo trì) — giữ mọi trạng thái để quản lý
 class DanhSachYeuCauController extends ChangeNotifier {
-  List<YeuCauBaoTriItem> danhSach = [];
+  List<YeuCauBaoTriItem> danhSachGoc = [];
   bool dangTai = true;
   String? loi;
+
+  /// Bộ lọc: danh mục thiết bị, thiết bị, năm
+  String? locDanhMuc;
+  int? locMaThietBi;
+  int? locNam;
+
+  List<YeuCauBaoTriItem> get danhSach {
+    return danhSachGoc.where((y) {
+      if (locDanhMuc != null && locDanhMuc!.isNotEmpty) {
+        final dm = y.danhMuc ?? 'Chưa phân loại';
+        if (dm != locDanhMuc) return false;
+      }
+      if (locMaThietBi != null && y.maThietBi != locMaThietBi) return false;
+      if (locNam != null && y.namBaoTri != locNam) return false;
+      return true;
+    }).toList();
+  }
+
+  /// Các danh mục có trong danh sách gốc
+  List<String> get cacDanhMuc {
+    final s = danhSachGoc.map((y) => y.danhMuc ?? 'Chưa phân loại').toSet().toList()..sort();
+    return s;
+  }
+
+  /// Thiết bị (id + tên) — lọc theo danh mục đang chọn nếu có
+  List<({int ma, String ten})> get cacThietBi {
+    final filtered = locDanhMuc == null || locDanhMuc!.isEmpty
+        ? danhSachGoc
+        : danhSachGoc.where((y) => (y.danhMuc ?? 'Chưa phân loại') == locDanhMuc);
+    final map = <int, String>{};
+    for (final y in filtered) {
+      map[y.maThietBi] = y.tenThietBi ?? 'TB #${y.maThietBi}';
+    }
+    final list = map.entries.map((e) => (ma: e.key, ten: e.value)).toList();
+    list.sort((a, b) => a.ten.compareTo(b.ten));
+    return list;
+  }
+
+  /// Các năm có trong danh sách gốc
+  List<int> get cacNam {
+    final s = danhSachGoc.map((y) => y.namBaoTri).toSet().toList()..sort((a, b) => b.compareTo(a));
+    return s;
+  }
+
+  void datLocDanhMuc(String? dm) {
+    locDanhMuc = dm;
+    // Reset thiết bị nếu không còn khớp danh mục
+    if (locMaThietBi != null && locDanhMuc != null) {
+      final still = cacThietBi.any((t) => t.ma == locMaThietBi);
+      if (!still) locMaThietBi = null;
+    }
+    notifyListeners();
+  }
+
+  void datLocThietBi(int? ma) {
+    locMaThietBi = ma;
+    notifyListeners();
+  }
+
+  void datLocNam(int? nam) {
+    locNam = nam;
+    notifyListeners();
+  }
+
+  void xoaLoc() {
+    locDanhMuc = null;
+    locMaThietBi = null;
+    locNam = null;
+    notifyListeners();
+  }
+
+  bool get dangLoc => locDanhMuc != null || locMaThietBi != null || locNam != null;
 
   Future<void> tai() async {
     dangTai = true;
@@ -164,11 +236,11 @@ class DanhSachYeuCauController extends ChangeNotifier {
     notifyListeners();
     try {
       // Lấy toàn bộ yêu cầu (mọi trạng thái) để quản lý
-      danhSach = await MaintenanceRequestService.layDanhSach();
-      danhSach.sort((a, b) => b.maYeuCauBaoTri.compareTo(a.maYeuCauBaoTri));
+      danhSachGoc = await MaintenanceRequestService.layDanhSach();
+      danhSachGoc.sort((a, b) => b.maYeuCauBaoTri.compareTo(a.maYeuCauBaoTri));
     } catch (e) {
       loi = '$e';
-      danhSach = [];
+      danhSachGoc = [];
     } finally {
       dangTai = false;
       notifyListeners();

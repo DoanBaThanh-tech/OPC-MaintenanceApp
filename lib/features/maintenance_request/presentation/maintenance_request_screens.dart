@@ -145,15 +145,110 @@ class _DanhSachYeuCauBaoTriTab extends StatelessWidget {
     }
   }
 
+  Widget _buildBoLoc() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.filter_list_rounded, size: 18, color: AppColors.primary),
+              const SizedBox(width: 6),
+              const Text('Bộ lọc', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+              const Spacer(),
+              if (controller.dangLoc)
+                TextButton(
+                  onPressed: controller.xoaLoc,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text('Xóa lọc', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          // Danh mục
+          DropdownButtonFormField<String?>(
+            value: controller.locDanhMuc,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Danh mục thiết bị',
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+            items: [
+              const DropdownMenuItem<String?>(value: null, child: Text('Tất cả danh mục')),
+              ...controller.cacDanhMuc.map(
+                    (dm) => DropdownMenuItem(value: dm, child: Text(dm, overflow: TextOverflow.ellipsis)),
+              ),
+            ],
+            onChanged: controller.datLocDanhMuc,
+          ),
+          const SizedBox(height: 10),
+          // Thiết bị
+          DropdownButtonFormField<int?>(
+            value: controller.locMaThietBi,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Thiết bị',
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+            items: [
+              const DropdownMenuItem<int?>(value: null, child: Text('Tất cả thiết bị')),
+              ...controller.cacThietBi.map(
+                    (t) => DropdownMenuItem(
+                  value: t.ma,
+                  child: Text(t.ten, overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ],
+            onChanged: controller.datLocThietBi,
+          ),
+          const SizedBox(height: 10),
+          // Năm
+          DropdownButtonFormField<int?>(
+            value: controller.locNam,
+            isExpanded: true,
+            decoration: const InputDecoration(
+              labelText: 'Năm',
+              border: OutlineInputBorder(),
+              isDense: true,
+              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            ),
+            items: [
+              const DropdownMenuItem<int?>(value: null, child: Text('Tất cả năm')),
+              ...controller.cacNam.map(
+                    (n) => DropdownMenuItem(value: n, child: Text('$n')),
+              ),
+            ],
+            onChanged: controller.datLocNam,
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (controller.dangTai) {
       return const Center(child: CircularProgressIndicator());
     }
-    if (controller.loi != null && controller.danhSach.isEmpty) {
+    if (controller.loi != null && controller.danhSachGoc.isEmpty) {
       return Center(child: Text(controller.loi!, style: const TextStyle(color: AppColors.danger)));
     }
-    if (controller.danhSach.isEmpty) {
+    if (controller.danhSachGoc.isEmpty) {
       return RefreshIndicator(
         onRefresh: controller.tai,
         child: ListView(
@@ -180,115 +275,141 @@ class _DanhSachYeuCauBaoTriTab extends StatelessWidget {
       );
     }
 
+    final list = controller.danhSach;
     return RefreshIndicator(
       onRefresh: controller.tai,
       child: ListView.separated(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
-        itemCount: controller.danhSach.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
+        padding: const EdgeInsets.fromLTRB(0, 0, 0, 88),
+        itemCount: list.isEmpty ? 2 : list.length + 1, // +1 bộ lọc; +1 empty msg
+        separatorBuilder: (context, i) {
+          if (i == 0) return const SizedBox(height: 12);
+          return const SizedBox(height: 10);
+        },
         itemBuilder: (context, i) {
-          final y = controller.danhSach[i];
-          final c = _statusColor(y.trangThai);
-          final biTuChoi = y.trangThai == 'Từ chối';
-          return Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: Colors.grey.shade200),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        y.tenThietBi ?? 'Thiết bị #${y.maThietBi}',
-                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: c.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        y.trangThai,
-                        style: TextStyle(color: c, fontWeight: FontWeight.w700, fontSize: 11.5),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'YC #${y.maYeuCauBaoTri} · ${y.danhMuc ?? '—'}',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Ngày BT: ${y.ngayBaoTri.day.toString().padLeft(2, '0')}/'
-                      '${y.ngayBaoTri.month.toString().padLeft(2, '0')}/'
-                      '${y.ngayBaoTri.year}'
-                      ' · ${y.thoiGianDuKien}h'
-                      '${y.gioBatDau != null ? ' · ${y.gioBatDau}–${y.gioKetThuc}' : ''}',
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                if (y.ghiChu != null && y.ghiChu!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+          if (i == 0) return _buildBoLoc();
+          if (list.isEmpty) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
+              child: Column(
+                children: [
+                  Icon(Icons.search_off_rounded, size: 48, color: Colors.grey.shade400),
+                  const SizedBox(height: 10),
                   Text(
-                    y.ghiChu!,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
+                    'Không có yêu cầu khớp bộ lọc',
+                    style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.w600),
                   ),
                 ],
-                if (y.lyDoTuChoi != null && y.lyDoTuChoi!.isNotEmpty) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    'Lý do từ chối: ${y.lyDoTuChoi}',
-                    style: const TextStyle(color: AppColors.danger, fontSize: 12.5),
-                  ),
-                ],
-                // Chỉ yêu cầu Từ chối mới hiện nút Chỉnh sửa
-                if (biTuChoi) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () async {
-                        final ok = await Navigator.of(context).push<bool>(
-                          MaterialPageRoute(
-                            builder: (_) => TaoYeuCauBaoTriScreen(yeuCauSua: y),
-                            fullscreenDialog: true,
-                          ),
-                        );
-                        if (ok == true) await controller.tai();
-                      },
-                      icon: const Icon(Icons.edit_rounded, size: 18),
-                      label: const Text('Chỉnh sửa & gửi lại xưởng',
-                          style: TextStyle(fontWeight: FontWeight.w700)),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: const BorderSide(color: AppColors.primary),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+              ),
+            );
+          }
+          final y = list[i - 1];
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _buildCard(context, y),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, YeuCauBaoTriItem y) {
+    final c = _statusColor(y.trangThai);
+    final biTuChoi = y.trangThai == 'Từ chối';
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  y.tenThietBi ?? 'Thiết bị #${y.maThietBi}',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                decoration: BoxDecoration(
+                  color: c.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  y.trangThai,
+                  style: TextStyle(color: c, fontWeight: FontWeight.w700, fontSize: 11.5),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'YC #${y.maYeuCauBaoTri} · ${y.danhMuc ?? '—'}',
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Ngày BT: ${y.ngayBaoTri.day.toString().padLeft(2, '0')}/'
+                '${y.ngayBaoTri.month.toString().padLeft(2, '0')}/'
+                '${y.ngayBaoTri.year}'
+                ' · ${y.thoiGianDuKien}h'
+                '${y.gioBatDau != null ? ' · ${y.gioBatDau}–${y.gioKetThuc}' : ''}',
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+          if (y.ghiChu != null && y.ghiChu!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              y.ghiChu!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
+            ),
+          ],
+          if (y.lyDoTuChoi != null && y.lyDoTuChoi!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              'Lý do từ chối: ${y.lyDoTuChoi}',
+              style: const TextStyle(color: AppColors.danger, fontSize: 12.5),
+            ),
+          ],
+          if (biTuChoi) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () async {
+                  final ok = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => TaoYeuCauBaoTriScreen(yeuCauSua: y),
+                      fullscreenDialog: true,
+                    ),
+                  );
+                  if (ok == true) await controller.tai();
+                },
+                icon: const Icon(Icons.edit_rounded, size: 18),
+                label: const Text('Chỉnh sửa & gửi lại xưởng',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

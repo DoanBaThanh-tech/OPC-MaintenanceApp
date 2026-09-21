@@ -508,6 +508,10 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     return yeuCauKhopThietBi(thietBiChon!.maThietBi);
   }
 
+  /// Khi đã khớp yêu cầu xưởng xác nhận → khóa các trường auto-fill
+  /// (chỉ mở khi giám đốc từ chối hồ sơ và yêu cầu chỉnh sửa — luồng riêng)
+  bool get dangKhoaTheoYeuCau => yeuCauDangTheo != null;
+
   /// Dòng hiển thị dưới form: đang theo yêu cầu tháng/năm nào
   String? get nhanYeuCauDangTheo {
     final yc = yeuCauDangTheo;
