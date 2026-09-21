@@ -339,7 +339,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              'Nhập lý do từ chối. Tổ trưởng kỹ thuật sẽ thấy trong Lịch sử phân công.',
+              'Nhập lý do từ chối. Tổ trưởng cơ điện sẽ thấy trong Lịch sử phân công.',
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700),
             ),
             const SizedBox(height: 12),

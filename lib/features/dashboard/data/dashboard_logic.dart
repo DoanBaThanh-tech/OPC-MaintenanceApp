@@ -67,24 +67,27 @@ class DashboardLogic {
           ]),
         ];
 
+    // Xưởng: nhận yêu cầu từ Tổ trưởng cơ điện → Đồng ý / Từ chối
       case 'Tổ trưởng sản xuất':
         return [
-          MenuGroup(tieuDe: 'Yêu cầu bảo trì', muc: [
-            MenuItemData(
-              icon: Icons.assignment_outlined,
-              label: 'Quản lý yêu cầu',
-              screenBuilder: () => const QuanLyYeuCauScreen(),
-            ),
-          ]),
-        ];
-
-      case 'Tổ trưởng kỹ thuật':
-        return [
-          MenuGroup(tieuDe: 'Yêu cầu từ sản xuất', muc: [
+          MenuGroup(tieuDe: 'Yêu cầu từ cơ điện', muc: [
             MenuItemData(
               icon: Icons.fact_check_rounded,
               label: 'Xác nhận yêu cầu bảo trì',
               screenBuilder: () => const XacNhanYeuCauBaoTriScreen(),
+            ),
+          ]),
+        ];
+
+    // Tổ trưởng cơ điện: tạo/sửa yêu cầu + kế hoạch + hồ sơ
+      case 'Tổ trưởng cơ điện':
+      case 'Tổ trưởng kỹ thuật': // tương thích tên cũ trước khi chạy SQL rename
+        return [
+          MenuGroup(tieuDe: 'Yêu cầu bảo trì', muc: [
+            MenuItemData(
+              icon: Icons.assignment_rounded,
+              label: 'Quản lý yêu cầu',
+              screenBuilder: () => const QuanLyYeuCauBaoTriScreen(),
             ),
           ]),
           MenuGroup(tieuDe: 'Thiết bị', muc: [

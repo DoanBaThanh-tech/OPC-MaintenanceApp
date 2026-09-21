@@ -648,6 +648,7 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
   @override
   void dispose() {
     _controller.noiDungCongViecController.dispose();
+    _controller.thoiGianTextController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -719,77 +720,87 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                     ),
                     const SizedBox(height: 12),
                     const Text('Danh mục thiết bị', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Nhãn · có YC = danh mục có yêu cầu đã được xưởng xác nhận',
+                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                    ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       value: _controller.danhMucChon,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.category_outlined),
                       ),
                       hint: const Text('Tất cả danh mục'),
-                      items: [
-                        const DropdownMenuItem<String>(value: null, child: Text('Tất cả danh mục')),
-                        ..._controller.danhSachDanhMuc.map((dm) {
-                          final coYc = _controller.danhMucCoYeuCau(dm);
-                          return DropdownMenuItem(
-                            value: dm,
-                            child: Text(
-                              coYc ? '$dm · có yêu cầu' : dm,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          );
-                        }),
-                      ],
+                      items: _controller.danhSachDanhMuc.map((dm) {
+                        final coYc = _controller.danhMucCoYeuCau(dm);
+                        return DropdownMenuItem(
+                          value: dm,
+                          child: Row(
+                            children: [
+                              Expanded(child: Text(dm, overflow: TextOverflow.ellipsis)),
+                              if (coYc)
+                                Text(
+                                  ' · có YC',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                       onChanged: _controller.chonDanhMuc,
                     ),
                     const SizedBox(height: 16),
                     const Text('Thiết bị', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 4),
                     Text(
-                      'Chỉ hiện thiết bị đã có yêu cầu bảo trì (Đã xác nhận) trong tháng đang chọn.',
-                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.3),
+                      'Chọn đúng thiết bị có YC đã xác nhận (nhãn YC Ttháng/năm). Sau khi chọn, ngày/giờ/thời gian tự điền từ yêu cầu.',
+                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<ThietBiRutGon>(
                       value: _controller.thietBiChon,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.precision_manufacturing_outlined),
                       ),
                       hint: Text(
-                        _controller.dsThietBiDaLoc.isEmpty
-                            ? 'Không có thiết bị có YC trong tháng này'
+                        _controller.danhMucChon == null
+                            ? 'Chọn danh mục trước (khuyến nghị)'
                             : 'Chọn thiết bị',
                       ),
                       items: _controller.dsThietBiDaLoc.map((tb) {
-                        final yc = _controller.yeuCauChoThietBi(tb.maThietBi);
-                        final nhan = yc == null
-                            ? tb.tenThietBi
-                            : '${tb.tenThietBi} · có YC #${yc.maYeuCauBaoTri}';
-                        return DropdownMenuItem(value: tb, child: Text(nhan, overflow: TextOverflow.ellipsis));
+                        final nhan = _controller.nhanYeuCauThietBi(tb.maThietBi);
+                        final matchThang = _controller.thietBiCoYeuCauThangNay(tb.maThietBi);
+                        return DropdownMenuItem(
+                          value: tb,
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(tb.tenThietBi, overflow: TextOverflow.ellipsis),
+                              ),
+                              if (nhan != null)
+                                Text(
+                                  ' · $nhan',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: matchThang ? AppColors.success : AppColors.warning,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
                       }).toList(),
                       onChanged: _controller.chonThietBi,
                     ),
-                    if (_controller.yeuCauChon != null) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFECFDF5),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: const Color(0xFFA7F3D0)),
-                        ),
-                        child: Text(
-                          'YC #${_controller.yeuCauChon!.maYeuCauBaoTri} · '
-                              '${_controller.yeuCauChon!.ngayBaoTri.day.toString().padLeft(2, '0')}/'
-                              '${_controller.yeuCauChon!.ngayBaoTri.month.toString().padLeft(2, '0')}/'
-                              '${_controller.yeuCauChon!.namBaoTri} · '
-                              '${_controller.yeuCauChon!.thoiGianDuKien}h · '
-                              'Người gửi: ${_controller.yeuCauChon!.tenNguoiYeuCau ?? "—"}',
-                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
                     const SizedBox(height: 16),
                     const Text('Tháng', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 8),
@@ -844,6 +855,7 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                     const Text('Giờ dự kiến bảo trì (số giờ)', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 8),
                     TextField(
+                      controller: _controller.thoiGianTextController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
                       decoration: InputDecoration(
                         border: const OutlineInputBorder(),

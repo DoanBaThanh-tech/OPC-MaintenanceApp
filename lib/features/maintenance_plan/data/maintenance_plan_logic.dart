@@ -1,10 +1,10 @@
-import '../../maintenance_request/data/maintenance_request_logic.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_exception.dart';
+import '../../maintenance_request/data/maintenance_request_logic.dart';
 
 // ============================================================
 // MODEL
@@ -218,7 +218,6 @@ class MaintenancePlanService {
     required int thoiGianDuKien,
     required TimeOfDay gioBatDau,
     required TimeOfDay gioKetThuc,
-    required int maYeuCauBaoTri,
   }) async {
     String fmtGio(TimeOfDay t) =>
         '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
@@ -231,7 +230,6 @@ class MaintenancePlanService {
       'thoiGianDuKien': thoiGianDuKien,
       'gioBatDauDuKien': fmtGio(gioBatDau),
       'gioKetThucDuKien': fmtGio(gioKetThuc),
-      'maYeuCauBaoTri': maYeuCauBaoTri,
     });
   }
 }
@@ -408,10 +406,7 @@ class CreateMaintenancePlanController extends ChangeNotifier {
 
   List<ThietBiRutGon> dsThietBi = [];
   List<ChuKyBaoTriModel> dsChuKy = [];
-  /// YC đã xác nhận trong năm (lọc theo tháng khi chọn)
-  List<YeuCauBaoTriItem> dsYeuCauDaXacNhan = [];
   ThietBiRutGon? thietBiChon;
-  YeuCauBaoTriItem? yeuCauChon;
   ChiTietKeHoachInput? chiTietChon;
   int thang = DateTime.now().month;
   DateTime? ngayLapKeHoach;
@@ -445,6 +440,61 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     return min;
   }
 
+  /// Yêu cầu đã xác nhận (theo tháng/năm) — dùng để gắn nhãn trên danh mục & thiết bị
+  List<YeuCauBaoTriItem> yeuCauDaXacNhan = [];
+
+  /// Map maThietBi → danh sách yêu cầu đã xác nhận (có thể nhiều tháng)
+  Map<int, List<YeuCauBaoTriItem>> get mapYeuCauTheoThietBi {
+    final m = <int, List<YeuCauBaoTriItem>>{};
+    for (final y in yeuCauDaXacNhan) {
+      m.putIfAbsent(y.maThietBi, () => []).add(y);
+    }
+    return m;
+  }
+
+  bool danhMucCoYeuCau(String dm) {
+    return dsThietBi.any((tb) {
+      final loai = tb.loaiThietBi ?? 'Chưa phân loại';
+      if (loai != dm) return false;
+      return mapYeuCauTheoThietBi.containsKey(tb.maThietBi);
+    });
+  }
+
+  /// Nhãn ngắn: "YC T3/2026" để phân biệt cùng thiết bị khác tháng
+  String? nhanYeuCauThietBi(int maThietBi) {
+    final list = mapYeuCauTheoThietBi[maThietBi];
+    if (list == null || list.isEmpty) return null;
+    // Ưu tiên yêu cầu khớp tháng đang chọn
+    final matchThang = list.where((y) => y.thangBaoTri == thang && y.namBaoTri == nam).toList();
+    final src = matchThang.isNotEmpty ? matchThang : list;
+    return src
+        .map((y) => 'YC T${y.thangBaoTri}/${y.namBaoTri}')
+        .toSet()
+        .join(', ');
+  }
+
+  bool thietBiCoYeuCauThangNay(int maThietBi) {
+    final list = mapYeuCauTheoThietBi[maThietBi];
+    if (list == null) return false;
+    return list.any((y) => y.thangBaoTri == thang && y.namBaoTri == nam);
+  }
+
+  /// Lấy đúng 1 yêu cầu đã xác nhận khớp thiết bị + tháng/năm đang lập kế hoạch
+  YeuCauBaoTriItem? yeuCauKhopThietBi(int maThietBi) {
+    final list = mapYeuCauTheoThietBi[maThietBi];
+    if (list == null) return null;
+    for (final y in list) {
+      if (y.thangBaoTri == thang && y.namBaoTri == nam && y.trangThai == 'Đã xác nhận') {
+        return y;
+      }
+    }
+    // API de-tao-ho-so đã chỉ trả "Đã xác nhận" — fallback không check status
+    for (final y in list) {
+      if (y.thangBaoTri == thang && y.namBaoTri == nam) return y;
+    }
+    return null;
+  }
+
   Future<void> taiDuLieuBanDau() async {
     dangTai = true;
     notifyListeners();
@@ -453,12 +503,13 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         MaintenancePlanService.layDanhSachThietBi(),
         MaintenancePlanService.layDanhSachChuKy(),
         MaintenancePlanService.layDanhSachKeHoach(),
+        // Lấy tất cả YC đã xác nhận trong năm (không lọc tháng) để gắn nhãn đầy đủ
         MaintenanceRequestService.layDeTaoHoSo(nam: nam),
       ]);
       dsThietBi = results[0] as List<ThietBiRutGon>;
       dsChuKy = results[1] as List<ChuKyBaoTriModel>;
       final dsKeHoach = results[2] as List<KeHoachBaoTri>;
-      dsYeuCauDaXacNhan = results[3] as List<YeuCauBaoTriItem>;
+      yeuCauDaXacNhan = results[3] as List<YeuCauBaoTriItem>;
       final khNam = dsKeHoach.where((k) => k.nam == nam).toList();
       if (khNam.isNotEmpty) {
         khNam.sort((a, b) => a.ngayLapKeHoach.compareTo(b.ngayLapKeHoach));
@@ -469,7 +520,7 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         );
       }
     } catch (e) {
-      loi = 'Không tải được danh sách thiết bị';
+      loi = 'Không tải được danh sách thiết bị / yêu cầu đã xác nhận';
     } finally {
       dangTai = false;
       notifyListeners();
@@ -487,32 +538,51 @@ class CreateMaintenancePlanController extends ChangeNotifier {
 
   void chonThietBi(ThietBiRutGon? tb) {
     if (tb == null) return;
-    final yc = yeuCauChoThietBi(tb.maThietBi);
-    if (yc == null) {
-      loi = 'Thiết bị này không đúng với yêu cầu từ Tổ trưởng sản xuất đề ra (tháng $thang/$nam).';
-      thietBiChon = null;
-      yeuCauChon = null;
-      chiTietChon = null;
-      notifyListeners();
-      return;
-    }
     thietBiChon = tb;
-    yeuCauChon = yc;
-    // Ưu tiên ngày từ yêu cầu sản xuất nếu còn trong tháng
-    var macDinh = yc.ngayBaoTri;
-    if (macDinh.isBefore(ngayDuKienToiThieu)) macDinh = ngayDuKienToiThieu;
+    var macDinh = ngayDuKienToiThieu;
     if (macDinh.isAfter(ngayKetThuc)) macDinh = ngayKetThuc;
     chiTietChon = ChiTietKeHoachInput(thietBi: tb, ngayDuKienBaoTri: macDinh);
+    // Tự điền theo yêu cầu đã xác nhận (đúng danh mục + thiết bị + tháng)
+    _autoFillTuYeuCau(tb.maThietBi);
     loi = null;
     notifyListeners();
   }
 
+  /// Điền ngày / giờ / thời gian / nội dung từ YC đã xác nhận để tránh sai lệch
+  void _autoFillTuYeuCau(int maThietBi) {
+    final yc = yeuCauKhopThietBi(maThietBi);
+    if (yc == null) return;
+    final ngayYc = DateTime(yc.ngayBaoTri.year, yc.ngayBaoTri.month, yc.ngayBaoTri.day);
+    if (ngayYc.month == thang && ngayYc.year == nam) {
+      chiTietChon?.ngayDuKienBaoTri = ngayYc;
+    }
+    final tg = yc.thoiGianDuKien.round();
+    if (tg > 0) {
+      thoiGianDuKien = tg;
+      thoiGianTextController.text = '$tg';
+      loiThoiGianDuKien = null;
+    }
+    if (yc.gioBatDau != null && yc.gioBatDau!.isNotEmpty) {
+      final parts = yc.gioBatDau!.split(':');
+      if (parts.length >= 2) {
+        final h = int.tryParse(parts[0]);
+        final m = int.tryParse(parts[1]);
+        if (h != null && m != null) gioBatDau = TimeOfDay(hour: h, minute: m);
+      }
+    }
+    if (yc.ghiChu != null && yc.ghiChu!.trim().isNotEmpty) {
+      noiDungCongViecController.text = yc.ghiChu!.trim();
+    }
+  }
+
   void doiThang(int t) {
     thang = t;
-    thietBiChon = null;
-    yeuCauChon = null;
-    chiTietChon = null;
-    loi = null;
+    if (chiTietChon != null && thietBiChon != null) {
+      var macDinh = ngayDuKienToiThieu;
+      if (macDinh.isAfter(ngayKetThuc)) macDinh = ngayKetThuc;
+      chiTietChon!.ngayDuKienBaoTri = macDinh;
+      _autoFillTuYeuCau(thietBiChon!.maThietBi);
+    }
     notifyListeners();
   }
 
@@ -551,6 +621,7 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   }
 
   final noiDungCongViecController = TextEditingController();
+  final thoiGianTextController = TextEditingController();
   int? thoiGianDuKien;
   TimeOfDay? gioBatDau;
 
@@ -615,6 +686,14 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    // Bắt buộc có yêu cầu đã xác nhận từ xưởng cho đúng danh mục + thiết bị + tháng/năm
+    if (!thietBiCoYeuCauThangNay(thietBiChon!.maThietBi)) {
+      loi =
+      'Thiết bị này chưa có yêu cầu bảo trì đã được xưởng xác nhận cho tháng $thang/$nam. '
+          'Chỉ lập kế hoạch khi Tổ trưởng cơ điện đã gửi yêu cầu và xưởng đã Đồng ý.';
+      notifyListeners();
+      return false;
+    }
     final ngay = DateTime(
       chiTietChon!.ngayDuKienBaoTri.year,
       chiTietChon!.ngayDuKienBaoTri.month,
@@ -654,11 +733,6 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     dangLuu = true;
     loi = null;
     notifyListeners();
-    if (yeuCauChon == null) {
-      loi = 'Thiết bị này không đúng với yêu cầu từ Tổ trưởng sản xuất đề ra.';
-      notifyListeners();
-      return false;
-    }
     try {
       await MaintenancePlanService.themThietBiVaoNam(
         nam: nam,
@@ -668,7 +742,6 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         thoiGianDuKien: thoiGianDuKien!,
         gioBatDau: gioBatDau!,
         gioKetThuc: gioKetThucTuTinh!,
-        maYeuCauBaoTri: yeuCauChon!.maYeuCauBaoTri,
       );
       return true;
     } on ApiException catch (e) {
@@ -692,40 +765,13 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   List<String> get danhSachDanhMuc =>
       dsThietBi.map((t) => t.loaiThietBi ?? 'Chưa phân loại').toSet().toList()..sort();
 
-  Set<int> get _maThietBiCoYeuCauTrongThang => dsYeuCauDaXacNhan
-      .where((y) => y.namBaoTri == nam && y.thangBaoTri == thang)
-      .map((y) => y.maThietBi)
-      .toSet();
-
-  bool danhMucCoYeuCau(String dm) {
-    final coYc = _maThietBiCoYeuCauTrongThang;
-    return dsThietBi.any((tb) =>
-    coYc.contains(tb.maThietBi) && (tb.loaiThietBi ?? 'Chưa phân loại') == dm);
-  }
-
-  YeuCauBaoTriItem? yeuCauChoThietBi(int maThietBi) {
-    try {
-      return dsYeuCauDaXacNhan.firstWhere(
-            (y) => y.maThietBi == maThietBi && y.namBaoTri == nam && y.thangBaoTri == thang,
-      );
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Thiết bị thuộc danh mục đã chọn + có YC đã xác nhận trong tháng
   List<ThietBiRutGon> get dsThietBiDaLoc {
-    final coYc = _maThietBiCoYeuCauTrongThang;
     return dsThietBi.where((tb) {
-      // Bắt buộc khớp danh mục khi đã chọn
-      if (danhMucChon != null && (tb.loaiThietBi ?? 'Chưa phân loại') != danhMucChon) {
-        return false;
-      }
-      if (!coYc.contains(tb.maThietBi)) return false;
+      final khopDanhMuc = danhMucChon == null || (tb.loaiThietBi ?? 'Chưa phân loại') == danhMucChon;
       final khopTuKhoa = tuKhoaTimKiem.isEmpty ||
           tb.tenThietBi.toLowerCase().contains(tuKhoaTimKiem.toLowerCase()) ||
           (tb.loaiThietBi ?? '').toLowerCase().contains(tuKhoaTimKiem.toLowerCase());
-      return khopTuKhoa;
+      return khopDanhMuc && khopTuKhoa;
     }).toList();
   }
 

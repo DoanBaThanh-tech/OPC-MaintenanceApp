@@ -495,7 +495,9 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
   String? _vaiTro;
 
   bool get _laToTruong =>
-      _vaiTro == 'Tổ trưởng kỹ thuật' || _vaiTro == 'Tổ trưởng';
+      _vaiTro == 'Tổ trưởng cơ điện' ||
+          _vaiTro == 'Tổ trưởng kỹ thuật' ||
+          _vaiTro == 'Tổ trưởng';
   bool get _laNvkt => _vaiTro == 'Nhân viên kỹ thuật';
 
   @override
@@ -2081,46 +2083,46 @@ class _HistoryRow extends StatelessWidget {
 }
 
 class _TimeChip extends StatelessWidget {
-final IconData icon;
-final String label;
-final String value;
-final Color color;
-const _TimeChip({required this.icon, required this.label, required this.value, required this.color});
+  final IconData icon;
+  final String label;
+  final String value;
+  final Color color;
+  const _TimeChip({required this.icon, required this.label, required this.value, required this.color});
 
-@override
-Widget build(BuildContext context) {
-return Container(
-padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-decoration: BoxDecoration(
-color: color.withValues(alpha: 0.08),
-borderRadius: BorderRadius.circular(12),
-border: Border.all(color: color.withValues(alpha: 0.18)),
-),
-child: Row(
-children: [
-Icon(icon, size: 18, color: color),
-const SizedBox(width: 6),
-Expanded(
-child: Column(
-crossAxisAlignment: CrossAxisAlignment.start,
-children: [
-Text(
-label,
-maxLines: 1,
-overflow: TextOverflow.ellipsis,
-style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
-),
-Text(
-value,
-maxLines: 1,
-overflow: TextOverflow.ellipsis,
-style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: color),
-),
-],
-),
-),
-],
-),
-);
-}
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 10.5, color: Colors.grey.shade600),
+                ),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: color),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
