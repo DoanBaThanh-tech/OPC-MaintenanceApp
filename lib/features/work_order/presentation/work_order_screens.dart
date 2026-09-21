@@ -159,19 +159,21 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                             prefixIcon: Icon(Icons.schedule),
                             suffixText: 'giờ',
                           ),
-                          // Chỉ cho số dương; chữ / ký tự đặc biệt / số âm → báo lỗi đỏ ngay dưới ô
+                          // Số dương, không ký tự đặc biệt, tối đa 24 giờ trong ngày
                           validator: (v) {
                             final raw = v?.trim() ?? '';
                             if (raw.isEmpty) {
                               return 'Vui lòng nhập giờ dự kiến bảo trì';
                             }
-                            // Chỉ chấp nhận chuỗi toàn chữ số (không dấu âm, không chữ, không ký tự đặc biệt)
                             if (!RegExp(r'^\d+$').hasMatch(raw)) {
                               return 'Chỉ được nhập số dương (không chữ, không ký tự đặc biệt)';
                             }
                             final so = int.tryParse(raw);
                             if (so == null || so <= 0) {
                               return 'Giờ dự kiến phải là số dương lớn hơn 0';
+                            }
+                            if (so > 24) {
+                              return 'Bảo trì trong ngày — tối đa 24 giờ';
                             }
                             return null;
                           },
@@ -766,10 +768,11 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
   TimeOfDay? _gioKetThuc;
   String? _loiThoiGian; // lỗi đỏ dưới ô số giờ
 
-  bool get _choPhepChonGioBatDau =>
-      _loiThoiGian == null &&
-          _thoiGian.text.trim().isNotEmpty &&
-          (int.tryParse(_thoiGian.text.trim()) ?? 0) > 0;
+  bool get _choPhepChonGioBatDau {
+    if (_loiThoiGian != null) return false;
+    final so = int.tryParse(_thoiGian.text.trim());
+    return so != null && so > 0 && so <= 24;
+  }
 
   @override
   void initState() {
@@ -822,6 +825,10 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
     final so = int.tryParse(v);
     if (so == null || so <= 0) {
       _loiThoiGian = 'Giờ dự kiến phải lớn hơn 0';
+      return;
+    }
+    if (so > 24) {
+      _loiThoiGian = 'Bảo trì trong ngày — tối đa 24 giờ';
       return;
     }
     _loiThoiGian = null;

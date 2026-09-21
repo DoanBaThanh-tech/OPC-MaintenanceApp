@@ -702,7 +702,10 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
 
   /// true khi số giờ hợp lệ → mới cho chọn giờ bắt đầu
   bool get choPhepChonGioBatDau =>
-      thoiGianDuKien != null && thoiGianDuKien! > 0 && loiThoiGianDuKien == null;
+      thoiGianDuKien != null &&
+          thoiGianDuKien! > 0 &&
+          thoiGianDuKien! <= 24 &&
+          loiThoiGianDuKien == null;
 
   void khoiTaoTuHoSo({
     String? thoiGianDuKienStr,
@@ -728,7 +731,7 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Chỉ chấp nhận chuỗi toàn chữ số dương
+  /// Số dương, không ký tự đặc biệt, tối đa 24 giờ trong ngày
   void datThoiGianDuKienTuChuoi(String raw) {
     final v = raw.trim();
     if (v.isEmpty) {
@@ -749,6 +752,13 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     if (so == null || so <= 0) {
       thoiGianDuKien = null;
       loiThoiGianDuKien = 'Giờ dự kiến phải lớn hơn 0';
+      gioKetThuc = null;
+      notifyListeners();
+      return;
+    }
+    if (so > 24) {
+      thoiGianDuKien = null;
+      loiThoiGianDuKien = 'Bảo trì trong ngày — tối đa 24 giờ';
       gioKetThuc = null;
       notifyListeners();
       return;
@@ -811,6 +821,17 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
 
     if (soGio == null || soGio.isEmpty) {
       loi = 'Vui lòng nhập số giờ dự kiến hợp lệ';
+      notifyListeners();
+      return false;
+    }
+    final soGioInt = int.tryParse(soGio.trim());
+    if (soGioInt == null || soGioInt <= 0) {
+      loi = 'Giờ dự kiến phải là số dương lớn hơn 0';
+      notifyListeners();
+      return false;
+    }
+    if (soGioInt > 24) {
+      loi = 'Bảo trì trong ngày — tối đa 24 giờ';
       notifyListeners();
       return false;
     }

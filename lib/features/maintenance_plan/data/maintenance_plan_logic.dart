@@ -631,7 +631,9 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     return TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
   }
 
-  /// Validate realtime — chỉ số dương
+  /// Validate realtime: số dương, không ký tự đặc biệt, tối đa 24 giờ trong ngày
+  static const int maxGioTrongNgay = 24;
+
   void datThoiGianDuKienTuChuoi(String raw) {
     final v = raw.trim();
     if (v.isEmpty) {
@@ -653,6 +655,12 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       notifyListeners();
       return;
     }
+    if (so > maxGioTrongNgay) {
+      thoiGianDuKien = null;
+      loiThoiGianDuKien = 'Bảo trì trong ngày — tối đa $maxGioTrongNgay giờ';
+      notifyListeners();
+      return;
+    }
     thoiGianDuKien = so;
     loiThoiGianDuKien = null;
     notifyListeners();
@@ -660,8 +668,14 @@ class CreateMaintenancePlanController extends ChangeNotifier {
 
   void datThoiGianDuKien(int? gio) {
     thoiGianDuKien = gio;
-    loiThoiGianDuKien =
-    (gio == null || gio <= 0) ? 'Vui lòng nhập giờ dự kiến bảo trì (số dương)' : null;
+    if (gio == null || gio <= 0) {
+      loiThoiGianDuKien = 'Vui lòng nhập giờ dự kiến bảo trì (số dương)';
+    } else if (gio > maxGioTrongNgay) {
+      loiThoiGianDuKien = 'Bảo trì trong ngày — tối đa $maxGioTrongNgay giờ';
+      thoiGianDuKien = null;
+    } else {
+      loiThoiGianDuKien = null;
+    }
     notifyListeners();
   }
 
@@ -674,6 +688,9 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     if (loiThoiGianDuKien != null) return loiThoiGianDuKien;
     if (thoiGianDuKien == null || thoiGianDuKien! <= 0) {
       return 'Vui lòng nhập giờ dự kiến bảo trì (số dương)';
+    }
+    if (thoiGianDuKien! > maxGioTrongNgay) {
+      return 'Bảo trì trong ngày — tối đa $maxGioTrongNgay giờ';
     }
     if (gioBatDau == null) return 'Vui lòng chọn giờ bắt đầu';
     if (gioKetThucTuTinh == gioBatDau) return 'Giờ bắt đầu và kết thúc không được trùng nhau';

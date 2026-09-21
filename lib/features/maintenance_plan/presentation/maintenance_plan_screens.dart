@@ -860,6 +860,7 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                       decoration: InputDecoration(
                         border: const OutlineInputBorder(),
                         suffixText: 'giờ',
+                        helperText: 'Trong ngày — lớn hơn 0 và tối đa 24 giờ',
                         errorText: _controller.loiThoiGianDuKien,
                       ),
                       onChanged: _controller.datThoiGianDuKienTuChuoi,
@@ -870,6 +871,11 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                         Expanded(
                           child: InkWell(
                             onTap: () async {
+                              final hopLe = _controller.thoiGianDuKien != null &&
+                                  _controller.thoiGianDuKien! > 0 &&
+                                  _controller.thoiGianDuKien! <= 24 &&
+                                  _controller.loiThoiGianDuKien == null;
+                              if (!hopLe) return;
                               final t = await showTimePicker(
                                 context: context,
                                 initialTime: _controller.gioBatDau ?? TimeOfDay.now(),
