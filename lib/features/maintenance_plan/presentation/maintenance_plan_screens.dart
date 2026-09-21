@@ -722,7 +722,7 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                     const Text('Danh mục thiết bị', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 4),
                     Text(
-                      'Nhãn · có YC = danh mục có yêu cầu đã được xưởng xác nhận',
+                      'Nhãn · có YC = còn yêu cầu đã xác nhận chưa lập kế hoạch trong tháng đó',
                       style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 8),
@@ -760,7 +760,7 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                     const Text('Thiết bị', style: TextStyle(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 4),
                     Text(
-                      'Chọn đúng thiết bị có YC đã xác nhận (nhãn YC Ttháng/năm). Sau khi chọn, ngày/giờ/thời gian tự điền từ yêu cầu.',
+                      'Nhãn YC Ttháng/năm = còn yêu cầu chưa lập KH. Chọn thiết bị → tháng/ngày/giờ tự khớp đúng yêu cầu đó.',
                       style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
                     ),
                     const SizedBox(height: 8),
@@ -803,17 +803,29 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                     ),
                     const SizedBox(height: 16),
                     const Text('Tháng', style: TextStyle(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 4),
+                    Text(
+                      _controller.thietBiChon == null
+                          ? 'Chọn thiết bị trước — tháng sẽ khóa theo yêu cầu đã xác nhận'
+                          : 'Chỉ các tháng còn YC chưa lập KH của thiết bị đã chọn',
+                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                    ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<int>(
-                      value: _controller.thang,
+                      value: _controller.thangChoPhep.contains(_controller.thang)
+                          ? _controller.thang
+                          : (_controller.thangChoPhep.isNotEmpty
+                          ? _controller.thangChoPhep.first
+                          : _controller.thang),
                       decoration: const InputDecoration(
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.calendar_view_month),
                       ),
-                      items: List.generate(
-                        12,
-                            (i) => DropdownMenuItem(value: i + 1, child: Text('Tháng ${i + 1}')),
-                      ),
+                      items: (_controller.thietBiChon == null
+                          ? List.generate(12, (i) => i + 1)
+                          : _controller.thangChoPhep)
+                          .map((m) => DropdownMenuItem(value: m, child: Text('Tháng $m')))
+                          .toList(),
                       onChanged: (v) {
                         if (v != null) _controller.doiThang(v);
                       },
