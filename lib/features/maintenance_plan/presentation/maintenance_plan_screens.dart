@@ -830,6 +830,44 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                         if (v != null) _controller.doiThang(v);
                       },
                     ),
+                    // Dòng chắc chắn: đang theo yêu cầu tháng/năm nào
+                    if (_controller.nhanYeuCauDangTheo != null) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _controller.nhanYeuCauDangTheo!,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  height: 1.35,
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (_controller.thietBiChon != null) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'Chưa khớp yêu cầu nào cho tháng ${_controller.thang}/${_controller.nam}. '
+                            'Chọn tháng có nhãn YC trên thiết bị.',
+                        style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
+                      ),
+                    ],
                     if (_controller.chuKyCoDinh != null) ...[
                       const SizedBox(height: 8),
                       Text(

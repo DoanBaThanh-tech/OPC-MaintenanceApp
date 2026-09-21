@@ -502,6 +502,29 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     return null;
   }
 
+  /// YC đang dùng để auto-fill (thiết bị đã chọn + tháng form)
+  YeuCauBaoTriItem? get yeuCauDangTheo {
+    if (thietBiChon == null) return null;
+    return yeuCauKhopThietBi(thietBiChon!.maThietBi);
+  }
+
+  /// Dòng hiển thị dưới form: đang theo yêu cầu tháng/năm nào
+  String? get nhanYeuCauDangTheo {
+    final yc = yeuCauDangTheo;
+    if (yc == null) return null;
+    final ngay =
+        '${yc.ngayBaoTri.day.toString().padLeft(2, '0')}/'
+        '${yc.ngayBaoTri.month.toString().padLeft(2, '0')}/'
+        '${yc.ngayBaoTri.year}';
+    final gio = (yc.gioBatDau != null && yc.gioBatDau!.isNotEmpty)
+        ? ' · ${yc.gioBatDau}–${yc.gioKetThuc ?? ''}'
+        : '';
+    return 'Đang theo yêu cầu #${yc.maYeuCauBaoTri}'
+        ' · Tháng ${yc.thangBaoTri}/${yc.namBaoTri}'
+        ' · Ngày $ngay'
+        ' · ${yc.thoiGianDuKien}h$gio';
+  }
+
   /// Tháng được phép chọn: chỉ tháng có YC còn hiệu lực của thiết bị đang chọn
   List<int> get thangChoPhep {
     if (thietBiChon == null) {
