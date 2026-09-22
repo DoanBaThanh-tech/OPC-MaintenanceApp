@@ -252,21 +252,19 @@ class WorkOrderService {
     );
   }
 
-  /// Xưởng lưu chỉnh sửa hồ sơ Chờ xưởng
+  /// Xưởng lưu — chỉ đổi ngày dự kiến bảo trì (đồng bộ kế hoạch phía server)
   static Future<void> xuongCapNhatHoSo({
     required int maHoSoBaoTri,
-    String? noiDungCongViec,
-    String? thoiGianDuKien,
-    String? gioBatDauDuKien,
-    String? gioKetThucDuKien,
+    required DateTime ngayDuKienBaoTri,
   }) async {
+    final d = ngayDuKienBaoTri;
     await ApiClient.instance.put<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/xuong-cap-nhat',
       {
-        if (noiDungCongViec != null) 'noiDungCongViec': noiDungCongViec,
-        if (thoiGianDuKien != null) 'thoiGianDuKien': thoiGianDuKien,
-        if (gioBatDauDuKien != null) 'gioBatDauDuKien': gioBatDauDuKien,
-        if (gioKetThucDuKien != null) 'gioKetThucDuKien': gioKetThucDuKien,
+        'ngayDuKienBaoTri':
+        '${d.year.toString().padLeft(4, '0')}-'
+            '${d.month.toString().padLeft(2, '0')}-'
+            '${d.day.toString().padLeft(2, '0')}',
       },
     );
   }
@@ -571,18 +569,96 @@ class WorkOrderBaoTriDetailController extends ChangeNotifier {
 
   HoSoBaoTri? hoSo;
   bool dangTai = true;
+  bool dangLuu = false;
   String? loi;
+  bool cheDoChinhSua = false;
+  DateTime? ngayDuKienChinhSua;
+
+  /// Xưởng xử lý khi đang chờ duyệt (TTCĐ đã tạo) hoặc GĐ từ chối trả về
+  bool get xuongCoTheXuLy =>
+      hoSo != null &&
+          (hoSo!.trangThai == 'Chờ duyệt' || hoSo!.trangThai == 'Từ chối');
 
   Future<void> taiChiTiet() async {
     dangTai = true;
     loi = null;
+    cheDoChinhSua = false;
     notifyListeners();
     try {
       hoSo = await WorkOrderService.layChiTietHoSoBaoTri(maHoSoBaoTri);
+      ngayDuKienChinhSua = hoSo?.ngayDuKienBaoTri;
     } catch (e) {
       loi = 'Lỗi tải dữ liệu: $e';
     } finally {
       dangTai = false;
+      notifyListeners();
+    }
+  }
+
+  void batCheDoChinhSua() {
+    cheDoChinhSua = true;
+    ngayDuKienChinhSua = hoSo?.ngayDuKienBaoTri;
+    loi = null;
+    notifyListeners();
+  }
+
+  void huyCheDoChinhSua() {
+    cheDoChinhSua = false;
+    ngayDuKienChinhSua = hoSo?.ngayDuKienBaoTri;
+    loi = null;
+    notifyListeners();
+  }
+
+  void datNgayDuKienChinhSua(DateTime d) {
+    ngayDuKienChinhSua = d;
+    notifyListeners();
+  }
+
+  Future<bool> luuNgayDuKien() async {
+    if (ngayDuKienChinhSua == null) {
+      loi = 'Vui lòng chọn ngày dự kiến bảo trì';
+      notifyListeners();
+      return false;
+    }
+    dangLuu = true;
+    loi = null;
+    notifyListeners();
+    try {
+      await WorkOrderService.xuongCapNhatHoSo(
+        maHoSoBaoTri: maHoSoBaoTri,
+        ngayDuKienBaoTri: ngayDuKienChinhSua!,
+      );
+      cheDoChinhSua = false;
+      await taiChiTiet();
+      return true;
+    } on ApiException catch (e) {
+      loi = e.message;
+      return false;
+    } catch (e) {
+      loi = 'Lỗi lưu: $e';
+      return false;
+    } finally {
+      dangLuu = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> guiGiamDoc() async {
+    dangLuu = true;
+    loi = null;
+    notifyListeners();
+    try {
+      await WorkOrderService.xuongGuiGiamDoc(maHoSoBaoTri);
+      await taiChiTiet();
+      return true;
+    } on ApiException catch (e) {
+      loi = e.message;
+      return false;
+    } catch (e) {
+      loi = 'Lỗi gửi: $e';
+      return false;
+    } finally {
+      dangLuu = false;
       notifyListeners();
     }
   }

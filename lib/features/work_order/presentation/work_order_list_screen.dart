@@ -17,7 +17,7 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
   final _controller = WorkOrderBaoTriListController();
   late TabController _tab;
 
-  final _tabs = const ['Tất cả', 'Chờ duyệt', 'Đã duyệt', 'Đang thực hiện','Đã hoàn thành','Từ chối'];
+  final _tabs = const ['Tất cả', 'Chờ duyệt', 'Đã duyệt', 'Đang thực hiện', 'Đã hoàn thành', 'Từ chối'];
 
   @override
   void initState() {
@@ -120,8 +120,9 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
       case TrangThaiHoSoBaoTri.tuChoi:
         return AppColors.danger;
       case TrangThaiHoSoBaoTri.choDuyet:
-      case TrangThaiHoSoBaoTri.khac:
         return AppColors.warning;
+      case TrangThaiHoSoBaoTri.khac:
+        return Colors.grey;
     }
   }
 

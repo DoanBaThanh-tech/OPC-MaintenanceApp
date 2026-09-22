@@ -63,7 +63,7 @@ class DashboardLogic {
           MenuGroup(tieuDe: 'Hồ sơ bảo trì', muc: [
             MenuItemData(
               icon: Icons.fact_check_rounded,
-              label: 'Hồ sơ chờ xử lý',
+              label: 'Hồ sơ bảo trì (xưởng)',
               screenBuilder: () => const WorkOrderBaoTriListScreen(),
             ),
           ]),

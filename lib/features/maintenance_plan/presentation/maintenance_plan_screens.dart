@@ -783,9 +783,16 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                         style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                       ),
                     ],
-                    if (_controller.chiTietChon != null) ...[
+                    if (_controller.thietBiChon != null && _controller.chiTietChon != null) ...[
                       const SizedBox(height: 20),
                       const Text('Ngày dự kiến bảo trì', style: TextStyle(fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 4),
+                      Text(
+                        _controller.ngayLapKeHoach != null
+                            ? 'Phải lớn hơn ngày lập kế hoạch (${_fmt(_controller.ngayLapKeHoach!)}) và nằm trong tháng đã chọn'
+                            : 'Phải lớn hơn ngày hiện tại và nằm trong tháng đã chọn',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      ),
                       const SizedBox(height: 8),
                       Card(
                         child: ListTile(
@@ -795,6 +802,7 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                             icon: const Icon(Icons.edit_calendar),
                             onPressed: _chonNgay,
                           ),
+                          onTap: _chonNgay,
                         ),
                       ),
                     ],
