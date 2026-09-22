@@ -508,28 +508,13 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     return yeuCauKhopThietBi(thietBiChon!.maThietBi);
   }
 
-  /// Khi đã khớp yêu cầu xưởng xác nhận → khóa các trường auto-fill
-  /// (chỉ mở khi giám đốc từ chối hồ sơ và yêu cầu chỉnh sửa — luồng riêng)
-  bool get dangKhoaTheoYeuCau => false; // Bỏ ràng buộc yêu cầu — nhập tự do
+  /// Đã bỏ ràng buộc yêu cầu — không khóa form nữa.
+  bool get dangKhoaTheoYeuCau => false;
 
-  /// Dòng hiển thị dưới form: đang theo yêu cầu tháng/năm nào
-  String? get nhanYeuCauDangTheo {
-    final yc = yeuCauDangTheo;
-    if (yc == null) return null;
-    final ngay =
-        '${yc.ngayBaoTri.day.toString().padLeft(2, '0')}/'
-        '${yc.ngayBaoTri.month.toString().padLeft(2, '0')}/'
-        '${yc.ngayBaoTri.year}';
-    final gio = (yc.gioBatDau != null && yc.gioBatDau!.isNotEmpty)
-        ? ' · ${yc.gioBatDau}–${yc.gioKetThuc ?? ''}'
-        : '';
-    return 'Đang theo yêu cầu #${yc.maYeuCauBaoTri}'
-        ' · Tháng ${yc.thangBaoTri}/${yc.namBaoTri}'
-        ' · Ngày $ngay'
-        ' · ${yc.thoiGianDuKien}h$gio';
-  }
+  /// Không còn nhãn theo yêu cầu.
+  String? get nhanYeuCauDangTheo => null;
 
-  /// Tất cả 12 tháng — không còn ràng buộc theo yêu cầu
+  /// Tất cả 12 tháng được chọn bình thường.
   List<int> get thangChoPhep => List.generate(12, (i) => i + 1);
 
   Future<void> taiDuLieuBanDau() async {
@@ -540,11 +525,12 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         MaintenancePlanService.layDanhSachThietBi(),
         MaintenancePlanService.layDanhSachChuKy(),
         MaintenancePlanService.layDanhSachKeHoach(),
+        MaintenanceRequestService.layDeTaoHoSo(nam: nam),
       ]);
       dsThietBi = results[0] as List<ThietBiRutGon>;
       dsChuKy = results[1] as List<ChuKyBaoTriModel>;
       final dsKeHoach = results[2] as List<KeHoachBaoTri>;
-      yeuCauDaXacNhan = []; // không còn dùng luồng yêu cầu
+      yeuCauDaXacNhan = results[3] as List<YeuCauBaoTriItem>;
 
       _daLapKeHoachKeys.clear();
       final khNam = dsKeHoach.where((k) => k.nam == nam).toList();
@@ -570,7 +556,7 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         }
       }
     } catch (e) {
-      loi = 'Không tải được danh sách thiết bị / kế hoạch';
+      loi = 'Không tải được danh sách thiết bị / yêu cầu đã xác nhận';
     } finally {
       dangTai = false;
       notifyListeners();
@@ -590,25 +576,88 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     if (tb == null) return;
     thietBiChon = tb;
 
-    // Không còn ràng buộc yêu cầu — luôn hiện "Ngày dự kiến bảo trì"
+    final con = yeuCauConChoThietBi(tb.maThietBi);
+    if (con.isEmpty) {
+      loi = 'Thiết bị này không còn yêu cầu đã xác nhận chưa lập kế hoạch.';
+      chiTietChon = null;
+      notifyListeners();
+      return;
+    }
+
+    // Khớp đúng tháng form; nếu tháng hiện tại không có YC còn lại → chuyển sang tháng YC gần nhất
+    final khopThang = con.where((y) => y.thangBaoTri == thang && y.namBaoTri == nam).toList();
+    if (khopThang.isEmpty) {
+      con.sort((a, b) {
+        final ca = a.namBaoTri * 12 + a.thangBaoTri;
+        final cb = b.namBaoTri * 12 + b.thangBaoTri;
+        return ca.compareTo(cb);
+      });
+      thang = con.first.thangBaoTri;
+    }
+
     var macDinh = ngayDuKienToiThieu;
     if (macDinh.isAfter(ngayKetThuc)) macDinh = ngayKetThuc;
     chiTietChon = ChiTietKeHoachInput(thietBi: tb, ngayDuKienBaoTri: macDinh);
+    // Chỉ điền từ YC đúng tháng (sau khi đã khóa tháng)
+    _autoFillTuYeuCau(tb.maThietBi);
     loi = null;
     notifyListeners();
   }
 
-  /// Đã bỏ auto-fill từ yêu cầu (luồng YC không còn dùng).
+  /// Điền ngày / giờ / thời gian / nội dung — chỉ từ YC khớp đúng tháng/năm form
   void _autoFillTuYeuCau(int maThietBi) {
-    // no-op
+    final yc = yeuCauKhopThietBi(maThietBi);
+    if (yc == null) {
+      // Không lấy nhầm tháng khác: xóa dữ liệu auto-fill cũ
+      thoiGianDuKien = null;
+      thoiGianTextController.clear();
+      gioBatDau = null;
+      loiThoiGianDuKien = null;
+      return;
+    }
+    // Khóa tháng = tháng trên YC
+    thang = yc.thangBaoTri;
+
+    final ngayYc = DateTime(yc.ngayBaoTri.year, yc.ngayBaoTri.month, yc.ngayBaoTri.day);
+    chiTietChon?.ngayDuKienBaoTri = ngayYc;
+
+    final tg = yc.thoiGianDuKien.round();
+    if (tg > 0) {
+      thoiGianDuKien = tg;
+      thoiGianTextController.text = '$tg';
+      loiThoiGianDuKien = null;
+    }
+    if (yc.gioBatDau != null && yc.gioBatDau!.isNotEmpty) {
+      final parts = yc.gioBatDau!.split(':');
+      if (parts.length >= 2) {
+        final h = int.tryParse(parts[0]);
+        final m = int.tryParse(parts[1]);
+        if (h != null && m != null) gioBatDau = TimeOfDay(hour: h, minute: m);
+      }
+    }
+    if (yc.ghiChu != null && yc.ghiChu!.trim().isNotEmpty) {
+      noiDungCongViecController.text = yc.ghiChu!.trim();
+    }
   }
 
   void doiThang(int t) {
+    // Khi đã chọn thiết bị: chỉ cho chọn tháng có YC còn hiệu lực
+    if (thietBiChon != null) {
+      final allowed = thangChoPhep;
+      if (!allowed.contains(t)) {
+        loi =
+        'Tháng $t không có yêu cầu bảo trì đã xác nhận (còn trống) cho thiết bị này. '
+            'Tháng phải trùng với yêu cầu đã được xưởng Đồng ý.';
+        notifyListeners();
+        return;
+      }
+    }
     thang = t;
     if (chiTietChon != null && thietBiChon != null) {
       var macDinh = ngayDuKienToiThieu;
       if (macDinh.isAfter(ngayKetThuc)) macDinh = ngayKetThuc;
       chiTietChon!.ngayDuKienBaoTri = macDinh;
+      _autoFillTuYeuCau(thietBiChon!.maThietBi);
     }
     loi = null;
     notifyListeners();
@@ -731,12 +780,12 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    // Bỏ ràng buộc yêu cầu xưởng — tạo bảo trì thiết bị bình thường
-    // Ràng buộc: cùng thiết bị đã có hồ sơ/kế hoạch trong tháng → không cho tạo & gửi
-    if (daLapKeHoachThang(thietBiChon!.maThietBi, thang, nam)) {
+    // Bắt buộc có YC đã xác nhận đúng tháng và chưa lập KH
+    final yc = yeuCauKhopThietBi(thietBiChon!.maThietBi);
+    if (yc == null) {
       loi =
-      'Thiết bị "${thietBiChon!.tenThietBi}" đã có hồ sơ bảo trì trong tháng $thang/$nam. '
-          'Không thể tạo và gửi thêm hồ sơ bảo trì cho cùng thiết bị trong tháng này.';
+      'Thiết bị này chưa có yêu cầu bảo trì đã được xưởng xác nhận cho tháng $thang/$nam '
+          '(hoặc tháng đó đã lập kế hoạch rồi). Tháng trên form phải trùng tháng trên yêu cầu.';
       notifyListeners();
       return false;
     }
@@ -746,7 +795,14 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       chiTietChon!.ngayDuKienBaoTri.day,
     );
     if (ngay.year != nam || ngay.month != thang) {
-      loi = 'Ngày dự kiến bảo trì phải nằm trong tháng $thang/$nam.';
+      loi = 'Ngày dự kiến bảo trì phải nằm trong tháng $thang/$nam (theo yêu cầu đã xác nhận).';
+      notifyListeners();
+      return false;
+    }
+    // Ngày phải thuộc đúng tháng YC
+    if (ngay.month != yc.thangBaoTri || ngay.year != yc.namBaoTri) {
+      loi =
+      'Ngày/tháng phải khớp yêu cầu đã xác nhận (YC T${yc.thangBaoTri}/${yc.namBaoTri}).';
       notifyListeners();
       return false;
     }

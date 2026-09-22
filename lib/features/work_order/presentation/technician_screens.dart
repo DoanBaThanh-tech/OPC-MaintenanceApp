@@ -298,16 +298,20 @@ class ChiTietYeuCauScreen extends StatefulWidget {
 class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   bool _dangXuLy = false;
 
-  Future<void> _hoanThanh() async {
+  Future<void> _xacNhan() async {
     final y = widget.yeuCau;
     if (y.maHoSo == null) return;
     setState(() => _dangXuLy = true);
     try {
-      await WorkOrderService.hoanThanhBaoTri(y.maHoSo!);
+      if (y.laBaoTri) {
+        await WorkOrderService.nhanVienXacNhanBaoTri(y.maHoSo!);
+      } else {
+        await WorkOrderService.nhanVienXacNhanSuaChua(y.maHoSo!);
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đã hoàn thành bảo trì — trạng thái đã đồng bộ cho tất cả nhân viên'),
+          content: Text('Đã xác nhận nhận việc'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -530,7 +534,14 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                 ),
               ),
             ),
-            if (!y.daHuy && y.trangThaiPhanCong != 'Hoàn thành' && y.maHoSo != null)
+            // Không còn Xác nhận / Từ chối — chỉ xem. Khi đang thực hiện → nút Hoàn thành bảo trì.
+            if (!y.daHuy &&
+                y.maHoSo != null &&
+                (y.trangThaiPhanCong == 'Đã phân công' ||
+                    y.trangThaiPhanCong == 'Xác nhận' ||
+                    y.trangThaiPhanCong == 'Đang thực hiện' ||
+                    y.trangThaiHoSo == 'Đang thực hiện') &&
+                y.trangThaiPhanCong != 'Hoàn thành')
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 decoration: BoxDecoration(
@@ -543,26 +554,34 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                     ),
                   ],
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _dangXuLy ? null : _hoanThanh,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.success,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: _dangXuLy
-                            ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
-                            : const Text('Hoàn thành bảo trì'),
-                      ),
-                    ),
-                  ],
+                child: FilledButton(
+                  onPressed: _dangXuLy ? null : () async {
+                    setState(() => _dangXuLy = true);
+                    try {
+                      await WorkOrderService.nhanVienHoanThanhBaoTri(y.maHoSo!);
+                      if (mounted) Navigator.pop(context, true);
+                    } on ApiException catch (e) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(e.message)),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _dangXuLy = false);
+                    }
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _dangXuLy
+                      ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  )
+                      : const Text('Hoàn thành bảo trì'),
                 ),
               ),
           ],

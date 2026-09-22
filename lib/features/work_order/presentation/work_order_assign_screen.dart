@@ -307,7 +307,7 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                                 : Colors.white),
                             borderRadius: BorderRadius.circular(14),
                             child: InkWell(
-                              onTap: () => _controller.chonNhanVien(nv),
+                              onTap: () => _controller.toggleNhanVien(nv),
                               borderRadius: BorderRadius.circular(14),
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -322,6 +322,11 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                                 ),
                                 child: Row(
                                   children: [
+                                    Checkbox(
+                                      value: dangChon,
+                                      onChanged: (_) => _controller.toggleNhanVien(nv),
+                                      activeColor: AppColors.primary,
+                                    ),
                                     CircleAvatar(
                                       radius: 22,
                                       backgroundColor: biTuChoi

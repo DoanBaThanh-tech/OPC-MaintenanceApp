@@ -8,7 +8,9 @@ import 'work_order_detail_screen.dart';
 // ============ MÀN 2: DANH SÁCH HỒ SƠ BẢO TRÌ (có tab lọc trạng thái) ============
 
 class WorkOrderBaoTriListScreen extends StatefulWidget {
-  const WorkOrderBaoTriListScreen({super.key});
+  /// Nếu truyền, mở tab tương ứng (vd: 'Chờ xưởng' cho vai trò Xưởng).
+  final String? trangThaiMacDinh;
+  const WorkOrderBaoTriListScreen({super.key, this.trangThaiMacDinh});
   @override
   State<WorkOrderBaoTriListScreen> createState() => _WorkOrderBaoTriListScreenState();
 }
@@ -17,12 +19,16 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
   final _controller = WorkOrderBaoTriListController();
   late TabController _tab;
 
-  final _tabs = const ['Tất cả', 'Chờ duyệt', 'Đã duyệt', 'Đang thực hiện', 'Đã hoàn thành', 'Từ chối'];
+  final _tabs = const ['Tất cả', 'Chờ xưởng', 'Chờ duyệt', 'Đã duyệt', 'Đang thực hiện', 'Đã hoàn thành', 'Từ chối'];
 
   @override
   void initState() {
     super.initState();
     _tab = TabController(length: _tabs.length, vsync: this);
+    if (widget.trangThaiMacDinh != null) {
+      final idx = _tabs.indexOf(widget.trangThaiMacDinh!);
+      if (idx >= 0) _tab.index = idx;
+    }
     _controller.taiDanhSach();
   }
 
@@ -120,9 +126,8 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen> w
       case TrangThaiHoSoBaoTri.tuChoi:
         return AppColors.danger;
       case TrangThaiHoSoBaoTri.choDuyet:
-        return AppColors.warning;
       case TrangThaiHoSoBaoTri.khac:
-        return Colors.grey;
+        return AppColors.warning;
     }
   }
 

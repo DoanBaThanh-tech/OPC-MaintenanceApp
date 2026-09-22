@@ -92,6 +92,7 @@ class HoSoBaoTri {
     this.rowVersion,
   });
 
+  bool get choXuong => trangThai == 'Chờ xưởng';
   bool get choDuyet => trangThai == 'Chờ duyệt';
   bool get daDuyetChuaPhanCong =>
       trangThai == 'Đã duyệt' &&
@@ -223,20 +224,22 @@ class WorkOrderService {
   }
 
   /// MaNhanVienPhanCong KHÔNG gửi lên — server tự lấy từ JWT (tổ trưởng đang đăng nhập).
+  /// Hỗ trợ chọn nhiều nhân viên (maNhanVienThucHiens).
   static Future<void> phanCongBaoTri({
     required int maHoSoBaoTri,
-    required int maNhanVienThucHien,
+    int? maNhanVienThucHien,
+    List<int>? maNhanVienThucHiens,
     required DateTime ngayBatDau,
     required DateTime ngayKetThuc,
-    List<int>? danhSachMaNhanVienThucHien,
   }) async {
     final body = <String, dynamic>{
-      'maNhanVienThucHien': maNhanVienThucHien,
       'ngayBatDauDuKien': ngayBatDau.toIso8601String(),
       'ngayKetThucDuKien': ngayKetThuc.toIso8601String(),
     };
-    if (danhSachMaNhanVienThucHien != null && danhSachMaNhanVienThucHien.isNotEmpty) {
-      body['danhSachMaNhanVienThucHien'] = danhSachMaNhanVienThucHien;
+    if (maNhanVienThucHiens != null && maNhanVienThucHiens.isNotEmpty) {
+      body['maNhanVienThucHiens'] = maNhanVienThucHiens;
+    } else if (maNhanVienThucHien != null) {
+      body['maNhanVienThucHien'] = maNhanVienThucHien;
     }
     await ApiClient.instance.post<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/phan-cong',
@@ -244,36 +247,49 @@ class WorkOrderService {
     );
   }
 
-  /// NVKT bấm Hoàn thành bảo trì (đồng bộ tất cả phân công cùng hồ sơ)
-  static Future<void> hoanThanhBaoTri(int maHoSoBaoTri) async {
+  /// NVKT bấm Hoàn thành bảo trì — đồng bộ tất cả phân công cùng hồ sơ.
+  static Future<void> nhanVienHoanThanhBaoTri(int maHoSoBaoTri) async {
     await ApiClient.instance.put<Map<String, dynamic>>(
-      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/hoan-thanh',
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/nhan-vien-hoan-thanh',
       {},
     );
   }
 
-  /// Xưởng lưu — chỉ đổi ngày dự kiến bảo trì (đồng bộ kế hoạch phía server)
-  static Future<void> xuongCapNhatHoSo({
+  /// Xưởng lưu chỉnh sửa hồ sơ (vẫn Chờ xưởng).
+  static Future<void> xuongLuuHoSo({
     required int maHoSoBaoTri,
-    required DateTime ngayDuKienBaoTri,
+    String? noiDungCongViec,
+    String? thoiGianDuKien,
+    String? gioBatDauDuKien,
+    String? gioKetThucDuKien,
   }) async {
-    final d = ngayDuKienBaoTri;
     await ApiClient.instance.put<Map<String, dynamic>>(
-      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/xuong-cap-nhat',
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/xuong-luu',
       {
-        'ngayDuKienBaoTri':
-        '${d.year.toString().padLeft(4, '0')}-'
-            '${d.month.toString().padLeft(2, '0')}-'
-            '${d.day.toString().padLeft(2, '0')}',
+        if (noiDungCongViec != null) 'noiDungCongViec': noiDungCongViec,
+        if (thoiGianDuKien != null) 'thoiGianDuKien': thoiGianDuKien,
+        if (gioBatDauDuKien != null) 'gioBatDauDuKien': gioBatDauDuKien,
+        if (gioKetThucDuKien != null) 'gioKetThucDuKien': gioKetThucDuKien,
       },
     );
   }
 
-  /// Xưởng gửi Giám đốc
-  static Future<void> xuongGuiGiamDoc(int maHoSoBaoTri) async {
+  /// Xưởng gửi Giám đốc duyệt.
+  static Future<void> xuongGuiGiamDoc({
+    required int maHoSoBaoTri,
+    String? noiDungCongViec,
+    String? thoiGianDuKien,
+    String? gioBatDauDuKien,
+    String? gioKetThucDuKien,
+  }) async {
     await ApiClient.instance.put<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/xuong-gui-giam-doc',
-      {},
+      {
+        if (noiDungCongViec != null) 'noiDungCongViec': noiDungCongViec,
+        if (thoiGianDuKien != null) 'thoiGianDuKien': thoiGianDuKien,
+        if (gioBatDauDuKien != null) 'gioBatDauDuKien': gioBatDauDuKien,
+        if (gioKetThucDuKien != null) 'gioKetThucDuKien': gioKetThucDuKien,
+      },
     );
   }
   /// NVKT xác nhận nhận việc → backend: Đã duyệt → Đang thực hiện
@@ -569,24 +585,14 @@ class WorkOrderBaoTriDetailController extends ChangeNotifier {
 
   HoSoBaoTri? hoSo;
   bool dangTai = true;
-  bool dangLuu = false;
   String? loi;
-  bool cheDoChinhSua = false;
-  DateTime? ngayDuKienChinhSua;
-
-  /// Xưởng xử lý khi đang chờ duyệt (TTCĐ đã tạo) hoặc GĐ từ chối trả về
-  bool get xuongCoTheXuLy =>
-      hoSo != null &&
-          (hoSo!.trangThai == 'Chờ duyệt' || hoSo!.trangThai == 'Từ chối');
 
   Future<void> taiChiTiet() async {
     dangTai = true;
     loi = null;
-    cheDoChinhSua = false;
     notifyListeners();
     try {
       hoSo = await WorkOrderService.layChiTietHoSoBaoTri(maHoSoBaoTri);
-      ngayDuKienChinhSua = hoSo?.ngayDuKienBaoTri;
     } catch (e) {
       loi = 'Lỗi tải dữ liệu: $e';
     } finally {
@@ -594,81 +600,12 @@ class WorkOrderBaoTriDetailController extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  void batCheDoChinhSua() {
-    cheDoChinhSua = true;
-    ngayDuKienChinhSua = hoSo?.ngayDuKienBaoTri;
-    loi = null;
-    notifyListeners();
-  }
-
-  void huyCheDoChinhSua() {
-    cheDoChinhSua = false;
-    ngayDuKienChinhSua = hoSo?.ngayDuKienBaoTri;
-    loi = null;
-    notifyListeners();
-  }
-
-  void datNgayDuKienChinhSua(DateTime d) {
-    ngayDuKienChinhSua = d;
-    notifyListeners();
-  }
-
-  Future<bool> luuNgayDuKien() async {
-    if (ngayDuKienChinhSua == null) {
-      loi = 'Vui lòng chọn ngày dự kiến bảo trì';
-      notifyListeners();
-      return false;
-    }
-    dangLuu = true;
-    loi = null;
-    notifyListeners();
-    try {
-      await WorkOrderService.xuongCapNhatHoSo(
-        maHoSoBaoTri: maHoSoBaoTri,
-        ngayDuKienBaoTri: ngayDuKienChinhSua!,
-      );
-      cheDoChinhSua = false;
-      await taiChiTiet();
-      return true;
-    } on ApiException catch (e) {
-      loi = e.message;
-      return false;
-    } catch (e) {
-      loi = 'Lỗi lưu: $e';
-      return false;
-    } finally {
-      dangLuu = false;
-      notifyListeners();
-    }
-  }
-
-  Future<bool> guiGiamDoc() async {
-    dangLuu = true;
-    loi = null;
-    notifyListeners();
-    try {
-      await WorkOrderService.xuongGuiGiamDoc(maHoSoBaoTri);
-      await taiChiTiet();
-      return true;
-    } on ApiException catch (e) {
-      loi = e.message;
-      return false;
-    } catch (e) {
-      loi = 'Lỗi gửi: $e';
-      return false;
-    } finally {
-      dangLuu = false;
-      notifyListeners();
-    }
-  }
 }
 
 class PhanCongBaoTriController extends ChangeNotifier {
   List<NhanVienRutGon> dsNhanVien = [];
-  NhanVienRutGon? chon; // giữ tương thích UI cũ
-  /// Nhiều NV được chọn (luồng mới)
-  final Set<int> dsMaNvChon = {};
+  /// Chọn nhiều nhân viên (tích / bỏ tích).
+  final Set<int> maNhanVienDaChon = {};
 
   String? tenNguoiPhanCong;
   int? maNguoiPhanCong;
@@ -730,20 +667,21 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   void chonNhanVien(NhanVienRutGon nv) {
-    // Toggle multi-select
-    if (dsMaNvChon.contains(nv.maNhanVien)) {
-      dsMaNvChon.remove(nv.maNhanVien);
+    toggleNhanVien(nv);
+  }
+
+  /// Tích / bỏ tích nhân viên (hỗ trợ chọn nhiều).
+  void toggleNhanVien(NhanVienRutGon nv) {
+    if (maNhanVienDaChon.contains(nv.maNhanVien)) {
+      maNhanVienDaChon.remove(nv.maNhanVien);
     } else {
-      dsMaNvChon.add(nv.maNhanVien);
+      maNhanVienDaChon.add(nv.maNhanVien);
     }
-    chon = dsMaNvChon.isEmpty
-        ? null
-        : dsNhanVien.firstWhere((e) => e.maNhanVien == dsMaNvChon.first, orElse: () => nv);
     loi = null;
     notifyListeners();
   }
 
-  bool daChon(int maNhanVien) => dsMaNvChon.contains(maNhanVien);
+  bool daChon(int maNhanVien) => maNhanVienDaChon.contains(maNhanVien);
 
   bool laNhanVienBiTuChoi(int maNhanVien) =>
       maNhanVienBiTuChoi != null && maNhanVien == maNhanVienBiTuChoi;
@@ -761,7 +699,7 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   Future<bool> xacNhan(int maHoSoBaoTri) async {
-    if (dsMaNvChon.isEmpty && chon == null) {
+    if (maNhanVienDaChon.isEmpty) {
       loi = 'Vui lòng chọn ít nhất một nhân viên thực hiện';
       notifyListeners();
       return false;
@@ -781,13 +719,9 @@ class PhanCongBaoTriController extends ChangeNotifier {
     loi = null;
     notifyListeners();
     try {
-      final ds = dsMaNvChon.isNotEmpty
-          ? dsMaNvChon.toList()
-          : [chon!.maNhanVien];
       await WorkOrderService.phanCongBaoTri(
         maHoSoBaoTri: maHoSoBaoTri,
-        maNhanVienThucHien: ds.first,
-        danhSachMaNhanVienThucHien: ds,
+        maNhanVienThucHiens: maNhanVienDaChon.toList(),
         ngayBatDau: thoiDiemBatDau,
         ngayKetThuc: thoiDiemKetThuc,
       );
