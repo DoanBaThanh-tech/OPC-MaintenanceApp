@@ -298,20 +298,16 @@ class ChiTietYeuCauScreen extends StatefulWidget {
 class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   bool _dangXuLy = false;
 
-  Future<void> _xacNhan() async {
+  Future<void> _hoanThanh() async {
     final y = widget.yeuCau;
     if (y.maHoSo == null) return;
     setState(() => _dangXuLy = true);
     try {
-      if (y.laBaoTri) {
-        await WorkOrderService.nhanVienXacNhanBaoTri(y.maHoSo!);
-      } else {
-        await WorkOrderService.nhanVienXacNhanSuaChua(y.maHoSo!);
-      }
+      await WorkOrderService.hoanThanhBaoTri(y.maHoSo!);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Đã xác nhận nhận việc'),
+          content: Text('Đã hoàn thành bảo trì — trạng thái đã đồng bộ cho tất cả nhân viên'),
           backgroundColor: AppColors.success,
         ),
       );
@@ -534,7 +530,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                 ),
               ),
             ),
-            if (y.choXacNhan && !y.daHuy)
+            if (!y.daHuy && y.trangThaiPhanCong != 'Hoàn thành' && y.maHoSo != null)
               Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 decoration: BoxDecoration(
@@ -550,22 +546,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton(
-                        onPressed: _dangXuLy ? null : _tuChoi,
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.danger,
-                          side: const BorderSide(color: AppColors.danger),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: const Text('Từ chối'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
                       child: FilledButton(
-                        onPressed: _dangXuLy ? null : _xacNhan,
+                        onPressed: _dangXuLy ? null : _hoanThanh,
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.success,
                           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -577,7 +559,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                           width: 20,
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
-                            : const Text('Xác nhận'),
+                            : const Text('Hoàn thành bảo trì'),
                       ),
                     ),
                   ],

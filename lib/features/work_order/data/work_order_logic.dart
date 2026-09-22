@@ -228,14 +228,54 @@ class WorkOrderService {
     required int maNhanVienThucHien,
     required DateTime ngayBatDau,
     required DateTime ngayKetThuc,
+    List<int>? danhSachMaNhanVienThucHien,
   }) async {
+    final body = <String, dynamic>{
+      'maNhanVienThucHien': maNhanVienThucHien,
+      'ngayBatDauDuKien': ngayBatDau.toIso8601String(),
+      'ngayKetThucDuKien': ngayKetThuc.toIso8601String(),
+    };
+    if (danhSachMaNhanVienThucHien != null && danhSachMaNhanVienThucHien.isNotEmpty) {
+      body['danhSachMaNhanVienThucHien'] = danhSachMaNhanVienThucHien;
+    }
     await ApiClient.instance.post<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/phan-cong',
+      body,
+    );
+  }
+
+  /// NVKT bấm Hoàn thành bảo trì (đồng bộ tất cả phân công cùng hồ sơ)
+  static Future<void> hoanThanhBaoTri(int maHoSoBaoTri) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/hoan-thanh',
+      {},
+    );
+  }
+
+  /// Xưởng lưu chỉnh sửa hồ sơ Chờ xưởng
+  static Future<void> xuongCapNhatHoSo({
+    required int maHoSoBaoTri,
+    String? noiDungCongViec,
+    String? thoiGianDuKien,
+    String? gioBatDauDuKien,
+    String? gioKetThucDuKien,
+  }) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/xuong-cap-nhat',
       {
-        'maNhanVienThucHien': maNhanVienThucHien,
-        'ngayBatDauDuKien': ngayBatDau.toIso8601String(),
-        'ngayKetThucDuKien': ngayKetThuc.toIso8601String(),
+        if (noiDungCongViec != null) 'noiDungCongViec': noiDungCongViec,
+        if (thoiGianDuKien != null) 'thoiGianDuKien': thoiGianDuKien,
+        if (gioBatDauDuKien != null) 'gioBatDauDuKien': gioBatDauDuKien,
+        if (gioKetThucDuKien != null) 'gioKetThucDuKien': gioKetThucDuKien,
       },
+    );
+  }
+
+  /// Xưởng gửi Giám đốc
+  static Future<void> xuongGuiGiamDoc(int maHoSoBaoTri) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/xuong-gui-giam-doc',
+      {},
     );
   }
   /// NVKT xác nhận nhận việc → backend: Đã duyệt → Đang thực hiện
@@ -550,7 +590,9 @@ class WorkOrderBaoTriDetailController extends ChangeNotifier {
 
 class PhanCongBaoTriController extends ChangeNotifier {
   List<NhanVienRutGon> dsNhanVien = [];
-  NhanVienRutGon? chon;
+  NhanVienRutGon? chon; // giữ tương thích UI cũ
+  /// Nhiều NV được chọn (luồng mới)
+  final Set<int> dsMaNvChon = {};
 
   String? tenNguoiPhanCong;
   int? maNguoiPhanCong;
@@ -612,19 +654,20 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   void chonNhanVien(NhanVienRutGon nv) {
-    // Chỉ chặn trên hồ sơ này nếu NV vừa từ chối phân công hồ sơ này
-    if (maNhanVienBiTuChoi != null && nv.maNhanVien == maNhanVienBiTuChoi) {
-      chon = null;
-      loi =
-      '${tenNhanVienBiLoai ?? "Nhân viên này"} đã từ chối nhận việc trên hồ sơ này. '
-          'Vui lòng chọn nhân viên khác.';
-      notifyListeners();
-      return;
+    // Toggle multi-select
+    if (dsMaNvChon.contains(nv.maNhanVien)) {
+      dsMaNvChon.remove(nv.maNhanVien);
+    } else {
+      dsMaNvChon.add(nv.maNhanVien);
     }
-    chon = nv;
+    chon = dsMaNvChon.isEmpty
+        ? null
+        : dsNhanVien.firstWhere((e) => e.maNhanVien == dsMaNvChon.first, orElse: () => nv);
     loi = null;
     notifyListeners();
   }
+
+  bool daChon(int maNhanVien) => dsMaNvChon.contains(maNhanVien);
 
   bool laNhanVienBiTuChoi(int maNhanVien) =>
       maNhanVienBiTuChoi != null && maNhanVien == maNhanVienBiTuChoi;
@@ -642,15 +685,8 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   Future<bool> xacNhan(int maHoSoBaoTri) async {
-    if (chon == null) {
-      loi = 'Vui lòng chọn nhân viên thực hiện';
-      notifyListeners();
-      return false;
-    }
-    if (hoSo?.phanCongBiTuChoi == true &&
-        hoSo?.maNhanVienThucHien != null &&
-        chon!.maNhanVien == hoSo!.maNhanVienThucHien) {
-      loi = 'Nhân viên này đã từ chối. Vui lòng chọn người khác.';
+    if (dsMaNvChon.isEmpty && chon == null) {
+      loi = 'Vui lòng chọn ít nhất một nhân viên thực hiện';
       notifyListeners();
       return false;
     }
@@ -669,9 +705,13 @@ class PhanCongBaoTriController extends ChangeNotifier {
     loi = null;
     notifyListeners();
     try {
+      final ds = dsMaNvChon.isNotEmpty
+          ? dsMaNvChon.toList()
+          : [chon!.maNhanVien];
       await WorkOrderService.phanCongBaoTri(
         maHoSoBaoTri: maHoSoBaoTri,
-        maNhanVienThucHien: chon!.maNhanVien,
+        maNhanVienThucHien: ds.first,
+        danhSachMaNhanVienThucHien: ds,
         ngayBatDau: thoiDiemBatDau,
         ngayKetThuc: thoiDiemKetThuc,
       );

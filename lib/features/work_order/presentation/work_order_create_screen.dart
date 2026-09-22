@@ -221,7 +221,7 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                                       height: 20,
                                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                                     )
-                                        : const Text('Gửi duyệt', maxLines: 1),
+                                        : const Text('Gửi bảo trì', maxLines: 1),
                                   ),
                                 ),
                               ],

@@ -510,7 +510,7 @@ class CreateMaintenancePlanController extends ChangeNotifier {
 
   /// Khi đã khớp yêu cầu xưởng xác nhận → khóa các trường auto-fill
   /// (chỉ mở khi giám đốc từ chối hồ sơ và yêu cầu chỉnh sửa — luồng riêng)
-  bool get dangKhoaTheoYeuCau => yeuCauDangTheo != null;
+  bool get dangKhoaTheoYeuCau => false; // Bỏ ràng buộc yêu cầu — nhập tự do
 
   /// Dòng hiển thị dưới form: đang theo yêu cầu tháng/năm nào
   String? get nhanYeuCauDangTheo {
@@ -806,12 +806,12 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    // Bắt buộc có YC đã xác nhận đúng tháng và chưa lập KH
-    final yc = yeuCauKhopThietBi(thietBiChon!.maThietBi);
-    if (yc == null) {
+    // Bỏ ràng buộc yêu cầu xưởng — tạo bảo trì thiết bị bình thường
+    // Ràng buộc: cùng thiết bị đã có hồ sơ/kế hoạch trong tháng → không cho tạo & gửi
+    if (daLapKeHoachThang(thietBiChon!.maThietBi, thang, nam)) {
       loi =
-      'Thiết bị này chưa có yêu cầu bảo trì đã được xưởng xác nhận cho tháng $thang/$nam '
-          '(hoặc tháng đó đã lập kế hoạch rồi). Tháng trên form phải trùng tháng trên yêu cầu.';
+      'Thiết bị "${thietBiChon!.tenThietBi}" đã có hồ sơ bảo trì trong tháng $thang/$nam. '
+          'Không thể tạo và gửi thêm hồ sơ bảo trì cho cùng thiết bị trong tháng này.';
       notifyListeners();
       return false;
     }
@@ -821,14 +821,7 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       chiTietChon!.ngayDuKienBaoTri.day,
     );
     if (ngay.year != nam || ngay.month != thang) {
-      loi = 'Ngày dự kiến bảo trì phải nằm trong tháng $thang/$nam (theo yêu cầu đã xác nhận).';
-      notifyListeners();
-      return false;
-    }
-    // Ngày phải thuộc đúng tháng YC
-    if (ngay.month != yc.thangBaoTri || ngay.year != yc.namBaoTri) {
-      loi =
-      'Ngày/tháng phải khớp yêu cầu đã xác nhận (YC T${yc.thangBaoTri}/${yc.namBaoTri}).';
+      loi = 'Ngày dự kiến bảo trì phải nằm trong tháng $thang/$nam.';
       notifyListeners();
       return false;
     }

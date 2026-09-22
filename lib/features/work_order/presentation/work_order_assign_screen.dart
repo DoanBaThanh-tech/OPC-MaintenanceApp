@@ -295,7 +295,7 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen> {
                       )
                     else
                       ..._controller.dsNhanVien.map((nv) {
-                        final dangChon = _controller.chon?.maNhanVien == nv.maNhanVien;
+                        final dangChon = _controller.daChon(nv.maNhanVien);
                         final biTuChoi = _controller.laNhanVienBiTuChoi(nv.maNhanVien);
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),

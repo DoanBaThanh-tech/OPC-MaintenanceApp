@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../core/storage/token_storage.dart';
-import '../../maintenance_request/presentation/maintenance_request_screens.dart';
 import '../../maintenance_plan/presentation/maintenance_plan_screens.dart';
 import '../../work_order/presentation/work_order_screens.dart';
 import '../../work_order/presentation/technician_screens.dart';
 import '../../approval/presentation/approval_screens.dart';
 import '../../equipment/presentation/equipment_screens.dart';
+
 // ============ MODEL ============
 
-/// 1 mục trong slide menu
 class MenuItemData {
   final IconData icon;
   final String label;
@@ -20,38 +19,29 @@ class MenuItemData {
   });
 }
 
-/// 1 nhóm mục trong slide menu (VD: "Tài khoản", "Hệ thống")
 class MenuGroup {
   final String tieuDe;
   final List<MenuItemData> muc;
   const MenuGroup({required this.tieuDe, required this.muc});
 }
 
-/// Thông tin phiên đăng nhập hiện tại, dùng để hiển thị ở header slide menu
 class PhienDangNhap {
   final String email;
   final String vaiTro;
   const PhienDangNhap({required this.email, required this.vaiTro});
 }
 
-// ============ LOGIC PHỨC TẠP: xác định menu theo vai trò ============
-
 class DashboardLogic {
   DashboardLogic._();
 
-  /// Đọc thông tin phiên đăng nhập đã lưu — dùng cho header slide menu
   static Future<PhienDangNhap> layPhienDangNhap() async {
     final email = await TokenStorage.getToken() != null
         ? (await TokenStorage.getVaiTro() ?? '')
         : '';
-    // Lấy đúng 2 giá trị cần thiết cho header
     final vaiTro = await TokenStorage.getVaiTro() ?? 'Người dùng';
     return PhienDangNhap(email: email, vaiTro: vaiTro);
   }
 
-  /// Trung tâm điều phối: mỗi vai trò thấy nhóm chức năng khác nhau.
-  /// Đây là nơi DUY NHẤT quyết định "vai trò nào thấy gì" — khi thêm
-  /// tính năng mới, chỉ sửa đúng hàm này, không sửa rải rác ở UI.
   static List<MenuGroup> layMenuTheoVaiTro(String vaiTro) {
     switch (vaiTro) {
       case 'Admin hệ thống':
@@ -67,29 +57,21 @@ class DashboardLogic {
           ]),
         ];
 
-    // Xưởng: nhận yêu cầu từ Tổ trưởng cơ điện → Đồng ý / Từ chối
+    // Xưởng: nhận hồ sơ từ Tổ trưởng cơ điện → chỉnh sửa / gửi Giám đốc
       case 'Tổ trưởng sản xuất':
         return [
-          MenuGroup(tieuDe: 'Yêu cầu từ cơ điện', muc: [
+          MenuGroup(tieuDe: 'Hồ sơ bảo trì', muc: [
             MenuItemData(
               icon: Icons.fact_check_rounded,
-              label: 'Xác nhận yêu cầu bảo trì',
-              screenBuilder: () => const XacNhanYeuCauBaoTriScreen(),
+              label: 'Hồ sơ chờ xử lý',
+              screenBuilder: () => const WorkOrderBaoTriListScreen(),
             ),
           ]),
         ];
 
-    // Tổ trưởng cơ điện: tạo/sửa yêu cầu + kế hoạch + hồ sơ
       case 'Tổ trưởng cơ điện':
-      case 'Tổ trưởng kỹ thuật': // tương thích tên cũ trước khi chạy SQL rename
+      case 'Tổ trưởng kỹ thuật':
         return [
-          MenuGroup(tieuDe: 'Yêu cầu bảo trì', muc: [
-            MenuItemData(
-              icon: Icons.assignment_rounded,
-              label: 'Quản lý yêu cầu',
-              screenBuilder: () => const QuanLyYeuCauBaoTriScreen(),
-            ),
-          ]),
           MenuGroup(tieuDe: 'Thiết bị', muc: [
             MenuItemData(icon: Icons.precision_manufacturing_rounded, label: 'Danh sách thiết bị', screenBuilder: () => const EquipmentListScreen()),
             MenuItemData(icon: Icons.event_note_rounded, label: 'Kế hoạch bảo trì', screenBuilder: () => const MaintenancePlanListScreen()),
@@ -101,18 +83,14 @@ class DashboardLogic {
           ]),
         ];
 
+    // NVKT: chỉ xem yêu cầu + Hoàn thành — bỏ Kết quả thực hiện
       case 'Nhân viên kỹ thuật':
         return [
           MenuGroup(tieuDe: 'Công việc của tôi', muc: [
             MenuItemData(
               icon: Icons.assignment_rounded,
-              label: 'Quản lý yêu cầu',
+              label: 'Yêu cầu bảo trì của tôi',
               screenBuilder: () => const QuanLyYeuCauScreen(),
-            ),
-            MenuItemData(
-              icon: Icons.task_alt_rounded,
-              label: 'Kết quả thực hiện',
-              screenBuilder: () => const KetQuaThucHienScreen(),
             ),
             MenuItemData(icon: Icons.handyman_rounded, label: 'Tạo hồ sơ sửa chữa', screenBuilder: () => const _ChuaLamScreen(ten: 'Tạo hồ sơ sửa chữa')),
             MenuItemData(icon: Icons.inventory_2_rounded, label: 'Yêu cầu vật tư', screenBuilder: () => const _ChuaLamScreen(ten: 'Yêu cầu vật tư')),
@@ -145,7 +123,6 @@ class DashboardLogic {
   }
 }
 
-/// Màn tạm — bạn thay bằng screen thật của từng feature khi làm tới
 class _ChuaLamScreen extends StatelessWidget {
   final String ten;
   const _ChuaLamScreen({required this.ten});
