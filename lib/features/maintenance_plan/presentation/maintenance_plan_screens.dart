@@ -635,18 +635,25 @@ class CreateMaintenancePlanScreen extends StatefulWidget {
   State<CreateMaintenancePlanScreen> createState() => _CreateMaintenancePlanScreenState();
 }
 
-class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScreen> {
+class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScreen>
+    with SingleTickerProviderStateMixin {
   late final CreateMaintenancePlanController _controller;
+  late final AnimationController _fadeCtrl;
+  late final Animation<double> _fadeAnim;
 
   @override
   void initState() {
     super.initState();
     _controller = CreateMaintenancePlanController(nam: widget.nam);
     _controller.taiDuLieuBanDau();
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic);
+    _fadeCtrl.forward();
   }
 
   @override
   void dispose() {
+    _fadeCtrl.dispose();
     _controller.noiDungCongViecController.dispose();
     _controller.thoiGianTextController.dispose();
     _controller.dispose();
@@ -675,6 +682,9 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
       initialDate: initial,
       firstDate: first,
       lastDate: last,
+      helpText: 'Chọn ngày dự kiến bảo trì',
+      cancelText: 'Hủy',
+      confirmText: 'Chọn',
     );
     if (ngay != null) _controller.datNgayDuKien(ngay);
   }
@@ -687,280 +697,524 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
   String _fmt(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
+  InputDecoration _fieldDeco({
+    String? hint,
+    String? helper,
+    String? error,
+    Widget? prefix,
+    Widget? suffix,
+    String? suffixText,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      helperText: helper,
+      errorText: error,
+      prefixIcon: prefix,
+      suffixIcon: suffix,
+      suffixText: suffixText,
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.danger),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text, {String? hint}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13.5,
+              letterSpacing: 0.15,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          if (hint != null) ...[
+            const SizedBox(height: 3),
+            Text(hint, style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, height: 1.3)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _card({required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _tapField({
+    required VoidCallback? onTap,
+    required IconData icon,
+    required String value,
+    required bool enabled,
+    String? placeholder,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: enabled ? Colors.white : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: enabled ? AppColors.primary.withValues(alpha: 0.55) : Colors.grey.shade300,
+              width: enabled ? 1.4 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: enabled ? AppColors.primary : Colors.grey.shade400),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  value.isNotEmpty ? value : (placeholder ?? 'Chọn'),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: value.isNotEmpty ? FontWeight.w600 : FontWeight.w500,
+                    color: value.isNotEmpty ? const Color(0xFF0F172A) : Colors.grey.shade500,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: enabled ? AppColors.primary : Colors.grey.shade400,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Lập bảo trì cho thiết bị · Năm ${widget.nam}'),
+        title: Text('Lập bảo trì · ${widget.nam}'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
       ),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
           if (_controller.dangTai) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
           }
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 560),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Tìm theo tên thiết bị hoặc danh mục',
-                        prefixIcon: Icon(Icons.search),
-                        border: OutlineInputBorder(),
-                      ),
-                      onChanged: _controller.datTuKhoaTimKiem,
-                    ),
-                    const SizedBox(height: 12),
-                    const Text('Danh mục thiết bị', style: TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<String>(
-                      value: _controller.danhMucChon,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.category_outlined),
-                      ),
-                      hint: const Text('Tất cả danh mục'),
-                      items: _controller.danhSachDanhMuc.map((dm) {
-                        return DropdownMenuItem(
-                          value: dm,
-                          child: Text(dm, overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: _controller.chonDanhMuc,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Thiết bị', style: TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<ThietBiRutGon>(
-                      value: _controller.thietBiChon,
-                      isExpanded: true,
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.precision_manufacturing_outlined),
-                      ),
-                      hint: Text(
-                        _controller.danhMucChon == null
-                            ? 'Chọn danh mục trước (khuyến nghị)'
-                            : 'Chọn thiết bị',
-                      ),
-                      items: _controller.dsThietBiDaLoc.map((tb) {
-                        return DropdownMenuItem(
-                          value: tb,
-                          child: Text(tb.tenThietBi, overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: _controller.chonThietBi,
-                    ),
-                    const SizedBox(height: 16),
-                    const Text('Tháng', style: TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Chọn tháng dự kiến bảo trì',
-                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
-                    ),
-                    const SizedBox(height: 8),
-                    DropdownButtonFormField<int>(
-                      value: _controller.thangChoPhep.contains(_controller.thang)
-                          ? _controller.thang
-                          : (_controller.thangChoPhep.isNotEmpty
-                          ? _controller.thangChoPhep.first
-                          : _controller.thang),
-                      decoration: const InputDecoration(
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.calendar_view_month),
-                      ),
-                      items: (_controller.thietBiChon == null
-                          ? List.generate(12, (i) => i + 1)
-                          : _controller.thangChoPhep)
-                          .map((m) => DropdownMenuItem(value: m, child: Text('Tháng $m')))
-                          .toList(),
-                      onChanged: (v) {
-                        if (v != null) _controller.doiThang(v);
-                      },
-                    ),
-                    // Dòng chắc chắn: đang theo yêu cầu tháng/năm nào
-                    if (_controller.nhanYeuCauDangTheo != null) ...[
-                      const SizedBox(height: 10),
+          return FadeTransition(
+            opacity: _fadeAnim,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              physics: const BouncingScrollPhysics(),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header banner
                       Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.25)),
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary,
+                              AppColors.primaryDark,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.28),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
                         child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
-                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.build_circle_outlined, color: Colors.white, size: 28),
+                            ),
+                            const SizedBox(width: 14),
                             Expanded(
-                              child: Text(
-                                _controller.nhanYeuCauDangTheo!,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                  height: 1.35,
-                                  color: AppColors.primary,
-                                ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Lập bảo trì cho thiết bị',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Chọn thiết bị · tháng · ngày dự kiến rồi gửi xưởng',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.88),
+                                      fontSize: 12.5,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ] else if (_controller.thietBiChon != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Chưa khớp yêu cầu nào cho tháng ${_controller.thang}/${_controller.nam}. '
-                            'Chọn tháng có nhãn YC trên thiết bị.',
-                        style: TextStyle(fontSize: 12, color: Colors.orange.shade800),
-                      ),
-                    ],
-                    if (_controller.chuKyCoDinh != null) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Chu kỳ đề xuất: ${_controller.chuKyCoDinh!.soThangChuKyDeXuat} tháng/lần',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                      ),
-                    ],
-                    if (_controller.chiTietChon != null) ...[
-                      const SizedBox(height: 20),
-                      const Text('Ngày dự kiến bảo trì', style: TextStyle(fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 8),
-                      Card(
-                        child: ListTile(
-                          title: Text(_controller.chiTietChon!.thietBi.tenThietBi),
-                          subtitle: Text('Dự kiến: ${_fmt(_controller.chiTietChon!.ngayDuKienBaoTri)}'),
-                          trailing: _controller.dangKhoaTheoYeuCau
-                              ? Tooltip(
-                            message: 'Khóa theo yêu cầu xưởng đã xác nhận',
-                            child: Icon(Icons.lock_outline, color: Colors.grey.shade500),
-                          )
-                              : IconButton(
-                            icon: const Icon(Icons.edit_calendar),
-                            onPressed: _chonNgay,
+                      const SizedBox(height: 18),
+
+                      // --- Thiết bị ---
+                      _card(
+                        children: [
+                          _sectionLabel('Thiết bị', hint: 'Tìm kiếm hoặc lọc theo danh mục'),
+                          TextField(
+                            decoration: _fieldDeco(
+                              hint: 'Tìm theo tên thiết bị hoặc danh mục',
+                              prefix: const Icon(Icons.search_rounded, size: 22),
+                            ),
+                            onChanged: _controller.datTuKhoaTimKiem,
                           ),
-                        ),
-                      ),
-                    ],
-                    if (_controller.dangKhoaTheoYeuCau) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        'Các trường dưới đây đã tự điền từ yêu cầu xưởng xác nhận và bị khóa để tránh sai sót. '
-                            'Chỉ chỉnh sửa được khi giám đốc từ chối hồ sơ và yêu cầu sửa lại.',
-                        style: TextStyle(fontSize: 12, color: Colors.grey.shade600, height: 1.35),
-                      ),
-                    ],
-                    const SizedBox(height: 20),
-                    const Text('Nội dung công việc', style: TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _controller.noiDungCongViecController,
-                      maxLines: 3,
-                      readOnly: _controller.dangKhoaTheoYeuCau,
-                      decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        hintText: 'Mô tả công việc cần bảo trì...',
-                        filled: _controller.dangKhoaTheoYeuCau,
-                        fillColor: _controller.dangKhoaTheoYeuCau ? Colors.grey.shade100 : null,
-                        suffixIcon: _controller.dangKhoaTheoYeuCau
-                            ? Icon(Icons.lock_outline, size: 18, color: Colors.grey.shade500)
-                            : null,
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    const Text('Giờ dự kiến bảo trì (số giờ)', style: TextStyle(fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _controller.thoiGianTextController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
-                      readOnly: _controller.dangKhoaTheoYeuCau,
-                      decoration: InputDecoration(
-                        border: const OutlineInputBorder(),
-                        suffixText: 'giờ',
-                        helperText: _controller.dangKhoaTheoYeuCau
-                            ? 'Khóa theo yêu cầu đã xác nhận'
-                            : 'Trong ngày — lớn hơn 0 và tối đa 24 giờ',
-                        errorText: _controller.loiThoiGianDuKien,
-                        filled: _controller.dangKhoaTheoYeuCau,
-                        fillColor: _controller.dangKhoaTheoYeuCau ? Colors.grey.shade100 : null,
-                      ),
-                      onChanged: _controller.dangKhoaTheoYeuCau ? null : _controller.datThoiGianDuKienTuChuoi,
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: InkWell(
-                            onTap: _controller.dangKhoaTheoYeuCau
-                                ? null
-                                : () async {
-                              final hopLe = _controller.thoiGianDuKien != null &&
-                                  _controller.thoiGianDuKien! > 0 &&
-                                  _controller.thoiGianDuKien! <= 24 &&
-                                  _controller.loiThoiGianDuKien == null;
-                              if (!hopLe) return;
-                              final t = await showTimePicker(
-                                context: context,
-                                initialTime: _controller.gioBatDau ?? TimeOfDay.now(),
-                              );
-                              if (t != null) _controller.datGioBatDau(t);
-                            },
-                            child: InputDecorator(
-                              decoration: InputDecoration(
-                                labelText: 'Giờ bắt đầu',
-                                border: const OutlineInputBorder(),
-                                filled: _controller.dangKhoaTheoYeuCau,
-                                fillColor: _controller.dangKhoaTheoYeuCau ? Colors.grey.shade100 : null,
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            value: _controller.danhMucChon,
+                            isExpanded: true,
+                            decoration: _fieldDeco(
+                              hint: 'Tất cả danh mục',
+                              prefix: const Icon(Icons.category_outlined, size: 22),
+                            ),
+                            hint: const Text('Tất cả danh mục'),
+                            items: _controller.danhSachDanhMuc
+                                .map(
+                                  (dm) => DropdownMenuItem(
+                                value: dm,
+                                child: Text(dm, overflow: TextOverflow.ellipsis),
                               ),
-                              child: Text(_controller.gioBatDau?.format(context) ?? 'Chọn giờ'),
+                            )
+                                .toList(),
+                            onChanged: _controller.chonDanhMuc,
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<ThietBiRutGon>(
+                            value: _controller.thietBiChon,
+                            isExpanded: true,
+                            decoration: _fieldDeco(
+                              hint: _controller.danhMucChon == null
+                                  ? 'Chọn thiết bị'
+                                  : 'Chọn thiết bị trong danh mục',
+                              prefix: const Icon(Icons.precision_manufacturing_outlined, size: 22),
+                            ),
+                            items: _controller.dsThietBiDaLoc
+                                .map(
+                                  (tb) => DropdownMenuItem(
+                                value: tb,
+                                child: Text(tb.tenThietBi, overflow: TextOverflow.ellipsis),
+                              ),
+                            )
+                                .toList(),
+                            onChanged: _controller.chonThietBi,
+                          ),
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOutCubic,
+                            child: _controller.chuKyCoDinh == null
+                                ? const SizedBox.shrink()
+                                : Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.autorenew_rounded, size: 18, color: AppColors.primary.withValues(alpha: 0.9)),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Chu kỳ đề xuất: ${_controller.chuKyCoDinh!.soThangChuKyDeXuat} tháng/lần',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primaryDark,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Giờ kết thúc (tự tính)',
-                              border: OutlineInputBorder(),
-                            ),
-                            child: Text(
-                              _controller.gioKetThucTuTinh?.format(context) ?? '—',
-                              style: const TextStyle(color: Colors.grey),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (_controller.loi != null) ...[
-                      const SizedBox(height: 12),
-                      Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
-                    ],
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        ],
                       ),
-                      onPressed: _controller.dangLuu ? null : _luu,
-                      child: _controller.dangLuu
-                          ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                      )
-                          : const Text('Tạo Bảo Trì', style: TextStyle(fontWeight: FontWeight.w700)),
-                    ),
-                  ],
+                      const SizedBox(height: 14),
+
+                      // --- Thời gian: Tháng TRƯỚC, Ngày SAU ---
+                      _card(
+                        children: [
+                          _sectionLabel(
+                            'Thời gian bảo trì',
+                            hint: 'Chọn tháng trước, sau đó chọn ngày dự kiến trong tháng đó',
+                          ),
+                          _sectionLabel('Tháng *'),
+                          DropdownButtonFormField<int>(
+                            value: _controller.thang,
+                            decoration: _fieldDeco(
+                              prefix: const Icon(Icons.calendar_view_month_rounded, size: 22),
+                            ),
+                            items: List.generate(12, (i) => i + 1)
+                                .map((m) => DropdownMenuItem(value: m, child: Text('Tháng $m / ${_controller.nam}')))
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) _controller.doiThang(v);
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _sectionLabel(
+                            'Ngày dự kiến bảo trì *',
+                            hint: _controller.thietBiChon == null
+                                ? 'Chọn thiết bị trước để chọn ngày'
+                                : 'Ngày trong tháng ${_controller.thang}/${_controller.nam}, sau hôm nay',
+                          ),
+                          _tapField(
+                            onTap: _controller.thietBiChon == null ? null : _chonNgay,
+                            icon: Icons.event_available_rounded,
+                            enabled: _controller.thietBiChon != null,
+                            value: _controller.chiTietChon != null
+                                ? _fmt(_controller.chiTietChon!.ngayDuKienBaoTri)
+                                : '',
+                            placeholder: _controller.thietBiChon == null
+                                ? 'Chọn thiết bị trước'
+                                : 'Chạm để chọn ngày',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // --- Công việc & giờ ---
+                      _card(
+                        children: [
+                          _sectionLabel('Nội dung công việc *'),
+                          TextField(
+                            controller: _controller.noiDungCongViecController,
+                            maxLines: 3,
+                            decoration: _fieldDeco(hint: 'Mô tả công việc cần bảo trì...'),
+                          ),
+                          const SizedBox(height: 16),
+                          _sectionLabel('Giờ dự kiến bảo trì *', hint: 'Số giờ trong ngày (1–24)'),
+                          TextField(
+                            controller: _controller.thoiGianTextController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
+                            decoration: _fieldDeco(
+                              hint: 'Ví dụ: 4',
+                              suffixText: 'giờ',
+                              error: _controller.loiThoiGianDuKien,
+                              prefix: const Icon(Icons.schedule_rounded, size: 22),
+                            ),
+                            onChanged: _controller.datThoiGianDuKienTuChuoi,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _sectionLabel('Giờ bắt đầu *'),
+                                    _tapField(
+                                      onTap: () async {
+                                        final hopLe = _controller.thoiGianDuKien != null &&
+                                            _controller.thoiGianDuKien! > 0 &&
+                                            _controller.thoiGianDuKien! <= 24 &&
+                                            _controller.loiThoiGianDuKien == null;
+                                        if (!hopLe) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Nhập số giờ dự kiến hợp lệ trước')),
+                                          );
+                                          return;
+                                        }
+                                        final t = await showTimePicker(
+                                          context: context,
+                                          initialTime: _controller.gioBatDau ?? TimeOfDay.now(),
+                                          helpText: 'Giờ bắt đầu',
+                                          cancelText: 'Hủy',
+                                          confirmText: 'Chọn',
+                                        );
+                                        if (t != null) _controller.datGioBatDau(t);
+                                      },
+                                      icon: Icons.play_circle_outline_rounded,
+                                      enabled: true,
+                                      value: _controller.gioBatDau?.format(context) ?? '',
+                                      placeholder: 'Chọn giờ',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    _sectionLabel('Giờ kết thúc'),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                      decoration: BoxDecoration(
+                                        color: Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(color: Colors.grey.shade300),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(Icons.flag_outlined, size: 20, color: Colors.grey.shade500),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              _controller.gioKetThucTuTinh?.format(context) ?? 'Tự tính',
+                                              style: TextStyle(
+                                                fontSize: 15,
+                                                fontWeight: FontWeight.w600,
+                                                color: _controller.gioKetThucTuTinh != null
+                                                    ? const Color(0xFF0F172A)
+                                                    : Colors.grey.shade500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      // Lỗi đỏ
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        child: _controller.loi == null
+                            ? const SizedBox.shrink()
+                            : Padding(
+                          padding: const EdgeInsets.only(top: 14),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.danger.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.danger.withValues(alpha: 0.35)),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _controller.loi!,
+                                    style: const TextStyle(
+                                      color: AppColors.danger,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.35,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 22),
+                      AnimatedScale(
+                        scale: _controller.dangLuu ? 0.98 : 1,
+                        duration: const Duration(milliseconds: 150),
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shadowColor: AppColors.primary.withValues(alpha: 0.4),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: _controller.dangLuu ? null : _luu,
+                          child: _controller.dangLuu
+                              ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                          )
+                              : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.send_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Tạo bảo trì',
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
