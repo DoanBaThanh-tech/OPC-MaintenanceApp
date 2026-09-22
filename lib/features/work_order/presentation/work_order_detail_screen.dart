@@ -24,7 +24,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
           _vaiTro == 'Tổ trưởng kỹ thuật' ||
           _vaiTro == 'Tổ trưởng';
   bool get _laNvkt => _vaiTro == 'Nhân viên kỹ thuật';
-  bool get _laXuong => _vaiTro == 'Tổ trưởng sản xuất';
+  bool get _laXuong => _vaiTro == 'Xưởng' || _vaiTro == 'Tổ trưởng sản xuất';
 
   @override
   void initState() {
@@ -251,6 +251,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                 const SizedBox(height: 24),
 
                 // Nút hành động theo trạng thái + vai trò
+                // Xưởng: chỉnh ngày/nội dung khi còn Chờ duyệt, rồi xác nhận lịch cho GĐ
                 if (hs.choXuong && _laXuong) ...[
                   OutlinedButton.icon(
                     icon: const Icon(Icons.save_outlined),
@@ -266,7 +267,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         );
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đã lưu. Kéo xuống để làm mới danh sách.')),
+                          const SnackBar(content: Text('Đã lưu. Vuốt xuống để làm mới danh sách.')),
                         );
                         await _controller.taiChiTiet();
                       } on ApiException catch (e) {
@@ -278,7 +279,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                   const SizedBox(height: 10),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.send_rounded),
-                    label: const Text('Xác nhận và gửi Giám đốc'),
+                    label: const Text('Xác nhận lịch · gửi Giám đốc'),
                     onPressed: () async {
                       try {
                         await WorkOrderService.xuongGuiGiamDoc(
@@ -290,7 +291,9 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         );
                         if (!mounted) return;
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Đã gửi Giám đốc. Hồ sơ chuyển sang Chờ duyệt.')),
+                          const SnackBar(
+                            content: Text('Đã xác nhận lịch. Hồ sơ vẫn Chờ duyệt — Giám đốc sẽ duyệt.'),
+                          ),
                         );
                         await _controller.taiChiTiet();
                       } on ApiException catch (e) {

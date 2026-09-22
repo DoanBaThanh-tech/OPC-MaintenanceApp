@@ -5,9 +5,10 @@ import '../../work_order/presentation/work_order_screens.dart';
 import '../../work_order/presentation/technician_screens.dart';
 import '../../approval/presentation/approval_screens.dart';
 import '../../equipment/presentation/equipment_screens.dart';
-
+import '../../work_order/presentation/work_order_assign_history_screen.dart';
 // ============ MODEL ============
 
+/// 1 mục trong slide menu
 class MenuItemData {
   final IconData icon;
   final String label;
@@ -19,29 +20,38 @@ class MenuItemData {
   });
 }
 
+/// 1 nhóm mục trong slide menu (VD: "Tài khoản", "Hệ thống")
 class MenuGroup {
   final String tieuDe;
   final List<MenuItemData> muc;
   const MenuGroup({required this.tieuDe, required this.muc});
 }
 
+/// Thông tin phiên đăng nhập hiện tại, dùng để hiển thị ở header slide menu
 class PhienDangNhap {
   final String email;
   final String vaiTro;
   const PhienDangNhap({required this.email, required this.vaiTro});
 }
 
+// ============ LOGIC PHỨC TẠP: xác định menu theo vai trò ============
+
 class DashboardLogic {
   DashboardLogic._();
 
+  /// Đọc thông tin phiên đăng nhập đã lưu — dùng cho header slide menu
   static Future<PhienDangNhap> layPhienDangNhap() async {
     final email = await TokenStorage.getToken() != null
         ? (await TokenStorage.getVaiTro() ?? '')
         : '';
+    // Lấy đúng 2 giá trị cần thiết cho header
     final vaiTro = await TokenStorage.getVaiTro() ?? 'Người dùng';
     return PhienDangNhap(email: email, vaiTro: vaiTro);
   }
 
+  /// Trung tâm điều phối: mỗi vai trò thấy nhóm chức năng khác nhau.
+  /// Đây là nơi DUY NHẤT quyết định "vai trò nào thấy gì" — khi thêm
+  /// tính năng mới, chỉ sửa đúng hàm này, không sửa rải rác ở UI.
   static List<MenuGroup> layMenuTheoVaiTro(String vaiTro) {
     switch (vaiTro) {
       case 'Admin hệ thống':
@@ -57,20 +67,22 @@ class DashboardLogic {
           ]),
         ];
 
-    // Xưởng: nhận hồ sơ từ Tổ trưởng cơ điện → chỉnh sửa / gửi Giám đốc
-      case 'Tổ trưởng sản xuất':
+    // Xưởng: xem hồ sơ Chờ duyệt, điều chỉnh ngày, xác nhận lịch trước khi GĐ duyệt
+      case 'Xưởng':
+      case 'Tổ trưởng sản xuất': // tương thích JWT/DB cũ
         return [
           MenuGroup(tieuDe: 'Hồ sơ bảo trì', muc: [
             MenuItemData(
               icon: Icons.fact_check_rounded,
-              label: 'Hồ sơ bảo trì (xưởng)',
-              screenBuilder: () => const WorkOrderBaoTriListScreen(),
+              label: 'Hồ sơ bảo trì',
+              screenBuilder: () => const WorkOrderBaoTriListScreen(trangThaiMacDinh: 'Chờ duyệt'),
             ),
           ]),
         ];
 
+    // Tổ trưởng cơ điện: kế hoạch + tạo hồ sơ gửi xưởng + phân công sau khi GĐ duyệt
       case 'Tổ trưởng cơ điện':
-      case 'Tổ trưởng kỹ thuật':
+      case 'Tổ trưởng kỹ thuật': // tương thích tên cũ trước khi chạy SQL rename
         return [
           MenuGroup(tieuDe: 'Thiết bị', muc: [
             MenuItemData(icon: Icons.precision_manufacturing_rounded, label: 'Danh sách thiết bị', screenBuilder: () => const EquipmentListScreen()),
@@ -83,7 +95,6 @@ class DashboardLogic {
           ]),
         ];
 
-    // NVKT: chỉ xem yêu cầu + Hoàn thành — bỏ Kết quả thực hiện
       case 'Nhân viên kỹ thuật':
         return [
           MenuGroup(tieuDe: 'Công việc của tôi', muc: [
@@ -123,6 +134,7 @@ class DashboardLogic {
   }
 }
 
+/// Màn tạm — bạn thay bằng screen thật của từng feature khi làm tới
 class _ChuaLamScreen extends StatelessWidget {
   final String ten;
   const _ChuaLamScreen({required this.ten});
