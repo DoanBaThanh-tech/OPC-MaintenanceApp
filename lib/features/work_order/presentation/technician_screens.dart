@@ -484,9 +484,17 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
     if (confirm != true) return;
 
     setState(() => _dangXuLy = true);
-    try {
-      await WorkOrderService.nhanVienHoanThanhBaoTri(y.maHoSo!);
-      if (!mounted) return;
+    final logic = QuanLyYeuCauController();
+    // Phân nhánh theo trường loai (không phụ thuộc getter)
+    final isSc =
+        y.loai == 'Sửa chữa' || y.loai.toLowerCase().contains('sửa chữa');
+    final (ok, msg) = isSc
+        ? await logic.hoanThanhSuaChua(y.maHoSo!)
+        : await logic.hoanThanhBaoTri(y.maHoSo!);
+    logic.dispose();
+    if (!mounted) return;
+    setState(() => _dangXuLy = false);
+    if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: const Text('Đã hoàn thành — hồ sơ & kế hoạch đã cập nhật'),
@@ -497,14 +505,10 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
         ),
       );
       Navigator.pop(context, true);
-    } on ApiException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.message), backgroundColor: AppColors.danger),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _dangXuLy = false);
+    } else if (msg != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), backgroundColor: AppColors.danger),
+      );
     }
   }
 

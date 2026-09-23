@@ -307,7 +307,10 @@ class YeuCauPhanCong {
   bool get daHuy => trangThaiPhanCong == 'Đã hủy';
   bool get daHoanThanhPc =>
       trangThaiPhanCong == 'Hoàn thành' || trangThaiHoSo == 'Đã hoàn thành';
-  bool get laBaoTri => loai == 'Bảo trì';
+  bool get laBaoTri => loai == 'Bảo trì' || loai.toLowerCase().contains('bảo trì');
+  /// Hồ sơ / yêu cầu thuộc loại sửa chữa.
+  bool get laSuaChua =>
+      loai == 'Sửa chữa' || loai.toLowerCase().contains('sửa chữa');
 
   factory YeuCauPhanCong.fromJson(Map<String, dynamic> j) {
     DateTime? asDate(dynamic v) =>

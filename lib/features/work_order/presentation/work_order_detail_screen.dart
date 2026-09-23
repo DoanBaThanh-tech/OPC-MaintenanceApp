@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/work_order_logic.dart';
-import '../../../core/storage/token_storage.dart';
-import '../../../core/network/api_exception.dart';
 import 'work_order_assign_screen.dart';
 
 // ============ MÀN 3: CHI TIẾT HỒ SƠ BẢO TRÌ + PHÂN CÔNG (khi đã duyệt) ============
@@ -16,34 +14,33 @@ class WorkOrderBaoTriDetailScreen extends StatefulWidget {
 
 class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScreen> {
   late final WorkOrderBaoTriDetailController _controller;
+  final _xuongCtrl = XuongChinhSuaHoSoController();
 
-  String? _vaiTro;
-
-  /// Chế độ chỉnh sửa của Xưởng: bấm "Chỉnh sửa" mới hiện form + nút Lưu.
-  bool _dangChinhSuaXuong = false;
-  bool _dangLuuXuong = false;
   final _noiDungXuongCtrl = TextEditingController();
   final _thoiGianXuongCtrl = TextEditingController();
-  DateTime? _ngayDuKienXuong;
-  TimeOfDay? _gioBatDauXuong;
-  TimeOfDay? _gioKetThucXuong;
-  /// Lỗi đỏ dưới ô "Số giờ dự kiến" — khi có lỗi thì khóa chọn giờ bắt đầu/kết thúc.
-  String? _loiThoiGianXuong;
 
-  bool get _laToTruong =>
-      _vaiTro == 'Tổ trưởng cơ điện' ||
-          _vaiTro == 'Tổ trưởng kỹ thuật' ||
-          _vaiTro == 'Tổ trưởng';
-  bool get _laNvkt => _vaiTro == 'Nhân viên kỹ thuật';
-  bool get _laXuong => _vaiTro == 'Xưởng' || _vaiTro == 'Tổ trưởng sản xuất';
+  bool get _laToTruong => _controller.laToTruong;
+  bool get _laNvkt => _controller.laNvkt;
+  bool get _laXuong => _controller.laXuong;
+
+  // Alias UI bindings → logic Xưởng
+  bool get _dangChinhSuaXuong => _xuongCtrl.dangChinhSua;
+  bool get _dangLuuXuong => _xuongCtrl.dangLuu;
+  String? get _loiThoiGianXuong => _xuongCtrl.loiThoiGian;
+  bool get _thoiGianXuongHopLe => _xuongCtrl.thoiGianHopLe;
+  TimeOfDay? get _gioBatDauXuong => _xuongCtrl.gioBatDau;
+  TimeOfDay? get _gioKetThucXuong => _xuongCtrl.gioKetThuc;
+  DateTime? get _ngayDuKienXuong => _xuongCtrl.ngayDuKien;
 
   @override
   void initState() {
     super.initState();
-    _controller = WorkOrderBaoTriDetailController(widget.maHoSoBaoTri); // 1) gán trước
-    _controller.taiChiTiet();                                           // 2) gọi sau
-    TokenStorage.getVaiTro().then((v) {
-      if (mounted) setState(() => _vaiTro = v);
+    _controller = WorkOrderBaoTriDetailController(widget.maHoSoBaoTri);
+    _controller.taiChiTiet().then((_) {
+      if (mounted) setState(() {});
+    });
+    _xuongCtrl.addListener(() {
+      if (mounted) setState(() {});
     });
   }
 
@@ -51,144 +48,45 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
   void dispose() {
     _noiDungXuongCtrl.dispose();
     _thoiGianXuongCtrl.dispose();
+    _xuongCtrl.dispose();
     _controller.dispose();
     super.dispose();
   }
 
-  TimeOfDay? _parseGio(String? s) {
-    if (s == null || s.trim().isEmpty) return null;
-    final p = s.trim().split(':');
-    if (p.length < 2) return null;
-    final h = int.tryParse(p[0]);
-    final m = int.tryParse(p[1]);
-    if (h == null || m == null) return null;
-    return TimeOfDay(hour: h, minute: m);
-  }
-
-  String? _fmtGio(TimeOfDay? t) {
-    if (t == null) return null;
-    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-  }
-
-  /// Số giờ dự kiến hợp lệ: số nguyên dương 1–24, không chữ / ký tự đặc biệt / thập phân.
-  bool get _thoiGianXuongHopLe => _loiThoiGianXuong == null &&
-      int.tryParse(_thoiGianXuongCtrl.text.trim()) != null &&
-      (int.tryParse(_thoiGianXuongCtrl.text.trim()) ?? 0) > 0 &&
-      (int.tryParse(_thoiGianXuongCtrl.text.trim()) ?? 0) <= 24;
-
-  void _validateThoiGianXuong(String raw) {
-    final v = raw.trim();
-    if (v.isEmpty) {
-      _loiThoiGianXuong = 'Vui lòng nhập số giờ dự kiến';
-      return;
-    }
-    // Chỉ cho số nguyên dương — cấm chữ, ký tự đặc biệt, thập phân
-    if (!RegExp(r'^\d+$').hasMatch(v)) {
-      _loiThoiGianXuong =
-      'Chỉ được nhập số nguyên (không chữ, không ký tự đặc biệt, không số thập phân)';
-      return;
-    }
-    final so = int.tryParse(v);
-    if (so == null || so <= 0) {
-      _loiThoiGianXuong = 'Số giờ dự kiến phải là số nguyên dương lớn hơn 0';
-      return;
-    }
-    if (so > 24) {
-      _loiThoiGianXuong = 'Bảo trì trong ngày — tối đa 24 giờ';
-      return;
-    }
-    _loiThoiGianXuong = null;
-  }
+  String? _fmtGio(TimeOfDay? t) => _xuongCtrl.fmtGio(t);
 
   void _onThoiGianXuongChanged(String v) {
-    setState(() {
-      _validateThoiGianXuong(v);
-      // Vi phạm → khóa giờ, xóa giá trị đã chọn
-      if (_loiThoiGianXuong != null) {
-        _gioBatDauXuong = null;
-        _gioKetThucXuong = null;
-      } else if (_gioBatDauXuong != null) {
-        // Hợp lệ + đã có giờ bắt đầu → tự tính giờ kết thúc
-        _tinhGioKetThucXuong();
-      }
-    });
-  }
-
-  void _tinhGioKetThucXuong() {
-    if (!_thoiGianXuongHopLe || _gioBatDauXuong == null) {
-      if (!_thoiGianXuongHopLe) _gioKetThucXuong = null;
-      return;
-    }
-    final soGio = int.parse(_thoiGianXuongCtrl.text.trim());
-    final tongPhut =
-        _gioBatDauXuong!.hour * 60 + _gioBatDauXuong!.minute + soGio * 60;
-    _gioKetThucXuong =
-        TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
+    _xuongCtrl.datThoiGianTuChuoi(v);
   }
 
   void _batDauChinhSuaXuong(HoSoBaoTri hs) {
     _noiDungXuongCtrl.text = hs.noiDungCongViec ?? '';
     _thoiGianXuongCtrl.text =
         (hs.thoiGianDuKien ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-    _ngayDuKienXuong = hs.ngayDuKienBaoTri;
-    _gioBatDauXuong = _parseGio(hs.gioBatDauDuKien);
-    _gioKetThucXuong = _parseGio(hs.gioKetThucDuKien);
-    _validateThoiGianXuong(_thoiGianXuongCtrl.text);
-    if (_loiThoiGianXuong != null) {
-      _gioBatDauXuong = null;
-      _gioKetThucXuong = null;
-    }
-    setState(() => _dangChinhSuaXuong = true);
+    _xuongCtrl.batDauChinhSua(hs, thoiGianText: _thoiGianXuongCtrl.text);
   }
 
   void _huyChinhSuaXuong() {
-    setState(() {
-      _dangChinhSuaXuong = false;
-      _loiThoiGianXuong = null;
-    });
+    _xuongCtrl.huyChinhSua();
   }
 
   Future<void> _luuChinhSuaXuong(HoSoBaoTri hs) async {
-    final noiDung = _noiDungXuongCtrl.text.trim();
-    if (noiDung.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập nội dung công việc')),
-      );
-      return;
-    }
-    _validateThoiGianXuong(_thoiGianXuongCtrl.text);
-    if (_loiThoiGianXuong != null) {
-      setState(() {});
-      return;
-    }
-    if (_gioBatDauXuong == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn giờ bắt đầu')),
-      );
-      return;
-    }
-    _tinhGioKetThucXuong();
-    setState(() => _dangLuuXuong = true);
-    try {
-      await WorkOrderService.xuongLuuHoSo(
-        maHoSoBaoTri: hs.maHoSoBaoTri,
-        noiDungCongViec: noiDung,
-        thoiGianDuKien: _thoiGianXuongCtrl.text.trim(),
-        gioBatDauDuKien: _fmtGio(_gioBatDauXuong),
-        gioKetThucDuKien: _fmtGio(_gioKetThucXuong),
-        ngayDuKienBaoTri: _ngayDuKienXuong,
-      );
-      if (!mounted) return;
-      setState(() => _dangChinhSuaXuong = false);
+    final ok = await _xuongCtrl.luu(
+      maHoSoBaoTri: hs.maHoSoBaoTri,
+      noiDungCongViec: _noiDungXuongCtrl.text,
+      thoiGianText: _thoiGianXuongCtrl.text,
+    );
+    if (!mounted) return;
+    if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã lưu chỉnh sửa.')),
       );
       await _controller.taiChiTiet();
-    } on ApiException catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-    } finally {
-      if (mounted) setState(() => _dangLuuXuong = false);
+      setState(() {});
+    } else if (_xuongCtrl.loi != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(_xuongCtrl.loi!)),
+      );
     }
   }
 
@@ -762,17 +660,16 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                             icon: const Icon(Icons.task_alt_rounded),
                             label: const Text('Hoàn thành bảo trì'),
                             onPressed: () async {
-                              try {
-                                await WorkOrderService.nhanVienHoanThanhBaoTri(hs.maHoSoBaoTri);
-                                if (!mounted) return;
+                              final ok = await _controller.nhanVienHoanThanhBaoTri();
+                              if (!mounted) return;
+                              if (ok) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(content: Text('Đã hoàn thành. Đồng bộ trạng thái hồ sơ và kế hoạch bảo trì.')),
                                 );
-                                await _controller.taiChiTiet();
-                              } on ApiException catch (e) {
-                                if (!mounted) return;
+                                setState(() {});
+                              } else if (_controller.loi != null) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(e.message)),
+                                  SnackBar(content: Text(_controller.loi!)),
                                 );
                               }
                             },
@@ -875,7 +772,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                     cancelText: 'Hủy',
                     confirmText: 'Chọn',
                   );
-                  if (picked != null) setState(() => _ngayDuKienXuong = picked);
+                  if (picked != null) _xuongCtrl.datNgayDuKien(picked);
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
@@ -925,10 +822,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                       child: InkWell(
                         onTap: !_thoiGianXuongHopLe
                             ? () {
-                          setState(() {
-                            _validateThoiGianXuong(
-                                _thoiGianXuongCtrl.text);
-                          });
+                          _xuongCtrl.datThoiGianTuChuoi(
+                              _thoiGianXuongCtrl.text);
                         }
                             : () async {
                           final t = await showTimePicker(
@@ -944,10 +839,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                             },
                           );
                           if (t == null) return;
-                          setState(() {
-                            _gioBatDauXuong = t;
-                            _tinhGioKetThucXuong();
-                          });
+                          _xuongCtrl.datGioBatDau(t);
                         },
                         borderRadius: BorderRadius.circular(12),
                         child: InputDecorator(
@@ -1059,25 +951,23 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () async {
-              try {
-                await WorkOrderService.xuongGuiGiamDoc(
-                  maHoSoBaoTri: hs.maHoSoBaoTri,
-                  noiDungCongViec: hs.noiDungCongViec,
-                  thoiGianDuKien: hs.thoiGianDuKien,
-                  gioBatDauDuKien: hs.gioBatDauDuKien,
-                  gioKetThucDuKien: hs.gioKetThucDuKien,
-                );
-                if (!mounted) return;
-                setState(() => _dangChinhSuaXuong = false);
+              final (ok, msg) = await _controller.xuongGuiGiamDoc(
+                noiDungCongViec: hs.noiDungCongViec,
+                thoiGianDuKien: hs.thoiGianDuKien,
+                gioBatDauDuKien: hs.gioBatDauDuKien,
+                gioKetThucDuKien: hs.gioKetThucDuKien,
+              );
+              if (!mounted) return;
+              if (ok) {
+                _xuongCtrl.huyChinhSua();
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Đã gửi Giám đốc. Hồ sơ chuyển sang Chờ GĐ duyệt.'),
                   ),
                 );
-                await _controller.taiChiTiet();
-              } on ApiException catch (e) {
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+                setState(() {});
+              } else if (msg != null) {
+                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
               }
             },
           ),
@@ -1151,27 +1041,10 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
+  /// Ràng buộc số giờ — dùng validator chung trong logic.
   void _validateThoiGian(String raw) {
-    final v = raw.trim();
-    if (v.isEmpty) {
-      _loiThoiGian = 'Vui lòng nhập số giờ dự kiến';
-      return;
-    }
-    if (!RegExp(r'^\d+$').hasMatch(v)) {
-      _loiThoiGian =
-      'Chỉ được nhập số nguyên (không chữ, không ký tự đặc biệt, không số thập phân)';
-      return;
-    }
-    final so = int.tryParse(v);
-    if (so == null || so <= 0) {
-      _loiThoiGian = 'Số giờ dự kiến phải là số nguyên dương lớn hơn 0';
-      return;
-    }
-    if (so > 24) {
-      _loiThoiGian = 'Bảo trì trong ngày — tối đa 24 giờ';
-      return;
-    }
-    _loiThoiGian = null;
+    final kq = validateSoGioDuKien(raw);
+    _loiThoiGian = kq.loi;
   }
 
   void _tinhGioKetThuc() {

@@ -45,6 +45,28 @@ class QuanLyYeuCauController extends ChangeNotifier {
       danhSach.where((e) => e.daHoanThanhPc).toList();
   List<YeuCauPhanCong> get khac =>
       danhSach.where((e) => !e.canThucHien || e.daHuy || e.daHoanThanhPc).toList();
+
+  /// NVKT hoàn thành bảo trì theo mã hồ sơ.
+  Future<(bool ok, String? message)> hoanThanhBaoTri(int maHoSo) async {
+    try {
+      await WorkOrderService.nhanVienHoanThanhBaoTri(maHoSo);
+      await tai();
+      return (true, null);
+    } on ApiException catch (e) {
+      return (false, e.message);
+    }
+  }
+
+  /// NVKT hoàn thành sửa chữa theo mã hồ sơ SC.
+  Future<(bool ok, String? message)> hoanThanhSuaChua(int maHoSoSuaChua) async {
+    try {
+      await WorkOrderService.nhanVienHoanThanhSuaChua(maHoSoSuaChua);
+      await tai();
+      return (true, null);
+    } on ApiException catch (e) {
+      return (false, e.message);
+    }
+  }
 }
 
 class KetQuaThucHienController extends ChangeNotifier {

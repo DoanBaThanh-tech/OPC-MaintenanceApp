@@ -5,4 +5,6 @@ export 'work_order_create_logic.dart';
 export 'work_order_detail_logic.dart';
 export 'work_order_assign_logic.dart';
 export 'work_order_assign_history_logic.dart';
+export 'work_order_repair_logic.dart';
+export 'work_order_validators.dart';
 export 'technician_logic.dart';
