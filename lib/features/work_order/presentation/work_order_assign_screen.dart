@@ -8,11 +8,14 @@ class PhanCongBaoTriScreen extends StatefulWidget {
   final int maHoSoBaoTri;
   /// true = cập nhật danh sách NV đã phân công (bỏ người bận / thêm người thay)
   final bool isCapNhat;
+  /// true = phân công hồ sơ sửa chữa (API + UI khác nhẹ)
+  final bool isSuaChua;
 
   const PhanCongBaoTriScreen({
     super.key,
     required this.maHoSoBaoTri,
     this.isCapNhat = false,
+    this.isSuaChua = false,
   });
 
   @override
@@ -25,6 +28,8 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeIn;
 
+  static const _scPrimary = Color(0xFF7C3AED);
+
   @override
   void initState() {
     super.initState();
@@ -33,7 +38,13 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
       duration: const Duration(milliseconds: 420),
     );
     _fadeIn = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic);
-    _controller.khoiTao(widget.maHoSoBaoTri, capNhat: widget.isCapNhat).then((_) {
+    _controller
+        .khoiTao(
+      widget.maHoSoBaoTri,
+      capNhat: widget.isCapNhat,
+      suaChua: widget.isSuaChua,
+    )
+        .then((_) {
       if (mounted) _animCtrl.forward();
     });
   }
@@ -75,26 +86,30 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
   @override
   Widget build(BuildContext context) {
     final isCapNhat = widget.isCapNhat;
+    final isSc = widget.isSuaChua;
+    final accent = isSc ? _scPrimary : AppColors.primary;
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F6FA),
+      backgroundColor: isSc ? const Color(0xFFF6F4FB) : const Color(0xFFF3F6FA),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
           if (_controller.dangTai) {
-            return const Center(child: CircularProgressIndicator());
+            return Center(child: CircularProgressIndicator(color: accent));
           }
 
-          final hs = _controller.hoSo;
           final soChon = _controller.maNhanVienDaChon.length;
 
           return Column(
             children: [
               // ===== App bar custom =====
               _AssignHeader(
-                title: isCapNhat ? 'Cập nhật phân công' : 'Phân công nhân viên',
-                subtitle: hs?.tenThietBi ?? 'Hồ sơ #${widget.maHoSoBaoTri}',
+                title: isCapNhat
+                    ? 'Cập nhật phân công'
+                    : (isSc ? 'Phân công sửa chữa' : 'Phân công nhân viên'),
+                subtitle: _controller.tenThietBiHienThi,
                 maHoSo: widget.maHoSoBaoTri,
                 isCapNhat: isCapNhat,
+                isSuaChua: isSc,
                 onBack: () => Navigator.pop(context),
               ),
 
@@ -114,18 +129,21 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
                                 Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(alpha: 0.12),
+                                    color: accent.withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
-                                  child: const Icon(Icons.schedule_rounded,
-                                      color: AppColors.primary, size: 20),
+                                  child: Icon(Icons.schedule_rounded,
+                                      color: accent, size: 20),
                                 ),
                                 const SizedBox(width: 10),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
-                                    'Lịch bảo trì theo hồ sơ',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w800, fontSize: 14.5),
+                                    isSc
+                                        ? 'Lịch sửa chữa (có thể chỉnh)'
+                                        : 'Lịch bảo trì theo hồ sơ',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14.5),
                                   ),
                                 ),
                               ],
@@ -134,29 +152,80 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
                             Row(
                               children: [
                                 Expanded(
-                                  child: _MiniStat(
-                                    icon: Icons.calendar_month_rounded,
-                                    label: 'Ngày',
-                                    value: _fmtDate(_controller.ngayDuKien),
-                                    color: const Color(0xFF0068A9),
+                                  child: GestureDetector(
+                                    onTap: isSc
+                                        ? () async {
+                                      final d = await showDatePicker(
+                                        context: context,
+                                        initialDate:
+                                        _controller.ngayDuKien ??
+                                            DateTime.now(),
+                                        firstDate: DateTime.now().subtract(
+                                            const Duration(days: 1)),
+                                        lastDate: DateTime.now()
+                                            .add(const Duration(days: 90)),
+                                      );
+                                      if (d != null) {
+                                        _controller.datNgayDuKien(d);
+                                      }
+                                    }
+                                        : null,
+                                    child: _MiniStat(
+                                      icon: Icons.calendar_month_rounded,
+                                      label: 'Ngày',
+                                      value: _fmtDate(_controller.ngayDuKien),
+                                      color: const Color(0xFF0068A9),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: _MiniStat(
-                                    icon: Icons.play_arrow_rounded,
-                                    label: 'Bắt đầu',
-                                    value: _fmtTime(_controller.gioBatDau),
-                                    color: const Color(0xFF059669),
+                                  child: GestureDetector(
+                                    onTap: isSc
+                                        ? () async {
+                                      final t = await showTimePicker(
+                                        context: context,
+                                        initialTime:
+                                        _controller.gioBatDau ??
+                                            const TimeOfDay(
+                                                hour: 8, minute: 0),
+                                      );
+                                      if (t != null) {
+                                        _controller.datGioBatDau(t);
+                                      }
+                                    }
+                                        : null,
+                                    child: _MiniStat(
+                                      icon: Icons.play_arrow_rounded,
+                                      label: 'Bắt đầu',
+                                      value: _fmtTime(_controller.gioBatDau),
+                                      color: const Color(0xFF059669),
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
                                 Expanded(
-                                  child: _MiniStat(
-                                    icon: Icons.stop_rounded,
-                                    label: 'Kết thúc',
-                                    value: _fmtTime(_controller.gioKetThuc),
-                                    color: const Color(0xFFDC2626),
+                                  child: GestureDetector(
+                                    onTap: isSc
+                                        ? () async {
+                                      final t = await showTimePicker(
+                                        context: context,
+                                        initialTime:
+                                        _controller.gioKetThuc ??
+                                            const TimeOfDay(
+                                                hour: 17, minute: 0),
+                                      );
+                                      if (t != null) {
+                                        _controller.datGioKetThuc(t);
+                                      }
+                                    }
+                                        : null,
+                                    child: _MiniStat(
+                                      icon: Icons.stop_rounded,
+                                      label: 'Kết thúc',
+                                      value: _fmtTime(_controller.gioKetThuc),
+                                      color: const Color(0xFFDC2626),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -330,7 +399,7 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
                   width: double.infinity,
                   child: FilledButton(
                     style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
+                      backgroundColor: accent,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14),
                       ),
@@ -388,6 +457,7 @@ class _AssignHeader extends StatelessWidget {
   final String subtitle;
   final int maHoSo;
   final bool isCapNhat;
+  final bool isSuaChua;
   final VoidCallback onBack;
 
   const _AssignHeader({
@@ -395,26 +465,37 @@ class _AssignHeader extends StatelessWidget {
     required this.subtitle,
     required this.maHoSo,
     required this.isCapNhat,
+    this.isSuaChua = false,
     required this.onBack,
   });
 
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
+    final List<Color> colors;
+    if (isCapNhat) {
+      colors = const [Color(0xFF0F766E), Color(0xFF0D9488)];
+    } else if (isSuaChua) {
+      colors = const [Color(0xFF7C3AED), Color(0xFF5B21B6)];
+    } else {
+      colors = [AppColors.primary, AppColors.primaryDark];
+    }
     return Container(
       padding: EdgeInsets.fromLTRB(8, top + 8, 16, 18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: isCapNhat
-              ? const [Color(0xFF0F766E), Color(0xFF0D9488)]
-              : [AppColors.primary, AppColors.primaryDark],
+          colors: colors,
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
         boxShadow: [
           BoxShadow(
-            color: (isCapNhat ? const Color(0xFF0F766E) : AppColors.primary)
+            color: (isCapNhat
+                ? const Color(0xFF0F766E)
+                : isSuaChua
+                ? const Color(0xFF7C3AED)
+                : AppColors.primary)
                 .withValues(alpha: 0.28),
             blurRadius: 18,
             offset: const Offset(0, 8),

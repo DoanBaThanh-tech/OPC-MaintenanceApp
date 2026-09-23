@@ -451,6 +451,132 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                     ],
                   ),
 
+                  // Chỉ hiện khi hồ sơ Đã hoàn thành — danh sách NV đã bảo trì thiết bị
+                  if (hs.daHoanThanh) ...[
+                    const SizedBox(height: 12),
+                    _cardBox(
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.groups_rounded,
+                                size: 18,
+                                color: AppColors.success.withValues(alpha: 0.95)),
+                            const SizedBox(width: 8),
+                            const Expanded(
+                              child: Text(
+                                'Nhân viên đã bảo trì',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                hs.maNhanVienHoanThanhs.isEmpty
+                                    ? '0 người'
+                                    : '${hs.maNhanVienHoanThanhs.length} người',
+                                style: const TextStyle(
+                                  color: AppColors.success,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (hs.tenNhanVienHoanThanhs != null &&
+                            hs.tenNhanVienHoanThanhs!.trim().isNotEmpty)
+                          ...hs.tenNhanVienHoanThanhs!
+                              .split(',')
+                              .map((s) => s.trim())
+                              .where((s) => s.isNotEmpty)
+                              .map(
+                                (ten) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: AppColors.success
+                                        .withValues(alpha: 0.15),
+                                    child: Text(
+                                      ten[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.success,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      ten,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 13.5,
+                                        color: Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                  ),
+                                  const Icon(Icons.check_circle_rounded,
+                                      size: 18, color: AppColors.success),
+                                ],
+                              ),
+                            ),
+                          )
+                        else if (hs.tenNhanVienThucHien != null &&
+                            hs.tenNhanVienThucHien!.trim().isNotEmpty)
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor:
+                                AppColors.success.withValues(alpha: 0.15),
+                                child: Text(
+                                  hs.tenNhanVienThucHien![0].toUpperCase(),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.success,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  hs.tenNhanVienThucHien!,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13.5,
+                                  ),
+                                ),
+                              ),
+                              const Icon(Icons.check_circle_rounded,
+                                  size: 18, color: AppColors.success),
+                            ],
+                          )
+                        else
+                          Text(
+                            'Chưa có thông tin nhân viên thực hiện',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 13,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+
                   // Lý do từ chối hồ sơ (GĐ từ chối duyệt)
                   if (hs.biTuChoi && hs.lyDoTuChoi != null) ...[
                     const SizedBox(height: 12),

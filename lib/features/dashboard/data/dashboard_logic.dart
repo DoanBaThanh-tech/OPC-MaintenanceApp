@@ -3,6 +3,7 @@ import '../../../core/storage/token_storage.dart';
 import '../../maintenance_plan/presentation/maintenance_plan_screens.dart';
 import '../../work_order/presentation/work_order_screens.dart';
 import '../../work_order/presentation/technician_screens.dart';
+import '../../work_order/presentation/work_order_repair_screens.dart';
 import '../../approval/presentation/approval_screens.dart';
 import '../../equipment/presentation/equipment_screens.dart';
 import '../../work_order/presentation/work_order_assign_history_screen.dart';
@@ -88,7 +89,13 @@ class DashboardLogic {
             MenuItemData(
               icon: Icons.handyman_rounded,
               label: 'Tạo hồ sơ sửa chữa',
-              screenBuilder: () => const _ChuaLamScreen(ten: 'Tạo hồ sơ sửa chữa'),
+              screenBuilder: () => const TaoHoSoSuaChuaScreen(),
+            ),
+            MenuItemData(
+              icon: Icons.list_alt_rounded,
+              label: 'Hồ sơ sửa chữa',
+              screenBuilder: () =>
+              const WorkOrderSuaChuaListScreen(hienFabTao: true),
             ),
           ]),
         ];
@@ -103,7 +110,13 @@ class DashboardLogic {
           ]),
           MenuGroup(tieuDe: 'Công việc', muc: [
             MenuItemData(icon: Icons.build_rounded, label: 'Hồ sơ bảo trì', screenBuilder: () => const WorkOrderBaoTriListScreen()),
-            MenuItemData(icon: Icons.handyman_rounded, label: 'Hồ sơ sửa chữa', screenBuilder: () => const _ChuaLamScreen(ten: 'Hồ sơ sửa chữa')),
+            MenuItemData(
+              icon: Icons.handyman_rounded,
+              label: 'Hồ sơ sửa chữa',
+              screenBuilder: () => const WorkOrderSuaChuaListScreen(
+                trangThaiMacDinh: 'Chờ phân công',
+              ),
+            ),
             MenuItemData(icon: Icons.history_rounded, label: 'Lịch sử phân công', screenBuilder: () => const LichSuPhanCongScreen()),
           ]),
         ];

@@ -58,6 +58,9 @@ class HoSoBaoTri {
   /// Nhiều NV đang được phân công (cập nhật phân công / hiển thị).
   final List<int> maNhanVienThucHiens;
   final String? tenNhanVienThucHiens;
+  /// NV đã hoàn thành bảo trì (chỉ khi hồ sơ Đã hoàn thành).
+  final List<int> maNhanVienHoanThanhs;
+  final String? tenNhanVienHoanThanhs;
   final DateTime? ngayPhanCong;
   final int nam;
   final bool namTuKeHoach;
@@ -84,6 +87,8 @@ class HoSoBaoTri {
     this.tenNhanVienThucHien,
     this.maNhanVienThucHiens = const [],
     this.tenNhanVienThucHiens,
+    this.maNhanVienHoanThanhs = const [],
+    this.tenNhanVienHoanThanhs,
     this.ngayPhanCong,
     required this.nam,
     required this.namTuKeHoach,
@@ -149,6 +154,11 @@ class HoSoBaoTri {
     final fromDs = parseMaNvList(j['danhSachNhanVienPhanCong'] ?? j['DanhSachNhanVienPhanCong']);
     final maNvs = maList.isNotEmpty ? maList : fromDs;
 
+    final maHtList = parseMaNvList(j['maNhanVienHoanThanhs'] ?? j['MaNhanVienHoanThanhs']);
+    final fromHtDs = parseMaNvList(
+        j['danhSachNhanVienHoanThanh'] ?? j['DanhSachNhanVienHoanThanh']);
+    final maHts = maHtList.isNotEmpty ? maHtList : fromHtDs;
+
     return HoSoBaoTri(
       maHoSoBaoTri: asInt(j['maHoSoBaoTri'] ?? j['MaHoSoBaoTri']),
       maThietBi: asInt(j['maThietBi'] ?? j['MaThietBi'] ?? j['maThieBi'] ?? j['MaThieBi']),
@@ -170,6 +180,9 @@ class HoSoBaoTri {
       tenNhanVienThucHien: (j['tenNhanVienThucHien'] ?? j['TenNhanVienThucHien'])?.toString(),
       maNhanVienThucHiens: maNvs,
       tenNhanVienThucHiens: (j['tenNhanVienThucHiens'] ?? j['TenNhanVienThucHiens'])?.toString(),
+      maNhanVienHoanThanhs: maHts,
+      tenNhanVienHoanThanhs:
+      (j['tenNhanVienHoanThanhs'] ?? j['TenNhanVienHoanThanhs'])?.toString(),
       ngayPhanCong: asDate(j['ngayPhanCong'] ?? j['NgayPhanCong']),
       nam: asInt(j['nam'] ?? j['Nam'] ?? ngayTao.year),
       namTuKeHoach: (j['namTuKeHoach'] ?? j['NamTuKeHoach']) == true,
@@ -316,6 +329,90 @@ class YeuCauPhanCong {
       trangThaiHoSo: j['trangThaiHoSo']?.toString(),
       ngayDuKienBaoTri: asDate(j['ngayDuKienBaoTri']),
       ngayTaoHoSo: asDate(j['ngayTaoHoSo']),
+    );
+  }
+}
+/// Hồ sơ sửa chữa (Xưởng tạo → Tổ trưởng phân công)
+class HoSoSuaChua {
+  final int maHoSoSuaChua;
+  final int maThietBi;
+  final String tenThietBi;
+  final String? tenNhanVienTao;
+  final String? moTaHuHong;
+  final String? phuongAnSuaChua;
+  final String trangThai;
+  final String? lyDoTuChoi;
+  final DateTime ngayTao;
+  final DateTime? ngayDuyet;
+  final int? maPhanCong;
+  final List<int> maNhanVienThucHiens;
+  final String? tenNhanVienThucHiens;
+  final String? rowVersion;
+
+  HoSoSuaChua({
+    required this.maHoSoSuaChua,
+    required this.maThietBi,
+    required this.tenThietBi,
+    this.tenNhanVienTao,
+    this.moTaHuHong,
+    this.phuongAnSuaChua,
+    required this.trangThai,
+    this.lyDoTuChoi,
+    required this.ngayTao,
+    this.ngayDuyet,
+    this.maPhanCong,
+    this.maNhanVienThucHiens = const [],
+    this.tenNhanVienThucHiens,
+    this.rowVersion,
+  });
+
+  bool get choPhanCong =>
+      trangThai == 'Chờ phân công' || trangThai == 'Đã duyệt';
+  bool get dangThucHien => trangThai == 'Đang thực hiện';
+  bool get daHoanThanh => trangThai == 'Đã hoàn thành';
+  bool get biTuChoi => trangThai == 'Từ chối';
+  bool get coTheCapNhatPhanCong => dangThucHien;
+
+  factory HoSoSuaChua.fromJson(Map<String, dynamic> j) {
+    int asInt(dynamic v) => (v as num?)?.toInt() ?? 0;
+    int? asIntN(dynamic v) => (v as num?)?.toInt();
+    DateTime? asDate(dynamic v) =>
+        v == null ? null : DateTime.tryParse(v.toString());
+
+    List<int> parseMaNv(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw
+          .map((e) {
+        if (e is num) return e.toInt();
+        if (e is Map) {
+          final v = e['maNhanVien'] ?? e['MaNhanVien'];
+          return (v as num?)?.toInt();
+        }
+        return int.tryParse(e.toString());
+      })
+          .whereType<int>()
+          .toList();
+    }
+
+    final maList = parseMaNv(j['maNhanVienThucHiens'] ?? j['MaNhanVienThucHiens']);
+    final fromDs = parseMaNv(j['danhSachNhanVienPhanCong'] ?? j['DanhSachNhanVienPhanCong']);
+
+    return HoSoSuaChua(
+      maHoSoSuaChua: asInt(j['maHoSoSuaChua'] ?? j['MaHoSoSuaChua']),
+      maThietBi: asInt(j['maThietBi'] ?? j['MaThietBi'] ?? j['maThieBi'] ?? j['MaThieBi']),
+      tenThietBi: (j['tenThietBi'] ?? j['TenThietBi'])?.toString() ?? '',
+      tenNhanVienTao: (j['tenNhanVienTao'] ?? j['TenNhanVienTao'])?.toString(),
+      moTaHuHong: (j['moTaHuHong'] ?? j['MoTaHuHong'])?.toString(),
+      phuongAnSuaChua: (j['phuongAnSuaChua'] ?? j['PhuongAnSuaChua'])?.toString(),
+      trangThai: (j['trangThai'] ?? j['TrangThai'])?.toString() ?? '',
+      lyDoTuChoi: (j['lyDoTuChoi'] ?? j['LyDoTuChoi'])?.toString(),
+      ngayTao: asDate(j['ngayTao'] ?? j['NgayTao']) ?? DateTime.now(),
+      ngayDuyet: asDate(j['ngayDuyet'] ?? j['NgayDuyet']),
+      maPhanCong: asIntN(j['maPhanCong'] ?? j['MaPhanCong']),
+      maNhanVienThucHiens: maList.isNotEmpty ? maList : fromDs,
+      tenNhanVienThucHiens:
+      (j['tenNhanVienThucHiens'] ?? j['TenNhanVienThucHiens'])?.toString(),
+      rowVersion: (j['rowVersion'] ?? j['RowVersion'])?.toString(),
     );
   }
 }

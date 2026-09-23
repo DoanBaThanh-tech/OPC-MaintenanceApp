@@ -214,6 +214,73 @@ class WorkOrderService {
     );
   }
 
+  // ===== HỒ SƠ SỬA CHỮA =====
+
+  static Future<List<HoSoSuaChua>> layDanhSachHoSoSuaChua({String? trangThai}) async {
+    final data = await ApiClient.instance.get<List<dynamic>>(
+      '${ApiConstants.workOrder}/sua-chua',
+      query: trangThai != null && trangThai.isNotEmpty ? {'trangThai': trangThai} : null,
+    );
+    return data
+        .map((e) => HoSoSuaChua.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
+  static Future<HoSoSuaChua> layChiTietHoSoSuaChua(int id) async {
+    final data = await ApiClient.instance.get<dynamic>(
+      '${ApiConstants.workOrder}/sua-chua/$id',
+    );
+    if (data is! Map) throw Exception('API không trả về object');
+    return HoSoSuaChua.fromJson(Map<String, dynamic>.from(data));
+  }
+
+  /// Xưởng tạo hồ sơ SC — thiết bị chuyển Sửa chữa, gửi Tổ trưởng phân công.
+  static Future<void> taoHoSoSuaChua({
+    required int maThietBi,
+    required String moTaHuHong,
+    String? phuongAnSuaChua,
+    bool guiDuyet = true,
+  }) async {
+    await ApiClient.instance.post<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/sua-chua',
+      {
+        'maThietBi': maThietBi,
+        'moTaHuHong': moTaHuHong,
+        if (phuongAnSuaChua != null) 'phuongAnSuaChua': phuongAnSuaChua,
+        'guiDuyet': guiDuyet,
+      },
+    );
+  }
+
+  static Future<void> phanCongSuaChua({
+    required int maHoSoSuaChua,
+    List<int>? maNhanVienThucHiens,
+    int? maNhanVienThucHien,
+    required DateTime ngayBatDau,
+    required DateTime ngayKetThuc,
+  }) async {
+    final body = <String, dynamic>{
+      'ngayBatDauDuKien': ngayBatDau.toIso8601String(),
+      'ngayKetThucDuKien': ngayKetThuc.toIso8601String(),
+    };
+    if (maNhanVienThucHiens != null && maNhanVienThucHiens.isNotEmpty) {
+      body['maNhanVienThucHiens'] = maNhanVienThucHiens;
+    } else if (maNhanVienThucHien != null) {
+      body['maNhanVienThucHien'] = maNhanVienThucHien;
+    }
+    await ApiClient.instance.post<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/sua-chua/$maHoSoSuaChua/phan-cong',
+      body,
+    );
+  }
+
+  static Future<void> nhanVienHoanThanhSuaChua(int maHoSoSuaChua) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/sua-chua/$maHoSoSuaChua/hoan-thanh',
+      {},
+    );
+  }
+
   static Future<void> ghiNhanKetQua({
     required int maPhanCong,
     required int maNhanVienGhiNhan,
