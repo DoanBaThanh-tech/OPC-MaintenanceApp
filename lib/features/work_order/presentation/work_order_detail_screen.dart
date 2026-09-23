@@ -154,18 +154,44 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F7FB),
+      backgroundColor: const Color(0xFFF0F6FB),
       appBar: AppBar(
-        title: const Text('Chi tiết hồ sơ'),
+        title: const Text('Chi tiết hồ sơ bảo trì'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF004E80), Color(0xFF0068A9), Color(0xFF0EA5E9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
           if (_controller.dangTai) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+            return const Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 36,
+                    height: 36,
+                    child: CircularProgressIndicator(
+                        color: AppColors.primary, strokeWidth: 3),
+                  ),
+                  SizedBox(height: 14),
+                  Text('Đang tải hồ sơ…',
+                      style: TextStyle(
+                          color: Color(0xFF64748B),
+                          fontWeight: FontWeight.w600)),
+                ],
+              ),
+            );
           }
           if (_controller.loi != null || _controller.hoSo == null) {
             return Center(child: Text(_controller.loi ?? 'Không tải được hồ sơ'));
@@ -185,28 +211,33 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Header gradient
+                  // Header gradient — đồng bộ SC
                   TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 420),
+                    duration: const Duration(milliseconds: 480),
                     curve: Curves.easeOutCubic,
                     builder: (context, v, child) => Opacity(
                       opacity: v,
-                      child: Transform.translate(offset: Offset(0, 12 * (1 - v)), child: child),
+                      child: Transform.translate(
+                          offset: Offset(0, 16 * (1 - v)), child: child),
                     ),
                     child: Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF0068A9), Color(0xFF004E80), Color(0xFF0B3A5C)],
+                          colors: [
+                            Color(0xFF0068A9),
+                            Color(0xFF0284C7),
+                            Color(0xFF0EA5E9),
+                          ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(22),
+                        borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.35),
-                            blurRadius: 20,
+                            color: AppColors.primary.withValues(alpha: 0.32),
+                            blurRadius: 18,
                             offset: const Offset(0, 8),
                           ),
                         ],

@@ -50,12 +50,21 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFFF0F6FB),
       appBar: AppBar(
         title: const Text('Tạo hồ sơ bảo trì'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF004E80), Color(0xFF0068A9), Color(0xFF0EA5E9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
       ),
       body: SafeArea(
         child: LayoutBuilder(
