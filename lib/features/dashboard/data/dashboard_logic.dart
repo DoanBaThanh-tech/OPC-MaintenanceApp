@@ -88,11 +88,6 @@ class DashboardLogic {
           MenuGroup(tieuDe: 'Sửa chữa', muc: [
             MenuItemData(
               icon: Icons.handyman_rounded,
-              label: 'Tạo hồ sơ sửa chữa',
-              screenBuilder: () => const TaoHoSoSuaChuaScreen(),
-            ),
-            MenuItemData(
-              icon: Icons.list_alt_rounded,
               label: 'Hồ sơ sửa chữa',
               screenBuilder: () =>
               const WorkOrderSuaChuaListScreen(hienFabTao: true),
