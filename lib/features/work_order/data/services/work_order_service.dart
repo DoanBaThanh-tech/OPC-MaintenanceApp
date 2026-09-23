@@ -87,13 +87,14 @@ class WorkOrderService {
     );
   }
 
-  /// Xưởng lưu chỉnh sửa hồ sơ (vẫn Chờ xưởng).
+  /// Xưởng lưu chỉnh sửa hồ sơ (Chờ duyệt).
   static Future<void> xuongLuuHoSo({
     required int maHoSoBaoTri,
     String? noiDungCongViec,
     String? thoiGianDuKien,
     String? gioBatDauDuKien,
     String? gioKetThucDuKien,
+    DateTime? ngayDuKienBaoTri,
   }) async {
     await ApiClient.instance.put<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/xuong-luu',
@@ -102,6 +103,11 @@ class WorkOrderService {
         if (thoiGianDuKien != null) 'thoiGianDuKien': thoiGianDuKien,
         if (gioBatDauDuKien != null) 'gioBatDauDuKien': gioBatDauDuKien,
         if (gioKetThucDuKien != null) 'gioKetThucDuKien': gioKetThucDuKien,
+        if (ngayDuKienBaoTri != null)
+          'ngayDuKienBaoTri':
+          '${ngayDuKienBaoTri.year.toString().padLeft(4, '0')}-'
+              '${ngayDuKienBaoTri.month.toString().padLeft(2, '0')}-'
+              '${ngayDuKienBaoTri.day.toString().padLeft(2, '0')}',
       },
     );
   }

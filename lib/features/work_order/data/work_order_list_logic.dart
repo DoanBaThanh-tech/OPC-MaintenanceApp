@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart';
 import 'models/work_order_models.dart';
 import 'services/work_order_service.dart';
 
+export 'models/work_order_models.dart';
+export 'services/work_order_service.dart';
+
 // Logic cho work_order_list_screen.dart
 
 class WorkOrderBaoTriListController extends ChangeNotifier {
@@ -42,7 +45,10 @@ class WorkOrderBaoTriListController extends ChangeNotifier {
     // Tab Chờ duyệt cũng gồm hồ sơ cũ còn gắn nhãn "Chờ xưởng"
     if (tab == 'Chờ duyệt') {
       return danhSach
-          .where((h) => h.trangThai == 'Chờ duyệt' || h.trangThai == 'Chờ xưởng')
+          .where((h) =>
+      h.trangThai == 'Chờ duyệt' ||
+          h.trangThai == 'Chờ xưởng' ||
+          h.trangThai == 'Chờ GĐ duyệt')
           .toList();
     }
     return danhSach.where((h) => h.trangThai == tab).toList();

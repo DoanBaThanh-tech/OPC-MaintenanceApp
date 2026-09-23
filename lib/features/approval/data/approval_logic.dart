@@ -41,7 +41,7 @@ class HoSoBaoTriDuyet {
     required this.namTuKeHoach,
   });
 
-  bool get choDuyet => trangThai == 'Chờ duyệt';
+  bool get choDuyet => trangThai == 'Chờ duyệt' || trangThai == 'Chờ GĐ duyệt';
 
   factory HoSoBaoTriDuyet.fromJson(Map<String, dynamic> j) => HoSoBaoTriDuyet(
     maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
@@ -203,7 +203,9 @@ class ApprovalBaoTriListController extends ChangeNotifier {
     loi = null;
     notifyListeners();
     try {
-      _tatCa = await ApprovalService.layDanhSachBaoTri(trangThai: 'Chờ duyệt');
+      // Gồm cả "Chờ duyệt" (mới tạo) và "Chờ GĐ duyệt" (Xưởng đã gửi)
+      final all = await ApprovalService.layDanhSachBaoTri();
+      _tatCa = all.where((h) => h.choDuyet).toList();
     } catch (e) {
       loi = 'Lỗi tải dữ liệu: $e';
     } finally {

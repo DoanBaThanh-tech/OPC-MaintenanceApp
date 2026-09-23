@@ -85,9 +85,15 @@ class HoSoBaoTri {
     this.rowVersion,
   });
 
-  /// Xưởng được xử lý khi còn chờ duyệt (gồm dữ liệu cũ "Chờ xưởng").
+  /// Xưởng còn được chỉnh sửa / gửi GĐ (chưa gửi Giám đốc).
   bool get choXuong => trangThai == 'Chờ duyệt' || trangThai == 'Chờ xưởng';
-  bool get choDuyet => trangThai == 'Chờ duyệt' || trangThai == 'Chờ xưởng';
+  /// Đã gửi Giám đốc — Xưởng chỉ xem, không còn nút chỉnh sửa/gửi.
+  bool get daGuiGiamDoc => trangThai == 'Chờ GĐ duyệt';
+  /// Đang chờ Giám đốc (gồm trước/sau khi Xưởng gửi).
+  bool get choDuyet =>
+      trangThai == 'Chờ duyệt' ||
+          trangThai == 'Chờ xưởng' ||
+          trangThai == 'Chờ GĐ duyệt';
   bool get daDuyetChuaPhanCong =>
       trangThai == 'Đã duyệt' &&
           (maPhanCong == null || trangThaiPhanCong == null || trangThaiPhanCong == 'Đã hủy');
@@ -148,6 +154,8 @@ enum TrangThaiHoSoBaoTri { choDuyet, daDuyet, dangThucHien, daHoanThanh, tuChoi,
 TrangThaiHoSoBaoTri phanLoaiTrangThaiHoSo(String tt) {
   switch (tt) {
     case 'Chờ duyệt':
+    case 'Chờ GĐ duyệt':
+    case 'Chờ xưởng':
       return TrangThaiHoSoBaoTri.choDuyet;
     case 'Đã duyệt':
       return TrangThaiHoSoBaoTri.daDuyet;
