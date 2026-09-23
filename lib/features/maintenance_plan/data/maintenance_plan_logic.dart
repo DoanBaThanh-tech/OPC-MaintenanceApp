@@ -589,27 +589,28 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     return TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
   }
 
-  /// Validate realtime: số dương, không ký tự đặc biệt, tối đa 24 giờ trong ngày
+  /// Validate realtime: số nguyên dương 1–24, không ký tự đặc biệt, không thập phân
   static const int maxGioTrongNgay = 24;
 
   void datThoiGianDuKienTuChuoi(String raw) {
     final v = raw.trim();
     if (v.isEmpty) {
       thoiGianDuKien = null;
-      loiThoiGianDuKien = 'Vui lòng nhập giờ dự kiến bảo trì';
+      loiThoiGianDuKien = 'Vui lòng nhập số giờ dự kiến';
       notifyListeners();
       return;
     }
     if (!RegExp(r'^\d+$').hasMatch(v)) {
       thoiGianDuKien = null;
-      loiThoiGianDuKien = 'Chỉ được nhập số dương (không chữ, không ký tự đặc biệt)';
+      loiThoiGianDuKien =
+      'Chỉ được nhập số nguyên (không chữ, không ký tự đặc biệt, không số thập phân)';
       notifyListeners();
       return;
     }
     final so = int.tryParse(v);
     if (so == null || so <= 0) {
       thoiGianDuKien = null;
-      loiThoiGianDuKien = 'Giờ dự kiến phải là số dương lớn hơn 0';
+      loiThoiGianDuKien = 'Số giờ dự kiến phải là số nguyên dương lớn hơn 0';
       notifyListeners();
       return;
     }

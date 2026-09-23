@@ -293,33 +293,38 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
         .toList();
   }
 
-  /// Bảo trì trong ngày: chỉ hợp lệ khi 0 < số giờ ≤ 24
-  static const double maxGioTrongNgay = 24;
+  /// Bảo trì trong ngày: số nguyên dương 1–24 (không thập phân, không ký tự đặc biệt)
+  static const int maxGioTrongNgay = 24;
 
   bool get thoiGianHopLe {
-    final raw = thoiGianCtrl.text.trim().replaceAll(',', '.');
+    final raw = thoiGianCtrl.text.trim();
     if (raw.isEmpty) return false;
-    final v = double.tryParse(raw);
+    if (!RegExp(r'^\d+$').hasMatch(raw)) return false;
+    final v = int.tryParse(raw);
     return v != null && v > 0 && v <= maxGioTrongNgay;
   }
 
   void validateThoiGian() {
     final raw = thoiGianCtrl.text.trim();
     if (raw.isEmpty) {
-      loiThoiGian = null;
+      loiThoiGian = 'Vui lòng nhập số giờ dự kiến';
       gioBatDau = null;
       gioKetThuc = null;
       notifyListeners();
       return;
     }
-    final normalized = raw.replaceAll(',', '.');
-    final v = double.tryParse(normalized);
-    if (v == null) {
-      loiThoiGian = 'Chỉ được nhập số (không ký tự đặc biệt)';
+    // Chỉ số nguyên — cấm chữ, ký tự đặc biệt, thập phân
+    if (!RegExp(r'^\d+$').hasMatch(raw)) {
+      loiThoiGian =
+      'Chỉ được nhập số nguyên (không chữ, không ký tự đặc biệt, không số thập phân)';
       gioBatDau = null;
       gioKetThuc = null;
-    } else if (v <= 0) {
-      loiThoiGian = 'Thời gian dự kiến phải lớn hơn 0';
+      notifyListeners();
+      return;
+    }
+    final v = int.tryParse(raw);
+    if (v == null || v <= 0) {
+      loiThoiGian = 'Số giờ dự kiến phải là số nguyên dương lớn hơn 0';
       gioBatDau = null;
       gioKetThuc = null;
     } else if (v > maxGioTrongNgay) {
@@ -474,7 +479,7 @@ class TaoYeuCauBaoTriController extends ChangeNotifier {
     try {
       String fmt(TimeOfDay t) =>
           '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
-      final tg = double.parse(thoiGianCtrl.text.trim().replaceAll(',', '.'));
+      final tg = int.parse(thoiGianCtrl.text.trim()).toDouble();
       final gc = ghiChuCtrl.text.trim().isEmpty ? null : ghiChuCtrl.text.trim();
       if (dangSua) {
         await MaintenanceRequestService.suaYeuCau(

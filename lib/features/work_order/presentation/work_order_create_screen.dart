@@ -160,18 +160,18 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                             prefixIcon: Icon(Icons.schedule),
                             suffixText: 'giờ',
                           ),
-                          // Số dương, không ký tự đặc biệt, tối đa 24 giờ trong ngày
+                          // Số nguyên dương 1–24, không ký tự đặc biệt, không thập phân
                           validator: (v) {
                             final raw = v?.trim() ?? '';
                             if (raw.isEmpty) {
-                              return 'Vui lòng nhập giờ dự kiến bảo trì';
+                              return 'Vui lòng nhập số giờ dự kiến';
                             }
                             if (!RegExp(r'^\d+$').hasMatch(raw)) {
-                              return 'Chỉ được nhập số dương (không chữ, không ký tự đặc biệt)';
+                              return 'Chỉ được nhập số nguyên (không chữ, không ký tự đặc biệt, không số thập phân)';
                             }
                             final so = int.tryParse(raw);
                             if (so == null || so <= 0) {
-                              return 'Giờ dự kiến phải là số dương lớn hơn 0';
+                              return 'Số giờ dự kiến phải là số nguyên dương lớn hơn 0';
                             }
                             if (so > 24) {
                               return 'Bảo trì trong ngày — tối đa 24 giờ';

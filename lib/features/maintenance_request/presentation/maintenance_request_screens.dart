@@ -671,14 +671,19 @@ class _TaoYeuCauBaoTriScreenState extends State<TaoYeuCauBaoTriScreen> {
             const SizedBox(height: 12),
             TextField(
               controller: _c.thoiGianCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: false,
+                signed: false,
+              ),
               decoration: InputDecoration(
                 labelText: 'Thời gian dự kiến (giờ)',
-                helperText: 'Trong ngày — lớn hơn 0 và tối đa 24 giờ',
+                helperText: 'Số nguyên dương 1–24 (không thập phân)',
                 border: const OutlineInputBorder(),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 errorText: _c.loiThoiGian,
                 errorStyle: const TextStyle(fontSize: 12, height: 1.2),
+                errorMaxLines: 2,
               ),
               onChanged: (_) {
                 _c.validateThoiGian();
@@ -686,37 +691,48 @@ class _TaoYeuCauBaoTriScreenState extends State<TaoYeuCauBaoTriScreen> {
               },
             ),
             const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _c.thoiGianHopLe ? () => _pickTime(batDau: true) : null,
-                    icon: const Icon(Icons.play_arrow_rounded, size: 18),
-                    label: Text(_fmtTime(_c.gioBatDau), overflow: TextOverflow.ellipsis),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+            Opacity(
+              opacity: _c.thoiGianHopLe ? 1 : 0.45,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed:
+                      _c.thoiGianHopLe ? () => _pickTime(batDau: true) : null,
+                      icon: const Icon(Icons.play_arrow_rounded, size: 18),
+                      label: Text(_fmtTime(_c.gioBatDau),
+                          overflow: TextOverflow.ellipsis),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 8),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _c.thoiGianHopLe ? () => _pickTime(batDau: false) : null,
-                    icon: const Icon(Icons.stop_rounded, size: 18),
-                    label: Text(_fmtTime(_c.gioKetThuc), overflow: TextOverflow.ellipsis),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _c.thoiGianHopLe
+                          ? () => _pickTime(batDau: false)
+                          : null,
+                      icon: const Icon(Icons.stop_rounded, size: 18),
+                      label: Text(_fmtTime(_c.gioKetThuc),
+                          overflow: TextOverflow.ellipsis),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 8),
+                      ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-            if (!_c.thoiGianHopLe && _c.thoiGianCtrl.text.isNotEmpty)
+            if (!_c.thoiGianHopLe)
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  'Nhập số giờ hợp lệ (0 < giờ ≤ 24) để chọn giờ bắt đầu / kết thúc.',
-                  style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600),
+                  'Nhập số giờ nguyên hợp lệ (1–24) để chọn giờ bắt đầu / kết thúc.',
+                  style: TextStyle(
+                      fontSize: 11.5, color: Colors.grey.shade600, height: 1.3),
                 ),
               ),
             const SizedBox(height: 12),

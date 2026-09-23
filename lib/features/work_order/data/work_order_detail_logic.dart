@@ -71,7 +71,7 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Số dương, không ký tự đặc biệt, tối đa 24 giờ trong ngày
+  /// Số nguyên dương 1–24, không ký tự đặc biệt, không thập phân
   void datThoiGianDuKienTuChuoi(String raw) {
     final v = raw.trim();
     if (v.isEmpty) {
@@ -83,7 +83,8 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     }
     if (!RegExp(r'^\d+$').hasMatch(v)) {
       thoiGianDuKien = null;
-      loiThoiGianDuKien = 'Chỉ được nhập số dương (không chữ, không ký tự đặc biệt)';
+      loiThoiGianDuKien =
+      'Chỉ được nhập số nguyên (không chữ, không ký tự đặc biệt, không số thập phân)';
       gioKetThuc = null;
       notifyListeners();
       return;
@@ -91,7 +92,7 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     final so = int.tryParse(v);
     if (so == null || so <= 0) {
       thoiGianDuKien = null;
-      loiThoiGianDuKien = 'Giờ dự kiến phải lớn hơn 0';
+      loiThoiGianDuKien = 'Số giờ dự kiến phải là số nguyên dương lớn hơn 0';
       gioKetThuc = null;
       notifyListeners();
       return;

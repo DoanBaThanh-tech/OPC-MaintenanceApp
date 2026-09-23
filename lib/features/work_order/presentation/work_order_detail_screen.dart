@@ -27,6 +27,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
   DateTime? _ngayDuKienXuong;
   TimeOfDay? _gioBatDauXuong;
   TimeOfDay? _gioKetThucXuong;
+  /// Lỗi đỏ dưới ô "Số giờ dự kiến" — khi có lỗi thì khóa chọn giờ bắt đầu/kết thúc.
+  String? _loiThoiGianXuong;
 
   bool get _laToTruong =>
       _vaiTro == 'Tổ trưởng cơ điện' ||
@@ -68,17 +70,82 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
+  /// Số giờ dự kiến hợp lệ: số nguyên dương 1–24, không chữ / ký tự đặc biệt / thập phân.
+  bool get _thoiGianXuongHopLe => _loiThoiGianXuong == null &&
+      int.tryParse(_thoiGianXuongCtrl.text.trim()) != null &&
+      (int.tryParse(_thoiGianXuongCtrl.text.trim()) ?? 0) > 0 &&
+      (int.tryParse(_thoiGianXuongCtrl.text.trim()) ?? 0) <= 24;
+
+  void _validateThoiGianXuong(String raw) {
+    final v = raw.trim();
+    if (v.isEmpty) {
+      _loiThoiGianXuong = 'Vui lòng nhập số giờ dự kiến';
+      return;
+    }
+    // Chỉ cho số nguyên dương — cấm chữ, ký tự đặc biệt, thập phân
+    if (!RegExp(r'^\d+$').hasMatch(v)) {
+      _loiThoiGianXuong =
+      'Chỉ được nhập số nguyên (không chữ, không ký tự đặc biệt, không số thập phân)';
+      return;
+    }
+    final so = int.tryParse(v);
+    if (so == null || so <= 0) {
+      _loiThoiGianXuong = 'Số giờ dự kiến phải là số nguyên dương lớn hơn 0';
+      return;
+    }
+    if (so > 24) {
+      _loiThoiGianXuong = 'Bảo trì trong ngày — tối đa 24 giờ';
+      return;
+    }
+    _loiThoiGianXuong = null;
+  }
+
+  void _onThoiGianXuongChanged(String v) {
+    setState(() {
+      _validateThoiGianXuong(v);
+      // Vi phạm → khóa giờ, xóa giá trị đã chọn
+      if (_loiThoiGianXuong != null) {
+        _gioBatDauXuong = null;
+        _gioKetThucXuong = null;
+      } else if (_gioBatDauXuong != null) {
+        // Hợp lệ + đã có giờ bắt đầu → tự tính giờ kết thúc
+        _tinhGioKetThucXuong();
+      }
+    });
+  }
+
+  void _tinhGioKetThucXuong() {
+    if (!_thoiGianXuongHopLe || _gioBatDauXuong == null) {
+      if (!_thoiGianXuongHopLe) _gioKetThucXuong = null;
+      return;
+    }
+    final soGio = int.parse(_thoiGianXuongCtrl.text.trim());
+    final tongPhut =
+        _gioBatDauXuong!.hour * 60 + _gioBatDauXuong!.minute + soGio * 60;
+    _gioKetThucXuong =
+        TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
+  }
+
   void _batDauChinhSuaXuong(HoSoBaoTri hs) {
     _noiDungXuongCtrl.text = hs.noiDungCongViec ?? '';
-    _thoiGianXuongCtrl.text = (hs.thoiGianDuKien ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+    _thoiGianXuongCtrl.text =
+        (hs.thoiGianDuKien ?? '').replaceAll(RegExp(r'[^0-9]'), '');
     _ngayDuKienXuong = hs.ngayDuKienBaoTri;
     _gioBatDauXuong = _parseGio(hs.gioBatDauDuKien);
     _gioKetThucXuong = _parseGio(hs.gioKetThucDuKien);
+    _validateThoiGianXuong(_thoiGianXuongCtrl.text);
+    if (_loiThoiGianXuong != null) {
+      _gioBatDauXuong = null;
+      _gioKetThucXuong = null;
+    }
     setState(() => _dangChinhSuaXuong = true);
   }
 
   void _huyChinhSuaXuong() {
-    setState(() => _dangChinhSuaXuong = false);
+    setState(() {
+      _dangChinhSuaXuong = false;
+      _loiThoiGianXuong = null;
+    });
   }
 
   Future<void> _luuChinhSuaXuong(HoSoBaoTri hs) async {
@@ -89,12 +156,24 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
       );
       return;
     }
+    _validateThoiGianXuong(_thoiGianXuongCtrl.text);
+    if (_loiThoiGianXuong != null) {
+      setState(() {});
+      return;
+    }
+    if (_gioBatDauXuong == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng chọn giờ bắt đầu')),
+      );
+      return;
+    }
+    _tinhGioKetThucXuong();
     setState(() => _dangLuuXuong = true);
     try {
       await WorkOrderService.xuongLuuHoSo(
         maHoSoBaoTri: hs.maHoSoBaoTri,
         noiDungCongViec: noiDung,
-        thoiGianDuKien: _thoiGianXuongCtrl.text.trim().isEmpty ? null : _thoiGianXuongCtrl.text.trim(),
+        thoiGianDuKien: _thoiGianXuongCtrl.text.trim(),
         gioBatDauDuKien: _fmtGio(_gioBatDauXuong),
         gioKetThucDuKien: _fmtGio(_gioKetThucXuong),
         ngayDuKienBaoTri: _ngayDuKienXuong,
@@ -690,61 +769,106 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                 ),
               ),
               const SizedBox(height: 14),
-              const Text('Số giờ dự kiến', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              const Text('Số giờ dự kiến',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               const SizedBox(height: 8),
               TextField(
                 controller: _thoiGianXuongCtrl,
-                keyboardType: TextInputType.number,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: false,
+                  signed: false,
+                ),
+                onChanged: _onThoiGianXuongChanged,
                 decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
                   suffixText: 'giờ',
+                  hintText: 'Ví dụ: 2',
                   filled: true,
                   fillColor: Colors.white,
+                  errorText: _loiThoiGianXuong,
+                  errorMaxLines: 2,
                 ),
               ),
               const SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        final t = await showTimePicker(
-                          context: context,
-                          initialTime: _gioBatDauXuong ?? TimeOfDay.now(),
-                        );
-                        if (t != null) setState(() => _gioBatDauXuong = t);
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'Giờ bắt đầu',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: Colors.white,
+                    child: Opacity(
+                      opacity: _thoiGianXuongHopLe ? 1 : 0.45,
+                      child: InkWell(
+                        onTap: !_thoiGianXuongHopLe
+                            ? () {
+                          setState(() {
+                            _validateThoiGianXuong(
+                                _thoiGianXuongCtrl.text);
+                          });
+                        }
+                            : () async {
+                          final t = await showTimePicker(
+                            context: context,
+                            initialTime: _gioBatDauXuong ??
+                                const TimeOfDay(hour: 8, minute: 0),
+                            builder: (context, child) {
+                              return MediaQuery(
+                                data: MediaQuery.of(context).copyWith(
+                                    alwaysUse24HourFormat: true),
+                                child: child!,
+                              );
+                            },
+                          );
+                          if (t == null) return;
+                          setState(() {
+                            _gioBatDauXuong = t;
+                            _tinhGioKetThucXuong();
+                          });
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: InputDecorator(
+                          decoration: InputDecoration(
+                            labelText: 'Giờ bắt đầu',
+                            border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                          child: Text(
+                            _fmtGio(_gioBatDauXuong) ??
+                                (_thoiGianXuongHopLe
+                                    ? 'Chọn giờ'
+                                    : 'Nhập số giờ hợp lệ trước'),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: _gioBatDauXuong == null
+                                  ? Colors.grey
+                                  : const Color(0xFF0F172A),
+                            ),
+                          ),
                         ),
-                        child: Text(_gioBatDauXuong?.format(context) ?? 'Chọn giờ'),
                       ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        final t = await showTimePicker(
-                          context: context,
-                          initialTime: _gioKetThucXuong ?? TimeOfDay.now(),
-                        );
-                        if (t != null) setState(() => _gioKetThucXuong = t);
-                      },
-                      borderRadius: BorderRadius.circular(12),
+                    child: Opacity(
+                      opacity: _thoiGianXuongHopLe ? 1 : 0.45,
                       child: InputDecorator(
                         decoration: InputDecoration(
-                          labelText: 'Giờ kết thúc',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                          labelText: 'Giờ kết thúc (tự tính)',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: Colors.grey.shade50,
                         ),
-                        child: Text(_gioKetThucXuong?.format(context) ?? 'Chọn giờ'),
+                        child: Text(
+                          _fmtGio(_gioKetThucXuong) ?? '—',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: _gioKetThucXuong == null
+                                ? Colors.grey
+                                : const Color(0xFF0F172A),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -908,12 +1032,13 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
       return;
     }
     if (!RegExp(r'^\d+$').hasMatch(v)) {
-      _loiThoiGian = 'Chỉ được nhập số dương (không chữ, không ký tự đặc biệt)';
+      _loiThoiGian =
+      'Chỉ được nhập số nguyên (không chữ, không ký tự đặc biệt, không số thập phân)';
       return;
     }
     final so = int.tryParse(v);
     if (so == null || so <= 0) {
-      _loiThoiGian = 'Giờ dự kiến phải lớn hơn 0';
+      _loiThoiGian = 'Số giờ dự kiến phải là số nguyên dương lớn hơn 0';
       return;
     }
     if (so > 24) {
