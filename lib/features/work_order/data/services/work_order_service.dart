@@ -138,7 +138,8 @@ class WorkOrderService {
     );
   }
 
-  /// Tổ trưởng sửa hồ sơ bị từ chối rồi gửi lại duyệt
+  /// Xưởng sửa hồ sơ bị Giám đốc từ chối rồi gửi lại duyệt (Chờ GĐ duyệt).
+  /// Tổ trưởng cơ điện không dùng endpoint này — chỉ phân công khi hồ sơ đã duyệt.
   static Future<void> suaHoSoBiTuChoi({
     required int maHoSoBaoTri,
     required String noiDungCongViec,

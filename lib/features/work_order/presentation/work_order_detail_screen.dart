@@ -546,7 +546,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                               ],
                             ),
                           )
-                        else if (hs.biTuChoi && _laToTruong)
+                        else if (hs.biTuChoi && _laXuong)
                             ElevatedButton.icon(
                               icon: const Icon(Icons.edit_rounded),
                               label: const Text('Chỉnh sửa & gửi lại duyệt'),
