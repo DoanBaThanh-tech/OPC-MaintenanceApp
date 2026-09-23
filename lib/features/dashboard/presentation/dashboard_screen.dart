@@ -38,7 +38,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (_) => const LoginScreen()),
-      (route) => false,
+          (route) => false,
     );
   }
 
@@ -67,7 +67,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           drawer: Drawer(
             width: drawerWidth,
-            backgroundColor: Colors.white,
+            backgroundColor: const Color(0xFFF7F9FC),
             child: _SlideMenuContent(
               phien: _phien!,
               menu: _menu,
@@ -84,9 +84,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// ============ NỘI DUNG SLIDE MENU — thiết kế riêng, đồng bộ ngôn ngữ đã chốt ============
+// ============ SLIDE MENU — hiện đại, tên + vai trò rõ ràng ============
 
-class _SlideMenuContent extends StatelessWidget {
+class _SlideMenuContent extends StatefulWidget {
   final PhienDangNhap phien;
   final List<MenuGroup> menu;
   final MenuItemData? dangChon;
@@ -101,147 +101,353 @@ class _SlideMenuContent extends StatelessWidget {
     required this.onDangXuat,
   });
 
-  String get _tenChuCai =>
-      phien.vaiTro.isNotEmpty ? phien.vaiTro[0].toUpperCase() : '?';
+  @override
+  State<_SlideMenuContent> createState() => _SlideMenuContentState();
+}
+
+class _SlideMenuContentState extends State<_SlideMenuContent>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _anim;
+  late final Animation<double> _fade;
+
+  @override
+  void initState() {
+    super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 380),
+    );
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic);
+    _anim.forward();
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    super.dispose();
+  }
+
+  String get _chuCai {
+    final ten = widget.phien.hoTen.trim();
+    if (ten.isEmpty) return '?';
+    // Lấy chữ cái đầu của từ cuối (tên) nếu có
+    final parts = ten.split(RegExp(r'\s+'));
+    final last = parts.isNotEmpty ? parts.last : ten;
+    return last[0].toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Column(
-        children: [
-          _buildHeader(),
-          Expanded(
+    final bottom = MediaQuery.paddingOf(context).bottom;
+    return Column(
+      children: [
+        _buildHeader(),
+        Expanded(
+          child: FadeTransition(
+            opacity: _fade,
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.fromLTRB(0, 8, 0, 12),
               children: [
-                for (final nhom in menu) _buildNhom(nhom),
+                for (var gi = 0; gi < widget.menu.length; gi++)
+                  _buildNhom(widget.menu[gi], gi),
               ],
             ),
           ),
-          _buildFooter(),
-        ],
-      ),
+        ),
+        _buildFooter(bottom),
+      ],
     );
   }
 
   Widget _buildHeader() {
-    return ClipPath(
-      clipper: _SongClipper(),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(20, 28, 20, 40),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.primary, AppColors.primaryDark],
-          ),
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.fromLTRB(
+        20,
+        MediaQuery.paddingOf(context).top + 18,
+        20,
+        22,
+      ),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0077B8), Color(0xFF004E80)],
         ),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.15),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.4), width: 1.5),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                _tenChuCai,
-                style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    phien.vaiTro,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'OPC Bảo trì · Sửa chữa cơ điện',
-                    style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.28),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(22),
+          bottomRight: Radius.circular(22),
         ),
       ),
-    );
-  }
-
-  Widget _buildNhom(MenuGroup nhom) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 6, bottom: 2),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 10, 20, 6),
-            child: Text(
-              nhom.tieuDe.toUpperCase(),
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.6,
-                color: Colors.grey.shade500,
+          Row(
+            children: [
+              // Avatar
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.white.withValues(alpha: 0.35),
+                      Colors.white.withValues(alpha: 0.12),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    width: 2,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  _chuCai,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Tên người
+                    Text(
+                      widget.phien.hoTen.isNotEmpty
+                          ? widget.phien.hoTen
+                          : 'Người dùng',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    // Badge vai trò
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.28),
+                        ),
+                      ),
+                      child: Text(
+                        widget.phien.vaiTro,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.95),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          for (final muc in nhom.muc) _buildMuc(muc),
+          if (widget.phien.email.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Icon(Icons.mail_outline_rounded,
+                    size: 14, color: Colors.white.withValues(alpha: 0.7)),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    widget.phien.email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  Widget _buildMuc(MenuItemData muc) {
-    final dangDuocChon = muc.label == dangChon?.label;
+  Widget _buildNhom(MenuGroup nhom, int groupIndex) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      padding: const EdgeInsets.only(top: 8, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 8),
+            child: Text(
+              nhom.tieuDe.toUpperCase(),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 0.8,
+                color: Colors.grey.shade500,
+              ),
+            ),
+          ),
+          for (var i = 0; i < nhom.muc.length; i++)
+            _buildMuc(nhom.muc[i], groupIndex * 10 + i),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMuc(MenuItemData muc, int index) {
+    final dangDuocChon = muc.label == widget.dangChon?.label;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 260 + index * 40),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(10 * (1 - t), 0),
+          child: child,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+        child: Material(
+          color: dangDuocChon
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => widget.onChon(muc),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: dangDuocChon
+                      ? AppColors.primary.withValues(alpha: 0.22)
+                      : Colors.transparent,
+                ),
+              ),
+              child: Row(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: dangDuocChon
+                          ? AppColors.primary
+                          : Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      muc.icon,
+                      size: 18,
+                      color: dangDuocChon ? Colors.white : Colors.grey.shade700,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      muc.label,
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight:
+                        dangDuocChon ? FontWeight.w700 : FontWeight.w500,
+                        color: dangDuocChon
+                            ? AppColors.primary
+                            : Colors.grey.shade800,
+                      ),
+                    ),
+                  ),
+                  if (dangDuocChon)
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFooter(double bottomPad) {
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomPad),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Colors.grey.shade200)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
       child: Material(
-        color: dangDuocChon ? AppColors.primary.withOpacity(0.08) : Colors.transparent,
-        borderRadius: BorderRadius.circular(12),
+        color: AppColors.danger.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () => onChon(muc),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          borderRadius: BorderRadius.circular(14),
+          onTap: widget.onDangXuat,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
             child: Row(
               children: [
-                if (dangDuocChon)
-                  Container(
-                    width: 3,
-                    height: 18,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  )
-                else
-                  const SizedBox(width: 3),
-                const SizedBox(width: 12),
-                Icon(
-                  muc.icon,
-                  size: 21,
-                  color: dangDuocChon ? AppColors.primary : Colors.grey.shade600,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.logout_rounded,
+                      size: 18, color: AppColors.danger),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Text(
-                    muc.label,
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      fontWeight: dangDuocChon ? FontWeight.w700 : FontWeight.w500,
-                      color: dangDuocChon ? AppColors.primary : Colors.grey.shade800,
-                    ),
+                const SizedBox(width: 12),
+                const Text(
+                  'Đăng xuất',
+                  style: TextStyle(
+                    color: AppColors.danger,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
                   ),
                 ),
               ],
@@ -251,54 +457,4 @@ class _SlideMenuContent extends StatelessWidget {
       ),
     );
   }
-
-  Widget _buildFooter() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
-      decoration: BoxDecoration(
-        border: Border(top: BorderSide(color: Colors.grey.shade200)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: onDangXuat,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                  children: [
-                    Icon(Icons.logout_rounded, size: 20, color: AppColors.danger),
-                    const SizedBox(width: 10),
-                    Text(
-                      'Đăng xuất',
-                      style: TextStyle(color: AppColors.danger, fontWeight: FontWeight.w600, fontSize: 13.5),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Vẽ viền sóng ở đáy header slide menu — đúng ngôn ngữ thiết kế
-/// đã chốt (viền sóng thay bo góc thẳng, tạo điểm nhấn bố cục)
-class _SongClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    path.lineTo(0, size.height - 24);
-    path.quadraticBezierTo(size.width * 0.25, size.height, size.width * 0.5, size.height - 14);
-    path.quadraticBezierTo(size.width * 0.75, size.height - 28, size.width, size.height - 8);
-    path.lineTo(size.width, 0);
-    path.close();
-    return path;
-  }
-
-  @override
-  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

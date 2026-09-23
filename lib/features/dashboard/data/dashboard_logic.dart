@@ -30,8 +30,13 @@ class MenuGroup {
 /// Thông tin phiên đăng nhập hiện tại, dùng để hiển thị ở header slide menu
 class PhienDangNhap {
   final String email;
+  final String hoTen;
   final String vaiTro;
-  const PhienDangNhap({required this.email, required this.vaiTro});
+  const PhienDangNhap({
+    required this.email,
+    required this.hoTen,
+    required this.vaiTro,
+  });
 }
 
 // ============ LOGIC PHỨC TẠP: xác định menu theo vai trò ============
@@ -41,12 +46,13 @@ class DashboardLogic {
 
   /// Đọc thông tin phiên đăng nhập đã lưu — dùng cho header slide menu
   static Future<PhienDangNhap> layPhienDangNhap() async {
-    final email = await TokenStorage.getToken() != null
-        ? (await TokenStorage.getVaiTro() ?? '')
-        : '';
-    // Lấy đúng 2 giá trị cần thiết cho header
+    final email = await TokenStorage.getEmail() ?? '';
+    final hoTen = await TokenStorage.getHoTen();
     final vaiTro = await TokenStorage.getVaiTro() ?? 'Người dùng';
-    return PhienDangNhap(email: email, vaiTro: vaiTro);
+    // Ưu tiên họ tên; nếu chưa có (session cũ) thì dùng email
+    final tenHienThi =
+    (hoTen != null && hoTen.trim().isNotEmpty) ? hoTen.trim() : email;
+    return PhienDangNhap(email: email, hoTen: tenHienThi, vaiTro: vaiTro);
   }
 
   /// Trung tâm điều phối: mỗi vai trò thấy nhóm chức năng khác nhau.
@@ -67,7 +73,7 @@ class DashboardLogic {
           ]),
         ];
 
-    // Xưởng: xem hồ sơ Chờ duyệt, điều chỉnh ngày, xác nhận lịch trước khi GĐ duyệt
+    // Xưởng: xem hồ sơ Chờ duyệt, điều chỉnh ngày, xác nhận lịch trước khi GĐ duyệt + tạo hồ sơ sửa chữa
       case 'Xưởng':
       case 'Tổ trưởng sản xuất': // tương thích JWT/DB cũ
         return [
@@ -76,6 +82,13 @@ class DashboardLogic {
               icon: Icons.fact_check_rounded,
               label: 'Hồ sơ bảo trì',
               screenBuilder: () => const WorkOrderBaoTriListScreen(trangThaiMacDinh: 'Chờ duyệt'),
+            ),
+          ]),
+          MenuGroup(tieuDe: 'Sửa chữa', muc: [
+            MenuItemData(
+              icon: Icons.handyman_rounded,
+              label: 'Tạo hồ sơ sửa chữa',
+              screenBuilder: () => const _ChuaLamScreen(ten: 'Tạo hồ sơ sửa chữa'),
             ),
           ]),
         ];
@@ -103,8 +116,6 @@ class DashboardLogic {
               label: 'Yêu cầu bảo trì của tôi',
               screenBuilder: () => const QuanLyYeuCauScreen(),
             ),
-            MenuItemData(icon: Icons.handyman_rounded, label: 'Tạo hồ sơ sửa chữa', screenBuilder: () => const _ChuaLamScreen(ten: 'Tạo hồ sơ sửa chữa')),
-            MenuItemData(icon: Icons.inventory_2_rounded, label: 'Yêu cầu vật tư', screenBuilder: () => const _ChuaLamScreen(ten: 'Yêu cầu vật tư')),
           ]),
         ];
 

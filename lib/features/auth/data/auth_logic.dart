@@ -14,6 +14,7 @@ class DangNhapRequest {
 class DangNhapResponse {
   final int maNguoiDung;
   final String email;
+  final String? hoTen;
   final String vaiTro;
   final int maVaiTro;
   final String token;
@@ -21,18 +22,20 @@ class DangNhapResponse {
   DangNhapResponse({
     required this.maNguoiDung,
     required this.email,
+    this.hoTen,
     required this.vaiTro,
     required this.maVaiTro,
     required this.token,
   });
 
   factory DangNhapResponse.fromJson(Map<String, dynamic> json) => DangNhapResponse(
-        maNguoiDung: json['maNguoiDung'] ?? json['MaNguoiDung'],
-        email: json['email'] ?? json['Email'],
-        vaiTro: json['vaiTro'] ?? json['VaiTro'],
-        maVaiTro: json['maVaiTro'] ?? json['MaVaiTro'],
-        token: json['token'] ?? json['Token'],
-      );
+    maNguoiDung: json['maNguoiDung'] ?? json['MaNguoiDung'],
+    email: (json['email'] ?? json['Email'])?.toString() ?? '',
+    hoTen: (json['hoTen'] ?? json['HoTen'])?.toString(),
+    vaiTro: (json['vaiTro'] ?? json['VaiTro'])?.toString() ?? '',
+    maVaiTro: json['maVaiTro'] ?? json['MaVaiTro'] ?? 0,
+    token: (json['token'] ?? json['Token'])?.toString() ?? '',
+  );
 }
 
 // ============ SERVICE (gọi API) ============
@@ -49,6 +52,7 @@ class AuthService {
       token: result.token,
       maNguoiDung: result.maNguoiDung,
       email: result.email,
+      hoTen: result.hoTen,
       vaiTro: result.vaiTro,
       maVaiTro: result.maVaiTro,
     );
@@ -91,7 +95,7 @@ class AuthValidators {
 
   // Khớp CHÍNH XÁC quy tắc trong QuanLyNguoiDungService.cs backend
   static final _matKhauRegex =
-      RegExp(r'^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>_\-]).{8,}$');
+  RegExp(r'^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>_\-]).{8,}$');
 
   static String? email(String? value) {
     if (value == null || value.trim().isEmpty) return 'Vui lòng nhập email';

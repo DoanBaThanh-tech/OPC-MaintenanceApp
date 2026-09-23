@@ -8,6 +8,7 @@ class TokenStorage {
   static const _keyToken = 'jwt_token';
   static const _keyMaNguoiDung = 'ma_nguoi_dung';
   static const _keyEmail = 'email';
+  static const _keyHoTen = 'ho_ten';
   static const _keyVaiTro = 'vai_tro';
   static const _keyMaVaiTro = 'ma_vai_tro';
 
@@ -17,11 +18,13 @@ class TokenStorage {
     required String email,
     required String vaiTro,
     required int maVaiTro,
+    String? hoTen,
   }) async {
     await Future.wait([
       _storage.write(key: _keyToken, value: token),
       _storage.write(key: _keyMaNguoiDung, value: maNguoiDung.toString()),
       _storage.write(key: _keyEmail, value: email),
+      _storage.write(key: _keyHoTen, value: hoTen ?? email),
       _storage.write(key: _keyVaiTro, value: vaiTro),
       _storage.write(key: _keyMaVaiTro, value: maVaiTro.toString()),
     ]);
@@ -33,12 +36,15 @@ class TokenStorage {
     final v = await _storage.read(key: _keyMaVaiTro);
     return v == null ? null : int.tryParse(v);
   }
+
   static Future<int?> getMaNguoiDung() async {
     final v = await _storage.read(key: _keyMaNguoiDung);
     return v == null ? null : int.tryParse(v);
   }
 
   static Future<String?> getEmail() => _storage.read(key: _keyEmail);
+  static Future<String?> getHoTen() => _storage.read(key: _keyHoTen);
+
   static Future<bool> daDangNhap() async {
     final token = await getToken();
     return token != null && token.isNotEmpty;
