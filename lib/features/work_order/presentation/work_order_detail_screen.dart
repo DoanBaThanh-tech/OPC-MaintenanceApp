@@ -505,46 +505,72 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                           }
                         },
                       )
-                    else if (hs.dangThucHien && _laNvkt)
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.task_alt_rounded),
-                          label: const Text('Hoàn thành bảo trì'),
-                          onPressed: () async {
-                            try {
-                              await WorkOrderService.nhanVienHoanThanhBaoTri(hs.maHoSoBaoTri);
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Đã hoàn thành. Đồng bộ trạng thái cho mọi nhân viên được phân công.')),
-                              );
-                              await _controller.taiChiTiet();
-                            } on ApiException catch (e) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text(e.message)),
-                              );
-                            }
-                          },
-                        )
-                      else if (hs.daDuyetChoXacNhan && _laToTruong)
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.08),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(Icons.hourglass_top_rounded, size: 20),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    hs.tenNhanVienThucHien != null
-                                        ? 'Đã phân công ${hs.tenNhanVienThucHien} — chờ xác nhận nhận việc'
-                                        : 'Đã phân công — chờ nhân viên kỹ thuật xác nhận nhận việc',
-                                  ),
+                    else if (hs.coTheCapNhatPhanCong && _laToTruong)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if ((hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien) != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.07),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
                                 ),
-                              ],
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.people_alt_rounded, size: 20, color: AppColors.primary),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'Đang phân công: ${hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien}',
+                                        style: const TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                            ],
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.manage_accounts_rounded),
+                              label: const Text('Cập nhật phân công'),
+                              onPressed: () async {
+                                final ok = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PhanCongBaoTriScreen(
+                                      maHoSoBaoTri: hs.maHoSoBaoTri,
+                                      isCapNhat: true,
+                                    ),
+                                  ),
+                                );
+                                if (ok == true && mounted) {
+                                  await _controller.taiChiTiet();
+                                }
+                              },
                             ),
+                          ],
+                        )
+                      else if (hs.dangThucHien && _laNvkt)
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.task_alt_rounded),
+                            label: const Text('Hoàn thành bảo trì'),
+                            onPressed: () async {
+                              try {
+                                await WorkOrderService.nhanVienHoanThanhBaoTri(hs.maHoSoBaoTri);
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Đã hoàn thành. Đồng bộ trạng thái hồ sơ và kế hoạch bảo trì.')),
+                                );
+                                await _controller.taiChiTiet();
+                              } on ApiException catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(e.message)),
+                                );
+                              }
+                            },
                           )
                         else if (hs.biTuChoi && _laXuong)
                             ElevatedButton.icon(

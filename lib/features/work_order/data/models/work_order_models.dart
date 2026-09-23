@@ -55,6 +55,9 @@ class HoSoBaoTri {
   final String? lyDoTuChoiPhanCong;
   final int? maNhanVienThucHien;
   final String? tenNhanVienThucHien;
+  /// Nhiều NV đang được phân công (cập nhật phân công / hiển thị).
+  final List<int> maNhanVienThucHiens;
+  final String? tenNhanVienThucHiens;
   final DateTime? ngayPhanCong;
   final int nam;
   final bool namTuKeHoach;
@@ -79,6 +82,8 @@ class HoSoBaoTri {
     this.lyDoTuChoiPhanCong,
     this.maNhanVienThucHien,
     this.tenNhanVienThucHien,
+    this.maNhanVienThucHiens = const [],
+    this.tenNhanVienThucHiens,
     this.ngayPhanCong,
     required this.nam,
     required this.namTuKeHoach,
@@ -107,6 +112,11 @@ class HoSoBaoTri {
               trangThaiPhanCong == 'Đã phân công' ||
               trangThaiPhanCong == null);
   bool get dangThucHien => trangThai == 'Đang thực hiện';
+  /// Đã phân công, tổ trưởng có thể cập nhật lại danh sách NV.
+  bool get coTheCapNhatPhanCong =>
+      dangThucHien &&
+          (maPhanCong != null || maNhanVienThucHiens.isNotEmpty) &&
+          trangThaiPhanCong != 'Hoàn thành';
   bool get biTuChoi => trangThai == 'Từ chối';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
 
@@ -119,6 +129,25 @@ class HoSoBaoTri {
     }
 
     final ngayTao = asDate(j['ngayTao'] ?? j['NgayTao']) ?? DateTime.now();
+
+    List<int> parseMaNvList(dynamic raw) {
+      if (raw is! List) return const [];
+      return raw
+          .map((e) {
+        if (e is num) return e.toInt();
+        if (e is Map) {
+          final v = e['maNhanVien'] ?? e['MaNhanVien'];
+          return (v as num?)?.toInt();
+        }
+        return int.tryParse(e.toString());
+      })
+          .whereType<int>()
+          .toList();
+    }
+
+    final maList = parseMaNvList(j['maNhanVienThucHiens'] ?? j['MaNhanVienThucHiens']);
+    final fromDs = parseMaNvList(j['danhSachNhanVienPhanCong'] ?? j['DanhSachNhanVienPhanCong']);
+    final maNvs = maList.isNotEmpty ? maList : fromDs;
 
     return HoSoBaoTri(
       maHoSoBaoTri: asInt(j['maHoSoBaoTri'] ?? j['MaHoSoBaoTri']),
@@ -139,6 +168,8 @@ class HoSoBaoTri {
       lyDoTuChoiPhanCong: (j['lyDoTuChoiPhanCong'] ?? j['LyDoTuChoiPhanCong'])?.toString(),
       maNhanVienThucHien: asIntN(j['maNhanVienThucHien'] ?? j['MaNhanVienThucHien']),
       tenNhanVienThucHien: (j['tenNhanVienThucHien'] ?? j['TenNhanVienThucHien'])?.toString(),
+      maNhanVienThucHiens: maNvs,
+      tenNhanVienThucHiens: (j['tenNhanVienThucHiens'] ?? j['TenNhanVienThucHiens'])?.toString(),
       ngayPhanCong: asDate(j['ngayPhanCong'] ?? j['NgayPhanCong']),
       nam: asInt(j['nam'] ?? j['Nam'] ?? ngayTao.year),
       namTuKeHoach: (j['namTuKeHoach'] ?? j['NamTuKeHoach']) == true,
@@ -250,11 +281,19 @@ class YeuCauPhanCong {
     this.ngayTaoHoSo,
   });
 
-  bool get choXacNhan =>
-      trangThaiPhanCong == 'Chờ xác nhận' || trangThaiPhanCong == 'Đã phân công';
+  /// Cần thực hiện (không còn bước xác nhận nhận việc).
+  bool get canThucHien =>
+      trangThaiPhanCong == 'Chờ xác nhận' ||
+          trangThaiPhanCong == 'Đã phân công' ||
+          trangThaiPhanCong == 'Xác nhận' ||
+          trangThaiPhanCong == 'Đang thực hiện' ||
+          trangThaiHoSo == 'Đang thực hiện';
+  bool get choXacNhan => canThucHien; // giữ alias cũ
   bool get daXacNhan => trangThaiPhanCong == 'Xác nhận';
   bool get biTuChoi => trangThaiPhanCong == 'Từ chối';
   bool get daHuy => trangThaiPhanCong == 'Đã hủy';
+  bool get daHoanThanhPc =>
+      trangThaiPhanCong == 'Hoàn thành' || trangThaiHoSo == 'Đã hoàn thành';
   bool get laBaoTri => loai == 'Bảo trì';
 
   factory YeuCauPhanCong.fromJson(Map<String, dynamic> j) {

@@ -14,9 +14,6 @@ class PhanCongBaoTriController extends ChangeNotifier {
 
   String? tenNguoiPhanCong;
   int? maNguoiPhanCong;
-  /// NV vừa từ chối đúng hồ sơ này (không áp dụng thiết bị khác)
-  int? maNhanVienBiTuChoi;
-  String? tenNhanVienBiLoai;
 
   // Lấy từ hồ sơ bảo trì — chỉ đọc, không cho sửa
   HoSoBaoTri? hoSo;
@@ -27,6 +24,7 @@ class PhanCongBaoTriController extends ChangeNotifier {
   bool dangTai = true;
   bool dangLuu = false;
   String? loi;
+  bool isCapNhat = false;
 
   TimeOfDay? _parseGio(String? s) {
     if (s == null || s.trim().isEmpty) return null;
@@ -38,9 +36,11 @@ class PhanCongBaoTriController extends ChangeNotifier {
     return TimeOfDay(hour: h, minute: m);
   }
 
-  Future<void> khoiTao(int maHoSoBaoTri) async {
+  Future<void> khoiTao(int maHoSoBaoTri, {bool capNhat = false}) async {
+    isCapNhat = capNhat;
     dangTai = true;
     loi = null;
+    maNhanVienDaChon.clear();
     notifyListeners();
     try {
       // 1) Lấy hồ sơ → giờ bắt đầu / kết thúc cố định
@@ -53,16 +53,19 @@ class PhanCongBaoTriController extends ChangeNotifier {
         loi = 'Hồ sơ chưa có giờ bắt đầu/kết thúc. Vui lòng sửa hồ sơ trước khi phân công.';
       }
 
-      // 2) Danh sách NVKT đầy đủ — người vừa từ chối hồ sơ NÀY vẫn hiện nhưng không chọn được
+      // 2) Danh sách NVKT — có thể phân công cùng người cho nhiều thiết bị khác nhau
       dsNhanVien = await WorkOrderService.layDanhSachNhanVienKyThuat();
-      if (hoSo?.phanCongBiTuChoi == true && hoSo?.maNhanVienThucHien != null) {
-        maNhanVienBiTuChoi = hoSo!.maNhanVienThucHien;
-        tenNhanVienBiLoai = hoSo?.tenNhanVienThucHien;
-      } else {
-        maNhanVienBiTuChoi = null;
-        tenNhanVienBiLoai = null;
+
+      // 3) Cập nhật: pre-select những NV đang được phân công trên hồ sơ này
+      if (isCapNhat && hoSo != null) {
+        if (hoSo!.maNhanVienThucHiens.isNotEmpty) {
+          maNhanVienDaChon.addAll(hoSo!.maNhanVienThucHiens);
+        } else if (hoSo!.maNhanVienThucHien != null) {
+          maNhanVienDaChon.add(hoSo!.maNhanVienThucHien!);
+        }
       }
-      tenNguoiPhanCong = 'Tổ trưởng đang đăng nhập'; // TODO: lấy từ TokenStorage
+
+      tenNguoiPhanCong = 'Tổ trưởng đang đăng nhập';
     } catch (e) {
       loi = 'Không tải được dữ liệu: $e';
     } finally {
@@ -87,9 +90,6 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   bool daChon(int maNhanVien) => maNhanVienDaChon.contains(maNhanVien);
-
-  bool laNhanVienBiTuChoi(int maNhanVien) =>
-      maNhanVienBiTuChoi != null && maNhanVien == maNhanVienBiTuChoi;
 
   DateTime get thoiDiemBatDau {
     final d = ngayDuKien ?? DateTime.now();

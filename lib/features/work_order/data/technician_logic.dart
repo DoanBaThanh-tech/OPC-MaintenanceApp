@@ -37,10 +37,14 @@ class QuanLyYeuCauController extends ChangeNotifier {
     tai();
   }
 
-  List<YeuCauPhanCong> get choXacNhan =>
-      danhSach.where((e) => e.choXacNhan).toList();
+  /// Việc cần làm (đã phân công, chưa hoàn thành).
+  List<YeuCauPhanCong> get canThucHien =>
+      danhSach.where((e) => e.canThucHien && !e.daHuy && !e.daHoanThanhPc).toList();
+  List<YeuCauPhanCong> get choXacNhan => canThucHien; // alias
+  List<YeuCauPhanCong> get daHoanThanh =>
+      danhSach.where((e) => e.daHoanThanhPc).toList();
   List<YeuCauPhanCong> get khac =>
-      danhSach.where((e) => !e.choXacNhan).toList();
+      danhSach.where((e) => !e.canThucHien || e.daHuy || e.daHoanThanhPc).toList();
 }
 
 class KetQuaThucHienController extends ChangeNotifier {
