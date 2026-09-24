@@ -4,10 +4,11 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/models/work_order_models.dart';
 import '../data/models/material_usage_models.dart';
-import '../data/services/work_order_service.dart';
 import '../data/services/material_usage_service.dart';
+import 'quy_trinh_cong_viec_screen.dart';
 
-/// Trang quy trình từng bước bảo trì / sửa chữa (tối đa 4 bước).
+/// Trang 1: Quy trình chọn vật tư bảo trì / sửa chữa.
+/// Nút "Lưu" → ghi hồ sơ vật tư → chuyển sang trang Quy trình thực hiện.
 class QuyTrinhThucHienScreen extends StatefulWidget {
   final YeuCauPhanCong yeuCau;
 
@@ -17,7 +18,8 @@ class QuyTrinhThucHienScreen extends StatefulWidget {
   State<QuyTrinhThucHienScreen> createState() => _QuyTrinhThucHienScreenState();
 }
 
-class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
+class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
+    with SingleTickerProviderStateMixin {
   List<BuocQuyTrinh> _buoc = [];
   List<VatTuOption> _dsVatTu = [];
   bool _dangTai = true;
@@ -25,12 +27,17 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
   bool _dangXuLy = false;
   final Map<int, TextEditingController> _slCtrls = {};
   final Map<int, TextEditingController> _giaCtrls = {};
+  late final AnimationController _anim;
 
   bool get _laBaoTri => widget.yeuCau.laBaoTri;
 
   @override
   void initState() {
     super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    )..forward();
     _taiDuLieu();
   }
 
@@ -57,10 +64,9 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
       final vatTu = results[0] as List<VatTuOption>;
       var buoc = results[1] as List<BuocQuyTrinh>;
       if (buoc.isEmpty) {
-        // API chưa có quy trình cho thiết bị này
         _loiTai = maTb <= 0
-            ? 'Thiếu mã thiết bị — không tải được quy trình từ database.'
-            : 'Chưa có quy trình $loai cho thiết bị này trong database. Hãy chạy script InsertVatTuVaQuyTrinh.sql.';
+            ? 'Thiếu mã thiết bị — không tải được bước từ database.'
+            : 'Chưa có quy trình $loai cho thiết bị này trong database.';
       }
       for (final c in _slCtrls.values) {
         c.dispose();
@@ -92,6 +98,7 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
 
   @override
   void dispose() {
+    _anim.dispose();
     for (final c in _slCtrls.values) {
       c.dispose();
     }
@@ -115,17 +122,18 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
     final selected = await showModalBottomSheet<VatTuOption>(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         return DraggableScrollableSheet(
-          expand: false,
-          initialChildSize: 0.55,
-          minChildSize: 0.35,
-          maxChildSize: 0.85,
-          builder: (_, scroll) {
-            return Column(
+          initialChildSize: 0.65,
+          minChildSize: 0.4,
+          maxChildSize: 0.92,
+          builder: (_, scrollCtrl) => Container(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+            ),
+            child: Column(
               children: [
                 const SizedBox(height: 10),
                 Container(
@@ -133,19 +141,30 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
                   height: 4,
                   decoration: BoxDecoration(
                     color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.all(16),
-                  child: Text(
-                    'Chọn vật tư',
-                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.inventory_2_rounded,
+                          color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Chọn vật tư',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 17),
+                      ),
+                    ],
                   ),
                 ),
+                const Divider(height: 1),
                 Expanded(
-                  child: ListView.builder(
-                    controller: scroll,
+                  child: _dsVatTu.isEmpty
+                      ? const Center(child: Text('Chưa có vật tư trong kho'))
+                      : ListView.builder(
+                    controller: scrollCtrl,
                     itemCount: _dsVatTu.length,
                     itemBuilder: (_, i) {
                       final v = _dsVatTu[i];
@@ -153,24 +172,25 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
                         leading: CircleAvatar(
                           backgroundColor:
                           AppColors.primary.withValues(alpha: 0.12),
-                          child: Icon(Icons.inventory_2_rounded,
-                              color: AppColors.primary, size: 20),
+                          child: Text('${v.maVatTu}',
+                              style: const TextStyle(
+                                  color: AppColors.primary,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12)),
                         ),
                         title: Text(v.tenVatTu,
-                            style:
-                            const TextStyle(fontWeight: FontWeight.w600)),
+                            style: const TextStyle(
+                                fontWeight: FontWeight.w600)),
                         subtitle: Text(
-                          '${v.donViTinh ?? '—'} · Tồn: ${v.soLuongTonKho}'
-                              '${v.donGia > 0 ? ' · ${_fmtTien(v.donGia)}' : ''}',
-                        ),
+                            'Tồn: ${v.soLuongTonKho} ${v.donViTinh ?? ''} · ${_fmtTien(v.donGia)}'),
                         onTap: () => Navigator.pop(ctx, v),
                       );
                     },
                   ),
                 ),
               ],
-            );
-          },
+            ),
+          ),
         );
       },
     );
@@ -179,130 +199,85 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
       b.maVatTu = selected.maVatTu;
       b.tenVatTu = selected.tenVatTu;
       b.donGia = selected.donGia;
-      _giaCtrls[b.soBuoc]?.text =
-      selected.donGia > 0 ? selected.donGia.toString() : '0';
+      _giaCtrls[b.soBuoc]?.text = selected.donGia.toString();
+      if ((_slCtrls[b.soBuoc]?.text ?? '0') == '0') {
+        _slCtrls[b.soBuoc]?.text = '1';
+        b.soLuong = 1;
+      }
     });
   }
 
-  bool _validate() {
+  int get tongTien {
+    var t = 0;
     for (final b in _buoc) {
-      final slText = _slCtrls[b.soBuoc]?.text.trim() ?? '0';
-      final giaText = _giaCtrls[b.soBuoc]?.text.trim() ?? '0';
-      if (slText.isEmpty || !RegExp(r'^\d+$').hasMatch(slText)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Bước ${b.soBuoc}: số lượng chỉ được nhập số nguyên không âm.'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-        return false;
-      }
-      if (giaText.isEmpty || !RegExp(r'^\d+$').hasMatch(giaText)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Bước ${b.soBuoc}: giá tiền chỉ được nhập số nguyên không âm.'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-        return false;
-      }
-      final sl = int.parse(slText);
-      final gia = int.parse(giaText);
-      if (sl < 0 || gia < 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Số lượng và giá không được âm.'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-        return false;
-      }
-      // Nếu có số lượng > 0 thì phải chọn vật tư
-      if (sl > 0 && (b.tenVatTu.isEmpty)) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Bước ${b.soBuoc}: vui lòng chọn vật tư khi có số lượng.'),
-            backgroundColor: AppColors.danger,
-          ),
-        );
-        return false;
-      }
-      b.soLuong = sl;
-      b.donGia = gia;
+      t += b.thanhTien;
     }
-    return true;
+    return t;
   }
 
-  Future<void> _hoanThanh() async {
-    if (!_validate()) return;
+  Future<void> _luuVatTu() async {
     final y = widget.yeuCau;
     if (y.maHoSo == null) return;
 
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(_laBaoTri ? 'Hoàn thành bảo trì?' : 'Hoàn thành sửa chữa?'),
-        content: const Text(
-          'Xác nhận đã hoàn thành toàn bộ quy trình. Hồ sơ, phân công và thiết bị sẽ được cập nhật trạng thái. Vật tư đã dùng sẽ ghi vào Hồ sơ vật tư.',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Hủy')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hoàn thành'),
-          ),
-        ],
-      ),
-    );
-    if (confirm != true) return;
+    // Sync qty/price from controllers
+    for (final b in _buoc) {
+      b.soLuong = int.tryParse(_slCtrls[b.soBuoc]?.text ?? '0') ?? 0;
+      b.donGia = int.tryParse(_giaCtrls[b.soBuoc]?.text ?? '0') ?? b.donGia;
+    }
+
+    final buocCoVatTu = _buoc
+        .where((b) => b.soLuong > 0 && b.tenVatTu.isNotEmpty)
+        .toList();
 
     setState(() => _dangXuLy = true);
     try {
-      // 1) Đồng bộ trạng thái hồ sơ / phân công / thiết bị
-      if (_laBaoTri) {
-        await WorkOrderService.nhanVienHoanThanhBaoTri(y.maHoSo!);
-      } else {
-        await WorkOrderService.nhanVienHoanThanhSuaChua(y.maHoSo!);
-      }
-
-      // 2) Ghi hồ sơ vật tư (các bước có vật tư)
-      final buocCoVatTu = _buoc
-          .where((b) => b.soLuong > 0 && b.tenVatTu.isNotEmpty)
-          .toList();
       if (buocCoVatTu.isNotEmpty) {
-        try {
-          await MaterialUsageService.taoHoSoVatTu(
-            maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
-            maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
-            maThietBi: y.maThietBi ?? 0,
-            tenThietBi: y.tenThietBi ?? 'Thiết bị',
-            loaiCongViec: _laBaoTri ? 'Bảo trì' : 'Sửa chữa',
-            buoc: buocCoVatTu.isEmpty ? _buoc : buocCoVatTu,
-          );
-        } catch (e) {
-          // Không chặn hoàn thành nếu API hồ sơ VT chưa sẵn sàng
-          debugPrint('Ghi hồ sơ vật tư: $e');
-        }
+        await MaterialUsageService.taoHoSoVatTu(
+          maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+          maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+          maThietBi: y.maThietBi ?? 0,
+          tenThietBi: y.tenThietBi ?? 'Thiết bị',
+          loaiCongViec: _laBaoTri ? 'Bảo trì' : 'Sửa chữa',
+          buoc: buocCoVatTu,
+        );
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text(
-              'Đã hoàn thành — hồ sơ, thiết bị và vật tư đã cập nhật'),
+          content: Text(buocCoVatTu.isEmpty
+              ? 'Không chọn vật tư — chuyển sang quy trình thực hiện'
+              : 'Đã lưu hồ sơ vật tư — chuyển sang quy trình thực hiện'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
           shape:
           RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       );
-      Navigator.pop(context, true);
+
+      // Trang 2: Quy trình bảo trì / sửa chữa (kết quả từng bước + Hoàn thành)
+      final done = await Navigator.push<bool>(
+        context,
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 380),
+          pageBuilder: (_, a, __) => QuyTrinhCongViecScreen(yeuCau: y),
+          transitionsBuilder: (_, a, __, child) {
+            final c = CurvedAnimation(parent: a, curve: Curves.easeOutCubic);
+            return FadeTransition(
+              opacity: c,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                    begin: const Offset(0.06, 0), end: Offset.zero)
+                    .animate(c),
+                child: child,
+              ),
+            );
+          },
+        ),
+      );
+      if (done == true && mounted) {
+        Navigator.pop(context, true);
+      }
     } on ApiException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -320,71 +295,69 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final y = widget.yeuCau;
     final top = MediaQuery.paddingOf(context).top;
-    final tongTien =
-    _buoc.fold<int>(0, (s, b) {
-      final sl = int.tryParse(_slCtrls[b.soBuoc]?.text ?? '0') ?? 0;
-      final gia = int.tryParse(_giaCtrls[b.soBuoc]?.text ?? '0') ?? 0;
-      return s + sl * gia;
-    });
+    final title = _laBaoTri
+        ? 'Quy trình chọn vật tư bảo trì'
+        : 'Quy trình chọn vật tư sửa chữa';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F6FA),
+      backgroundColor: const Color(0xFFF0F6FB),
       body: Column(
         children: [
-          Container(
-            padding: EdgeInsets.fromLTRB(8, top + 4, 16, 18),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: _laBaoTri
-                    ? [AppColors.primary, AppColors.primaryDark]
-                    : const [Color(0xFF7C3AED), Color(0xFF5B21B6)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius:
-              const BorderRadius.vertical(bottom: Radius.circular(22)),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_rounded,
-                      color: Colors.white),
+          FadeTransition(
+            opacity: _anim,
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.fromLTRB(8, top + 6, 16, 20),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _laBaoTri
-                            ? 'Quy trình bảo trì'
-                            : 'Quy trình sửa chữa',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 18,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        y.tenThietBi ?? 'HS #${y.maHoSo ?? '—'}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+                borderRadius:
+                const BorderRadius.vertical(bottom: Radius.circular(24)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 18,
+                    offset: const Offset(0, 8),
                   ),
-                ),
-              ],
+                ],
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: Colors.white),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 17)),
+                        const SizedBox(height: 4),
+                        Text(
+                          widget.yeuCau.tenThietBi ?? 'Thiết bị',
+                          style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 13),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-          if (_dangTai)
-            const LinearProgressIndicator(minHeight: 2),
+          if (_dangTai) const LinearProgressIndicator(minHeight: 2),
           Expanded(
             child: _dangTai
                 ? const Center(child: CircularProgressIndicator())
@@ -395,7 +368,7 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.info_outline,
+                    const Icon(Icons.info_outline,
                         size: 48, color: Colors.grey),
                     const SizedBox(height: 12),
                     Text(_loiTai!, textAlign: TextAlign.center),
@@ -410,7 +383,7 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
                 : ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
               itemCount: _buoc.length,
-              itemBuilder: (_, i) => _buildBuocCard(_buoc[i]),
+              itemBuilder: (_, i) => _buildBuocCard(_buoc[i], i),
             ),
           ),
           Container(
@@ -438,42 +411,29 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
                             fontWeight: FontWeight.w600)),
                     Text(_fmtTien(tongTien),
                         style: const TextStyle(
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w900,
                             fontSize: 16,
                             color: AppColors.primary)),
                   ],
                 ),
                 const SizedBox(height: 10),
-                SizedBox(
-                  height: 52,
-                  child: FilledButton(
-                    onPressed: _dangXuLy ? null : _hoanThanh,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.success,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
-                    ),
-                    child: _dangXuLy
-                        ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2.2, color: Colors.white),
-                    )
-                        : const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.task_alt_rounded, size: 22),
-                        SizedBox(width: 8),
-                        Text(
-                          'Hoàn thành',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 15.5),
-                        ),
-                      ],
-                    ),
+                FilledButton(
+                  onPressed: _dangXuLy || _buoc.isEmpty ? null : _luuVatTu,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14)),
                   ),
+                  child: _dangXuLy
+                      ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white))
+                      : const Text('Lưu',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15)),
                 ),
               ],
             ),
@@ -483,165 +443,152 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen> {
     );
   }
 
-  Widget _buildBuocCard(BuocQuyTrinh b) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
+  Widget _buildBuocCard(BuocQuyTrinh b, int index) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 320 + index * 80),
+      curve: Curves.easeOutCubic,
+      builder: (context, t, child) => Opacity(
+        opacity: t,
+        child: Transform.translate(
+          offset: Offset(0, 16 * (1 - t)),
+          child: child,
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFE2E8F0)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withValues(alpha: 0.06),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                        colors: [AppColors.primary, Color(0xFF0EA5E9)]),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('${b.soBuoc}',
+                      style: const TextStyle(
+                          color: Colors.white, fontWeight: FontWeight.w800)),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(b.moTa,
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, height: 1.35)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: (_dangTai || _dsVatTu.isEmpty)
+                  ? null
+                  : () => _chonVatTu(b),
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: double.infinity,
+                padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: Text(
-                  '${b.soBuoc}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text('Bước ${b.soBuoc}',
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 15)),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            b.moTa,
-            style: TextStyle(
-                color: Colors.grey.shade800, height: 1.4, fontSize: 13.5),
-          ),
-          const SizedBox(height: 14),
-          const Divider(height: 1),
-          const SizedBox(height: 12),
-          // Vật tư
-          InkWell(
-            onTap: (_dangTai || _dsVatTu.isEmpty) ? null : () => _chonVatTu(b),
-            borderRadius: BorderRadius.circular(12),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.category_rounded,
-                      size: 20, color: Colors.grey.shade600),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      b.tenVatTu.isEmpty ? 'Chọn vật tư (tùy chọn)' : b.tenVatTu,
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: b.tenVatTu.isEmpty
-                            ? Colors.grey.shade500
-                            : Colors.grey.shade900,
+                child: Row(
+                  children: [
+                    Icon(Icons.category_outlined,
+                        size: 18, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        b.tenVatTu.isEmpty
+                            ? 'Chọn vật tư (tuỳ chọn)'
+                            : b.tenVatTu,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: b.tenVatTu.isEmpty
+                              ? Colors.grey.shade600
+                              : const Color(0xFF0F172A),
+                        ),
                       ),
                     ),
-                  ),
-                  Icon(Icons.chevron_right_rounded,
-                      color: Colors.grey.shade500),
-                ],
+                    const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _numField(
-                  label: 'Số lượng',
-                  controller: _slCtrls[b.soBuoc]!,
-                  onChanged: (_) => setState(() {}),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _slCtrls[b.soBuoc],
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      labelText: 'Số lượng',
+                      isDense: true,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onChanged: (v) {
+                      setState(() {
+                        b.soLuong = int.tryParse(v) ?? 0;
+                      });
+                    },
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _numField(
-                  label: 'Giá tiền (₫)',
-                  controller: _giaCtrls[b.soBuoc]!,
-                  onChanged: (_) => setState(() {}),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _giaCtrls[b.soBuoc],
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    decoration: InputDecoration(
+                      labelText: 'Đơn giá',
+                      isDense: true,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onChanged: (v) {
+                      setState(() {
+                        b.donGia = int.tryParse(v) ?? 0;
+                      });
+                    },
+                  ),
                 ),
+              ],
+            ),
+            if (b.thanhTien > 0) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Text('Thành tiền: ${_fmtTien(b.thanhTien)}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primary)),
               ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerRight,
-            child: Text(
-              'Thành tiền: ${_fmtTien((int.tryParse(_slCtrls[b.soBuoc]?.text ?? '0') ?? 0) * (int.tryParse(_giaCtrls[b.soBuoc]?.text ?? '0') ?? 0))}',
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                color: Colors.grey.shade700,
-                fontSize: 13,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _numField({
-    required String label,
-    required TextEditingController controller,
-    required ValueChanged<String> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey.shade600)),
-        const SizedBox(height: 6),
-        TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
           ],
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            isDense: true,
-            filled: true,
-            fillColor: const Color(0xFFF8FAFC),
-            contentPadding:
-            const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: Colors.grey.shade300),
-            ),
-          ),
         ),
-      ],
+      ),
     );
   }
 }

@@ -30,6 +30,7 @@ class BuocQuyTrinh {
   String tenVatTu;
   int soLuong;
   int donGia;
+  String ketQuaThucHien;
 
   BuocQuyTrinh({
     required this.soBuoc,
@@ -38,6 +39,7 @@ class BuocQuyTrinh {
     this.tenVatTu = '',
     this.soLuong = 0,
     this.donGia = 0,
+    this.ketQuaThucHien = '',
   });
 
   int get thanhTien => soLuong * donGia;
@@ -63,6 +65,7 @@ class BuocQuyTrinh {
     tenVatTu: tenVatTu,
     soLuong: soLuong,
     donGia: donGia,
+    ketQuaThucHien: ketQuaThucHien,
   );
 }
 
