@@ -219,223 +219,253 @@ class _QuyTrinhCongViecScreenState extends State<QuyTrinhCongViecScreen>
     final title = _laBaoTri ? 'Quy trình bảo trì' : 'Quy trình sửa chữa';
     final subtitle = widget.yeuCau.tenThietBi ?? 'Thiết bị';
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F6FB),
-      body: Column(
-        children: [
-          // Header hiện đại
-          FadeTransition(
-            opacity: CurvedAnimation(
-                parent: _headerAnim, curve: Curves.easeOut),
-            child: SlideTransition(
-              position: Tween<Offset>(
-                  begin: const Offset(0, -0.2), end: Offset.zero)
-                  .animate(CurvedAnimation(
-                  parent: _headerAnim, curve: Curves.easeOutCubic)),
-              child: Container(
-                width: double.infinity,
-                padding: EdgeInsets.fromLTRB(8, top + 6, 16, 22),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [
-                      Color(0xFF0068A9),
-                      Color(0xFF0284C7),
-                      Color(0xFF0EA5E9),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(26)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.primary.withValues(alpha: 0.35),
-                      blurRadius: 22,
-                      offset: const Offset(0, 10),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _canhBaoKhongQuayLai();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF0F6FB),
+        body: Column(
+          children: [
+            // Header hiện đại
+            FadeTransition(
+              opacity: CurvedAnimation(
+                  parent: _headerAnim, curve: Curves.easeOut),
+              child: SlideTransition(
+                position: Tween<Offset>(
+                    begin: const Offset(0, -0.2), end: Offset.zero)
+                    .animate(CurvedAnimation(
+                    parent: _headerAnim, curve: Curves.easeOutCubic)),
+                child: Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.fromLTRB(8, top + 6, 16, 22),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF0068A9),
+                        Color(0xFF0284C7),
+                        Color(0xFF0EA5E9),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_rounded,
-                          color: Colors.white),
-                    ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(title,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 19,
-                                  letterSpacing: -0.3)),
-                          const SizedBox(height: 4),
-                          Text(subtitle,
-                              style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  fontSize: 13.5),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis),
-                        ],
+                    borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(26)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.35),
+                        blurRadius: 22,
+                        offset: const Offset(0, 10),
                       ),
-                    ),
-                    AnimatedBuilder(
-                      animation: _pulseAnim,
-                      builder: (_, __) {
-                        final s = 0.92 + 0.08 * _pulseAnim.value;
-                        return Transform.scale(
-                          scale: s,
-                          child: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                  color:
-                                  Colors.white.withValues(alpha: 0.35)),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: _canhBaoKhongQuayLai,
+                        icon: const Icon(Icons.lock_outline_rounded,
+                            color: Colors.white70),
+                        tooltip: 'Phải hoàn thành quy trình',
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(title,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 19,
+                                    letterSpacing: -0.3)),
+                            const SizedBox(height: 4),
+                            Text(subtitle,
+                                style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.9),
+                                    fontSize: 13.5),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                      AnimatedBuilder(
+                        animation: _pulseAnim,
+                        builder: (_, __) {
+                          final s = 0.92 + 0.08 * _pulseAnim.value;
+                          return Transform.scale(
+                            scale: s,
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                    color:
+                                    Colors.white.withValues(alpha: 0.35)),
+                              ),
+                              child: Icon(
+                                _laBaoTri
+                                    ? Icons.build_circle_rounded
+                                    : Icons.handyman_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              ),
                             ),
-                            child: Icon(
-                              _laBaoTri
-                                  ? Icons.build_circle_rounded
-                                  : Icons.handyman_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
 
-          // Progress chips
-          if (!_dangTai && _buoc.isNotEmpty)
-            Container(
-              width: double.infinity,
-              color: Colors.white,
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-              child: Row(
-                children: [
-                  for (var i = 0; i < _buoc.length; i++) ...[
-                    if (i > 0)
-                      Expanded(
-                        child: Container(
-                          height: 3,
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          decoration: BoxDecoration(
-                            color: (_daXongBuoc[_buoc[i].soBuoc] == true)
-                                ? AppColors.primary
-                                : const Color(0xFFE2E8F0),
-                            borderRadius: BorderRadius.circular(2),
+            // Progress chips
+            if (!_dangTai && _buoc.isNotEmpty)
+              Container(
+                width: double.infinity,
+                color: Colors.white,
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < _buoc.length; i++) ...[
+                      if (i > 0)
+                        Expanded(
+                          child: Container(
+                            height: 3,
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            decoration: BoxDecoration(
+                              color: (_daXongBuoc[_buoc[i].soBuoc] == true)
+                                  ? AppColors.primary
+                                  : const Color(0xFFE2E8F0),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
                         ),
-                      ),
-                    _stepDot(_buoc[i].soBuoc),
+                      _stepDot(_buoc[i].soBuoc),
+                    ],
                   ],
+                ),
+              ),
+
+            if (_dangTai) const LinearProgressIndicator(minHeight: 2),
+            Expanded(
+              child: _dangTai
+                  ? const Center(child: CircularProgressIndicator())
+                  : _loiTai != null && _buoc.isEmpty
+                  ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.info_outline,
+                          size: 48, color: Colors.grey),
+                      const SizedBox(height: 12),
+                      Text(_loiTai!, textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                          onPressed: _taiQuyTrinh,
+                          child: const Text('Thử lại')),
+                    ],
+                  ),
+                ),
+              )
+                  : ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                itemCount: _buoc.length,
+                itemBuilder: (_, i) =>
+                    _buildBuocCard(_buoc[i], i),
+              ),
+            ),
+
+            // Footer Hoàn thành
+            Container(
+              padding: EdgeInsets.fromLTRB(
+                  16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.07),
+                    blurRadius: 14,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    _tatCaBuocCoKetQua
+                        ? 'Đã điền đủ kết quả — có thể hoàn thành'
+                        : 'Điền kết quả thực hiện từng bước để bật nút Hoàn thành',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: _tatCaBuocCoKetQua
+                          ? AppColors.success
+                          : Colors.grey.shade600,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton(
+                    onPressed: (_dangXuLy || !_tatCaBuocCoKetQua)
+                        ? null
+                        : _hoanThanh,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      disabledBackgroundColor: Colors.grey.shade300,
+                      padding: const EdgeInsets.symmetric(vertical: 15),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                      elevation: 0,
+                    ),
+                    child: _dangXuLy
+                        ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                        : const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.task_alt_rounded, size: 20),
+                        SizedBox(width: 8),
+                        Text('Hoàn thành',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 15.5)),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
 
-          if (_dangTai) const LinearProgressIndicator(minHeight: 2),
-          Expanded(
-            child: _dangTai
-                ? const Center(child: CircularProgressIndicator())
-                : _loiTai != null && _buoc.isEmpty
-                ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.info_outline,
-                        size: 48, color: Colors.grey),
-                    const SizedBox(height: 12),
-                    Text(_loiTai!, textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                        onPressed: _taiQuyTrinh,
-                        child: const Text('Thử lại')),
-                  ],
-                ),
-              ),
-            )
-                : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              itemCount: _buoc.length,
-              itemBuilder: (_, i) =>
-                  _buildBuocCard(_buoc[i], i),
-            ),
-          ),
-
-          // Footer Hoàn thành
-          Container(
-            padding: EdgeInsets.fromLTRB(
-                16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.07),
-                  blurRadius: 14,
-                  offset: const Offset(0, -4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  _tatCaBuocCoKetQua
-                      ? 'Đã điền đủ kết quả — có thể hoàn thành'
-                      : 'Điền kết quả thực hiện từng bước để bật nút Hoàn thành',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: _tatCaBuocCoKetQua
-                        ? AppColors.success
-                        : Colors.grey.shade600,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 10),
-                FilledButton(
-                  onPressed: (_dangXuLy || !_tatCaBuocCoKetQua)
-                      ? null
-                      : _hoanThanh,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    disabledBackgroundColor: Colors.grey.shade300,
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
-                  ),
-                  child: _dangXuLy
-                      ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                      : const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.task_alt_rounded, size: 20),
-                      SizedBox(width: 8),
-                      Text('Hoàn thành',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15.5)),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+  Future<void> _canhBaoKhongQuayLai() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Không thể quay lại'),
+        content: Text(
+          _laBaoTri
+              ? 'Bạn đang trong quy trình bảo trì. Hãy điền kết quả từng bước và bấm Hoàn thành. Không được quay lại để tránh trùng / lệch trạng thái hồ sơ.'
+              : 'Bạn đang trong quy trình sửa chữa. Hãy điền kết quả từng bước và bấm Hoàn thành. Không được quay lại để tránh trùng / lệch trạng thái hồ sơ.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Đã hiểu'),
           ),
         ],
       ),

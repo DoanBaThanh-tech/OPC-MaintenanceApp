@@ -300,143 +300,174 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
         ? 'Quy trình chọn vật tư bảo trì'
         : 'Quy trình chọn vật tư sửa chữa';
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F6FB),
-      body: Column(
-        children: [
-          FadeTransition(
-            opacity: _anim,
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.fromLTRB(8, top + 6, 16, 20),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _canhBaoKhongQuayLai();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF0F6FB),
+        body: Column(
+          children: [
+            FadeTransition(
+              opacity: _anim,
+              child: Container(
+                width: double.infinity,
+                padding: EdgeInsets.fromLTRB(8, top + 6, 16, 20),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(24)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                borderRadius:
-                const BorderRadius.vertical(bottom: Radius.circular(24)),
+                child: Row(
+                  children: [
+                    // Không cho quay lại cho đến khi hoàn thành quy trình
+                    IconButton(
+                      onPressed: _canhBaoKhongQuayLai,
+                      icon: const Icon(Icons.lock_outline_rounded,
+                          color: Colors.white70),
+                      tooltip: 'Phải hoàn thành quy trình',
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(title,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 17)),
+                          const SizedBox(height: 4),
+                          Text(
+                            widget.yeuCau.tenThietBi ?? 'Thiết bị',
+                            style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_dangTai) const LinearProgressIndicator(minHeight: 2),
+            Expanded(
+              child: _dangTai
+                  ? const Center(child: CircularProgressIndicator())
+                  : _loiTai != null && _buoc.isEmpty
+                  ? Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.info_outline,
+                          size: 48, color: Colors.grey),
+                      const SizedBox(height: 12),
+                      Text(_loiTai!, textAlign: TextAlign.center),
+                      const SizedBox(height: 16),
+                      FilledButton(
+                          onPressed: _taiDuLieu,
+                          child: const Text('Thử lại')),
+                    ],
+                  ),
+                ),
+              )
+                  : ListView.builder(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                itemCount: _buoc.length,
+                itemBuilder: (_, i) => _buildBuocCard(_buoc[i], i),
+              ),
+            ),
+            Container(
+              padding: EdgeInsets.fromLTRB(
+                  16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
+              decoration: BoxDecoration(
+                color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.3),
-                    blurRadius: 18,
-                    offset: const Offset(0, 8),
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, -3),
                   ),
                 ],
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_rounded,
-                        color: Colors.white),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title,
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 17)),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.yeuCau.tenThietBi ?? 'Thiết bị',
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Tổng tiền vật tư',
                           style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 13),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                              color: Colors.grey.shade700,
+                              fontWeight: FontWeight.w600)),
+                      Text(_fmtTien(tongTien),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              fontSize: 16,
+                              color: AppColors.primary)),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton(
+                    onPressed: _dangXuLy || _buoc.isEmpty ? null : _luuVatTu,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
                     ),
+                    child: _dangXuLy
+                        ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                            strokeWidth: 2, color: Colors.white))
+                        : const Text('Lưu',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 15)),
                   ),
                 ],
               ),
             ),
-          ),
-          if (_dangTai) const LinearProgressIndicator(minHeight: 2),
-          Expanded(
-            child: _dangTai
-                ? const Center(child: CircularProgressIndicator())
-                : _loiTai != null && _buoc.isEmpty
-                ? Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.info_outline,
-                        size: 48, color: Colors.grey),
-                    const SizedBox(height: 12),
-                    Text(_loiTai!, textAlign: TextAlign.center),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                        onPressed: _taiDuLieu,
-                        child: const Text('Thử lại')),
-                  ],
-                ),
-              ),
-            )
-                : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              itemCount: _buoc.length,
-              itemBuilder: (_, i) => _buildBuocCard(_buoc[i], i),
-            ),
-          ),
-          Container(
-            padding: EdgeInsets.fromLTRB(
-                16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, -3),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Tổng tiền vật tư',
-                        style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontWeight: FontWeight.w600)),
-                    Text(_fmtTien(tongTien),
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 16,
-                            color: AppColors.primary)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                FilledButton(
-                  onPressed: _dangXuLy || _buoc.isEmpty ? null : _luuVatTu,
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                  ),
-                  child: _dangXuLy
-                      ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                      : const Text('Lưu',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 15)),
-                ),
-              ],
-            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _canhBaoKhongQuayLai() async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Không thể quay lại'),
+        content: Text(
+          _laBaoTri
+              ? 'Bạn đã bắt đầu quy trình bảo trì. Hãy chọn vật tư (nếu cần), bấm Lưu rồi hoàn thành các bước trên trang Quy trình bảo trì. Không được quay lại để tránh trùng trạng thái hồ sơ.'
+              : 'Bạn đã bắt đầu quy trình sửa chữa. Hãy chọn vật tư (nếu cần), bấm Lưu rồi hoàn thành các bước trên trang Quy trình sửa chữa. Không được quay lại để tránh trùng trạng thái hồ sơ.',
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Đã hiểu'),
           ),
         ],
       ),
