@@ -253,9 +253,10 @@ class _YeuCauCard extends StatelessWidget {
     switch (tt) {
       case 'Chờ xác nhận':
       case 'Đã phân công':
-      case 'Đang thực hiện':
       case 'Xác nhận':
         return const Color(0xFFD97706);
+      case 'Đang thực hiện':
+        return AppColors.primary; // xanh đồng bộ
       case 'Từ chối':
       case 'Đã hủy':
         return AppColors.danger;
@@ -459,6 +460,30 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
   Future<void> _tienHanh() async {
+    final y = widget.yeuCau;
+    // SC: bấm Tiến hành → đồng bộ HS = Đang thực hiện cho mọi vai trò
+    if (!y.laBaoTri && y.maHoSo != null) {
+      setState(() => _dangXuLy = true);
+      try {
+        await WorkOrderService.nhanVienTienHanhSuaChua(y.maHoSo!);
+      } on ApiException catch (e) {
+        if (!mounted) return;
+        setState(() => _dangXuLy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.danger),
+        );
+        return;
+      } catch (e) {
+        if (!mounted) return;
+        setState(() => _dangXuLy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e'), backgroundColor: AppColors.danger),
+        );
+        return;
+      }
+      if (mounted) setState(() => _dangXuLy = false);
+    }
+
     final changed = await Navigator.push<bool>(
       context,
       PageRouteBuilder(
@@ -491,10 +516,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
           Container(
             padding: EdgeInsets.fromLTRB(8, top + 4, 16, 20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: y.laBaoTri
-                    ? [AppColors.primary, AppColors.primaryDark]
-                    : const [Color(0xFF7C3AED), Color(0xFF5B21B6)],
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.primaryDark],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),

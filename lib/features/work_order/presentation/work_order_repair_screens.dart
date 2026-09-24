@@ -214,8 +214,59 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
               ),
             ),
           ),
+          // Thanh trạng thái SC: Tất cả | Chờ phân công | Đang thực hiện | Đã hoàn thành
+          _buildStatusBar(),
           Expanded(child: _buildBody()),
         ],
+      ),
+    );
+  }
+
+  static const _tabsSc = [
+    (null, 'Tất cả'),
+    ('Chờ phân công', 'Chờ phân công'),
+    ('Đang thực hiện', 'Đang thực hiện'),
+    ('Đã hoàn thành', 'Đã hoàn thành'),
+  ];
+
+  Widget _buildStatusBar() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (final (key, label) in _tabsSc) ...[
+              _statusChip(key, label),
+              const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String? key, String label) {
+    final selected = _ctrl.locTrangThai == key;
+    return Material(
+      color: selected ? _scPrimary : const Color(0xFFF1F5F9),
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () => _ctrl.datLocTrangThai(key),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              color: selected ? Colors.white : const Color(0xFF475569),
+            ),
+          ),
+        ),
       ),
     );
   }

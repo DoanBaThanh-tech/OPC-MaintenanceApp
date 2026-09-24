@@ -274,6 +274,14 @@ class WorkOrderService {
     );
   }
 
+  /// NVKT bấm Tiến hành sửa chữa → HS + PC = Đang thực hiện (mọi vai trò).
+  static Future<void> nhanVienTienHanhSuaChua(int maHoSoSuaChua) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/sua-chua/$maHoSoSuaChua/tien-hanh',
+      {},
+    );
+  }
+
   static Future<void> nhanVienHoanThanhSuaChua(int maHoSoSuaChua) async {
     await ApiClient.instance.put<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/sua-chua/$maHoSoSuaChua/hoan-thanh',
