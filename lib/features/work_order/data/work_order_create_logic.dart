@@ -119,6 +119,18 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
   }
 
   void chonThietBi(ThietBiModel? tb) {
+    if (tb != null && tb.tinhTrangHienTai != TrangThaiThietBi.sanXuat) {
+      if (tb.tinhTrangHienTai == TrangThaiThietBi.baoTri) {
+        loi = 'Thiết bị đang bảo trì — không thể tạo hồ sơ sửa chữa.';
+      } else if (tb.tinhTrangHienTai == TrangThaiThietBi.suaChua) {
+        loi = 'Thiết bị đang sửa chữa — không thể tạo thêm hồ sơ sửa chữa.';
+      } else {
+        loi = 'Chỉ chọn thiết bị đang Sản xuất.';
+      }
+      thietBiChon = null;
+      notifyListeners();
+      return;
+    }
     thietBiChon = tb;
     loi = null;
     notifyListeners();
@@ -152,12 +164,24 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
       return false;
     }
 
+    if (thietBiChon!.tinhTrangHienTai == TrangThaiThietBi.baoTri) {
+      loi = 'Thiết bị đang bảo trì — không thể tạo hồ sơ sửa chữa.';
+      notifyListeners();
+      return false;
+    }
+    if (thietBiChon!.tinhTrangHienTai == TrangThaiThietBi.suaChua) {
+      loi = 'Thiết bị đang sửa chữa — không thể tạo hồ sơ sửa chữa.';
+      notifyListeners();
+      return false;
+    }
+
     dangGui = true;
     loi = null;
     loiMoTa = null;
     notifyListeners();
     try {
       // Ngày SC = hôm nay; server ghi NgayTao = DateTime.Now
+      // Sau khi tạo: server chuyển TB → Sửa chữa
       await WorkOrderService.taoHoSoSuaChua(
         maThietBi: thietBiChon!.maThietBi,
         moTaHuHong: moTa,

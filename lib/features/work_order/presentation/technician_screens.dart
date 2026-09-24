@@ -4,6 +4,7 @@ import '../../../core/network/api_exception.dart';
 import '../data/technician_logic.dart';
 import '../data/models/work_order_models.dart';
 import '../data/services/work_order_service.dart';
+import 'quy_trinh_thuc_hien_screen.dart';
 
 // ============ QUẢN LÝ YÊU CẦU (NVKT) ============
 
@@ -457,58 +458,19 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   String _fmtGio(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
-  Future<void> _hoanThanh() async {
-    final y = widget.yeuCau;
-    if (y.maHoSo == null) return;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hoàn thành bảo trì?'),
-        content: const Text(
-          'Xác nhận đã bảo trì xong. Hồ sơ và kế hoạch bảo trì sẽ chuyển sang "Đã hoàn thành".',
-        ),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Hủy')),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.success),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hoàn thành'),
-          ),
-        ],
+  Future<void> _tienHanh() async {
+    final changed = await Navigator.push<bool>(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, a, __) =>
+            QuyTrinhThucHienScreen(yeuCau: widget.yeuCau),
+        transitionsBuilder: (_, a, __, child) =>
+            FadeTransition(opacity: a, child: child),
+        transitionDuration: const Duration(milliseconds: 260),
       ),
     );
-    if (confirm != true) return;
-
-    setState(() => _dangXuLy = true);
-    final logic = QuanLyYeuCauController();
-    // Phân nhánh theo trường loai (không phụ thuộc getter)
-    final isSc =
-        y.loai == 'Sửa chữa' || y.loai.toLowerCase().contains('sửa chữa');
-    final (ok, msg) = isSc
-        ? await logic.hoanThanhSuaChua(y.maHoSo!)
-        : await logic.hoanThanhBaoTri(y.maHoSo!);
-    logic.dispose();
-    if (!mounted) return;
-    setState(() => _dangXuLy = false);
-    if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Đã hoàn thành — hồ sơ & kế hoạch đã cập nhật'),
-          backgroundColor: AppColors.success,
-          behavior: SnackBarBehavior.floating,
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+    if (changed == true && mounted) {
       Navigator.pop(context, true);
-    } else if (msg != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), backgroundColor: AppColors.danger),
-      );
     }
   }
 
@@ -739,7 +701,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
             ),
           ),
 
-          // Nút Hoàn thành — không có Xác nhận / Từ chối
+          // Nút Tiến hành bảo trì / sửa chữa → trang quy trình từng bước
           if (showHoanThanh)
             Container(
               padding: EdgeInsets.fromLTRB(
@@ -758,9 +720,9 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                 height: 52,
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _dangXuLy ? null : _hoanThanh,
+                  onPressed: _dangXuLy ? null : _tienHanh,
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.success,
+                    backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(14)),
                   ),
@@ -771,14 +733,17 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                     child: CircularProgressIndicator(
                         strokeWidth: 2.2, color: Colors.white),
                   )
-                      : const Row(
+                      : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.task_alt_rounded, size: 22),
-                      SizedBox(width: 8),
+                      const Icon(Icons.play_circle_outline_rounded,
+                          size: 22),
+                      const SizedBox(width: 8),
                       Text(
-                        'Hoàn thành bảo trì',
-                        style: TextStyle(
+                        y.laBaoTri
+                            ? 'Tiến hành bảo trì'
+                            : 'Tiến hành sửa chữa',
+                        style: const TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 15.5),
                       ),
                     ],
