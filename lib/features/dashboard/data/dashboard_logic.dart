@@ -113,12 +113,12 @@ class DashboardLogic {
                 trangThaiMacDinh: 'Chờ phân công',
               ),
             ),
-            MenuItemData(icon: Icons.history_rounded, label: 'Lịch sử phân công', screenBuilder: () => const LichSuPhanCongScreen()),
             MenuItemData(
               icon: Icons.inventory_2_rounded,
               label: 'Hồ sơ vật tư',
               screenBuilder: () => const HoSoVatTuListScreen(),
             ),
+            MenuItemData(icon: Icons.history_rounded, label: 'Lịch sử phân công', screenBuilder: () => const LichSuPhanCongScreen()),
           ]),
         ];
 
@@ -138,11 +138,10 @@ class DashboardLogic {
         return [
           MenuGroup(tieuDe: 'Phê duyệt', muc: [
             MenuItemData(icon: Icons.fact_check_rounded, label: 'Duyệt hồ sơ bảo trì', screenBuilder: () => const ApprovalBaoTriListScreen()),
-            MenuItemData(icon: Icons.fact_check_outlined, label: 'Duyệt hồ sơ sửa chữa', screenBuilder: () => const _ChuaLamScreen(ten: 'Duyệt hồ sơ sửa chữa')),
-            MenuItemData(icon: Icons.inventory_rounded, label: 'Duyệt yêu cầu vật tư', screenBuilder: () => const _ChuaLamScreen(ten: 'Duyệt yêu cầu vật tư')),
+            MenuItemData(icon: Icons.handyman_rounded, label: 'Duyệt hồ sơ sửa chữa', screenBuilder: () => const ApprovalSuaChuaListScreen()),
             MenuItemData(
               icon: Icons.inventory_2_rounded,
-              label: 'Hồ sơ vật tư',
+              label: 'Duyệt hồ sơ vật tư',
               screenBuilder: () => const HoSoVatTuListScreen(chiXemDaGui: true),
             ),
             MenuItemData(icon: Icons.history_rounded, label: 'Lịch sử phê duyệt', screenBuilder: () => const LichSuPheDuyetScreen()),

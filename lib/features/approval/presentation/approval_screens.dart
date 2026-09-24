@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/responsive/responsive.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/network/api_exception.dart';
 import '../data/approval_logic.dart';
+import '../../work_order/data/services/work_order_service.dart';
+import '../../work_order/data/models/work_order_models.dart';
+import '../../work_order/presentation/work_order_repair_screens.dart';
 
 // ============ MÀN 1: DANH SÁCH HỒ SƠ BẢO TRÌ CHỜ DUYỆT ============
 
@@ -32,9 +36,19 @@ class _ApprovalBaoTriListScreenState extends State<ApprovalBaoTriListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hồ sơ bảo trì chờ duyệt'),
+        title: const Text('Duyệt hồ sơ bảo trì'),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         actions: [
           AnimatedBuilder(
             animation: _controller,
@@ -561,9 +575,18 @@ class _LichSuPheDuyetScreenState extends State<LichSuPheDuyetScreen>
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Lịch sử phê duyệt'),
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        elevation: 0,
         bottom: TabBar(
           controller: _tabCtrl,
           indicatorColor: Colors.white,
@@ -865,6 +888,235 @@ class _LichSuCard extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ============ DUYỆT HỒ SƠ SỬA CHỮA (Giám đốc xem sau khi NVKT Hoàn thành) ============
+
+class ApprovalSuaChuaListScreen extends StatefulWidget {
+  const ApprovalSuaChuaListScreen({super.key});
+
+  @override
+  State<ApprovalSuaChuaListScreen> createState() =>
+      _ApprovalSuaChuaListScreenState();
+}
+
+class _ApprovalSuaChuaListScreenState extends State<ApprovalSuaChuaListScreen> {
+  List<HoSoSuaChua> _list = [];
+  bool _dangTai = true;
+  String? _loi;
+
+  @override
+  void initState() {
+    super.initState();
+    _tai();
+  }
+
+  Future<void> _tai() async {
+    setState(() {
+      _dangTai = true;
+      _loi = null;
+    });
+    try {
+      // Hồ sơ SC đã hoàn thành → tự "gửi" GĐ xem (không cần Tổ trưởng gửi thủ công)
+      final done =
+      await WorkOrderService.layDanhSachHoSoSuaChua(trangThai: 'Đã hoàn thành');
+      // Kèm hồ sơ đang thực hiện để GĐ theo dõi
+      final dang =
+      await WorkOrderService.layDanhSachHoSoSuaChua(trangThai: 'Đang thực hiện');
+      final map = <int, HoSoSuaChua>{};
+      for (final h in [...dang, ...done]) {
+        map[h.maHoSoSuaChua] = h;
+      }
+      final list = map.values.toList()
+        ..sort((a, b) => b.ngayTao.compareTo(a.ngayTao));
+      if (!mounted) return;
+      setState(() {
+        _list = list;
+        _dangTai = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loi = e is ApiException ? e.message : '$e';
+        _dangTai = false;
+        _list = [];
+      });
+    }
+  }
+
+  String _fmt(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  Color _mau(String tt) {
+    switch (tt) {
+      case 'Đã hoàn thành':
+        return AppColors.success;
+      case 'Đang thực hiện':
+        return AppColors.primary;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0F6FB),
+      appBar: AppBar(
+        title: const Text('Duyệt hồ sơ sửa chữa'),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+        actions: [
+          IconButton(
+            onPressed: _tai,
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+          ),
+        ],
+      ),
+      body: _dangTai
+          ? const Center(child: CircularProgressIndicator())
+          : _loi != null
+          ? Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(_loi!, textAlign: TextAlign.center),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: _tai, child: const Text('Thử lại')),
+          ],
+        ),
+      )
+          : RefreshIndicator(
+        onRefresh: _tai,
+        color: AppColors.primary,
+        child: _list.isEmpty
+            ? ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(height: MediaQuery.of(context).size.height * 0.25),
+            Icon(Icons.handyman_outlined,
+                size: 64, color: Colors.grey.shade400),
+            const SizedBox(height: 12),
+            Text(
+              'Chưa có hồ sơ sửa chữa để xem',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey.shade600),
+            ),
+          ],
+        )
+            : ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+          itemCount: _list.length,
+          itemBuilder: (_, i) {
+            final hs = _list[i];
+            final mau = _mau(hs.trangThai);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Material(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(18),
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChiTietHoSoSuaChuaScreen(
+                          maHoSo: hs.maHoSoSuaChua,
+                        ),
+                      ),
+                    );
+                    _tai();
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                          color: const Color(0xFFE2E8F0)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary
+                              .withValues(alpha: 0.07),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                hs.tenThietBi,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 15.5),
+                              ),
+                            ),
+                            Container(
+                              padding:
+                              const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4),
+                              decoration: BoxDecoration(
+                                color: mau.withValues(
+                                    alpha: 0.12),
+                                borderRadius:
+                                BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                hs.trangThai,
+                                style: TextStyle(
+                                  color: mau,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'HS SC #${hs.maHoSoSuaChua} · ${_fmt(hs.ngayTao)}',
+                          style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12.5),
+                        ),
+                        if (hs.moTaHuHong != null &&
+                            hs.moTaHuHong!.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            hs.moTaHuHong!,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                height: 1.35, fontSize: 13.5),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
     );
   }
 }

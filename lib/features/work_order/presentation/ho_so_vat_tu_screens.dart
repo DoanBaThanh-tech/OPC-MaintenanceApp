@@ -84,42 +84,65 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F6FA),
+      backgroundColor: const Color(0xFFF0F6FB),
       body: Column(
         children: [
           Container(
             width: double.infinity,
             padding: EdgeInsets.fromLTRB(20, top + 14, 20, 20),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0F766E), Color(0xFF115E59)],
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
+              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(26)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
+                ),
+              ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  widget.chiXemDaGui
-                      ? 'Hồ sơ vật tư (Giám đốc)'
-                      : 'Hồ sơ vật tư',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 20,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        widget.chiXemDaGui
+                            ? 'Duyệt hồ sơ vật tư'
+                            : 'Hồ sơ vật tư',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          letterSpacing: -0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.chiXemDaGui
+                            ? 'Hồ sơ vật tư đã gửi từ Tổ trưởng cơ điện'
+                            : 'Kiểm tra và gửi thủ công cho Giám đốc',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.88),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  widget.chiXemDaGui
-                      ? 'Xem vật tư đã dùng sau bảo trì / sửa chữa'
-                      : 'Kiểm tra và gửi Giám đốc xem hồ sơ vật tư',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.85),
-                    fontSize: 13,
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                   ),
+                  child: const Icon(Icons.inventory_2_rounded, color: Colors.white, size: 26),
                 ),
               ],
             ),
@@ -195,15 +218,23 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        elevation: 0,
+        borderRadius: BorderRadius.circular(18),
         child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(18),
           onTap: () => _moChiTiet(item),
           child: Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.shade200),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.07),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +427,7 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen> {
         item.trangThai == 'Chờ gửi';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F6FA),
+      backgroundColor: const Color(0xFFF0F6FB),
       body: Column(
         children: [
           Container(
