@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/network/api_exception.dart';
 import '../data/work_order_logic.dart';
 import 'work_order_assign_screen.dart';
 
@@ -599,149 +600,261 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
 
                   const SizedBox(height: 24),
 
+                  // Xưởng: xác nhận kết quả sau khi NVKT bấm Xong
+                  if (_laXuong && hs.choXacNhanKetQua)
+                    _buildXuongXacNhanKetQua(hs)
                   // Xưởng: còn chỉnh sửa/gửi HOẶC đã gửi → chỉ hiện chờ GĐ
-                  if (_laXuong && hs.choXuong)
+                  else if (_laXuong && hs.choXuong)
                     _buildXuongActions(hs)
                   else if (_laXuong && hs.daGuiGiamDoc)
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 22),
-                          SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              'Đã gửi Giám đốc — đang chờ duyệt. Không thể chỉnh sửa hay gửi lại.',
-                              style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  else if ((hs.daDuyetChuaPhanCong || hs.phanCongBiTuChoi) && _laToTruong)
-                      ElevatedButton.icon(
-                        icon: const Icon(Icons.groups_rounded),
-                        label: Text(hs.phanCongBiTuChoi ? 'Phân công lại nhân viên khác' : 'Phân công nhân viên'),
-                        onPressed: () async {
-                          final ok = await Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PhanCongBaoTriScreen(maHoSoBaoTri: hs.maHoSoBaoTri),
-                            ),
-                          );
-                          if (ok == true && mounted) {
-                            await _controller.taiChiTiet();
-                          }
-                        },
-                      )
-                    else if (hs.coTheCapNhatPhanCong && _laToTruong)
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                      Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: AppColors.warning.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+                        ),
+                        child: const Row(
                           children: [
-                            if ((hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien) != null) ...[
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withValues(alpha: 0.07),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
-                                ),
-                                child: Row(
-                                  children: [
-                                    const Icon(Icons.people_alt_rounded, size: 20, color: AppColors.primary),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        'Đang phân công: ${hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien}',
-                                        style: const TextStyle(fontWeight: FontWeight.w600, height: 1.35),
-                                      ),
-                                    ),
-                                  ],
-                                ),
+                            Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 22),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Đã gửi Giám đốc — đang chờ duyệt. Không thể chỉnh sửa hay gửi lại.',
+                                style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
                               ),
-                              const SizedBox(height: 10),
-                            ],
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.manage_accounts_rounded),
-                              label: const Text('Cập nhật phân công'),
-                              onPressed: () async {
-                                final ok = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => PhanCongBaoTriScreen(
-                                      maHoSoBaoTri: hs.maHoSoBaoTri,
-                                      isCapNhat: true,
-                                    ),
-                                  ),
-                                );
-                                if (ok == true && mounted) {
-                                  await _controller.taiChiTiet();
-                                }
-                              },
                             ),
                           ],
+                        ),
+                      )
+                    else if ((hs.daDuyetChuaPhanCong || hs.phanCongBiTuChoi) && _laToTruong)
+                        ElevatedButton.icon(
+                          icon: const Icon(Icons.groups_rounded),
+                          label: Text(hs.phanCongBiTuChoi ? 'Phân công lại nhân viên khác' : 'Phân công nhân viên'),
+                          onPressed: () async {
+                            final ok = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PhanCongBaoTriScreen(maHoSoBaoTri: hs.maHoSoBaoTri),
+                              ),
+                            );
+                            if (ok == true && mounted) {
+                              await _controller.taiChiTiet();
+                            }
+                          },
                         )
-                      else if (hs.dangThucHien && _laNvkt)
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.task_alt_rounded),
-                            label: const Text('Hoàn thành bảo trì'),
-                            onPressed: () async {
-                              final ok = await _controller.nhanVienHoanThanhBaoTri();
-                              if (!mounted) return;
-                              if (ok) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Đã hoàn thành. Đồng bộ trạng thái hồ sơ và kế hoạch bảo trì.')),
-                                );
-                                setState(() {});
-                              } else if (_controller.loi != null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text(_controller.loi!)),
-                                );
-                              }
-                            },
-                          )
-                        else if (hs.biTuChoi && _laXuong)
-                            ElevatedButton.icon(
-                              icon: const Icon(Icons.edit_rounded),
-                              label: const Text('Chỉnh sửa & gửi lại duyệt'),
-                              onPressed: () async {
-                                final ok = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => SuaHoSoBiTuChoiScreen(hoSo: hs),
+                      else if (hs.coTheCapNhatPhanCong && _laToTruong)
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if ((hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien) != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withValues(alpha: 0.07),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
                                   ),
-                                );
-                                if (ok == true && mounted) {
-                                  await _controller.taiChiTiet();
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.people_alt_rounded, size: 20, color: AppColors.primary),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          'Đang phân công: ${hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien}',
+                                          style: const TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                              ],
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.manage_accounts_rounded),
+                                label: const Text('Cập nhật phân công'),
+                                onPressed: () async {
+                                  final ok = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => PhanCongBaoTriScreen(
+                                        maHoSoBaoTri: hs.maHoSoBaoTri,
+                                        isCapNhat: true,
+                                      ),
+                                    ),
+                                  );
+                                  if (ok == true && mounted) {
+                                    await _controller.taiChiTiet();
+                                  }
+                                },
+                              ),
+                            ],
+                          )
+                        else if (hs.dangThucHien && _laNvkt)
+                            ElevatedButton.icon(
+                              icon: const Icon(Icons.task_alt_rounded),
+                              label: const Text('Hoàn thành bảo trì'),
+                              onPressed: () async {
+                                final ok = await _controller.nhanVienHoanThanhBaoTri();
+                                if (!mounted) return;
+                                if (ok) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('Đã hoàn thành. Đồng bộ trạng thái hồ sơ và kế hoạch bảo trì.')),
+                                  );
+                                  setState(() {});
+                                } else if (_controller.loi != null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text(_controller.loi!)),
+                                  );
                                 }
                               },
                             )
-                          else if (hs.choDuyet)
-                              Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                  color: AppColors.warning.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(10),
+                          else if (hs.biTuChoi && _laXuong)
+                              ElevatedButton.icon(
+                                icon: const Icon(Icons.edit_rounded),
+                                label: const Text('Chỉnh sửa & gửi lại duyệt'),
+                                onPressed: () async {
+                                  final ok = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => SuaHoSoBiTuChoiScreen(hoSo: hs),
+                                    ),
+                                  );
+                                  if (ok == true && mounted) {
+                                    await _controller.taiChiTiet();
+                                  }
+                                },
+                              )
+                            else if (hs.choDuyet)
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.warning.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Row(
+                                    children: [
+                                      Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 20),
+                                      SizedBox(width: 8),
+                                      Expanded(child: Text('Đang chờ Giám đốc/Phó giám đốc duyệt')),
+                                    ],
+                                  ),
                                 ),
-                                child: const Row(
-                                  children: [
-                                    Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 20),
-                                    SizedBox(width: 8),
-                                    Expanded(child: Text('Đang chờ Giám đốc/Phó giám đốc duyệt')),
-                                  ],
-                                ),
-                              ),
                 ],
               ),
             ),
           );
         },
       ),
+    );
+  }
+
+  Widget _buildXuongXacNhanKetQua(HoSoBaoTri hs) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.warning.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+          ),
+          child: const Text(
+            'NVKT đã gửi kết quả quy trình. Xưởng kiểm tra từng bước / vật tư / nội dung rồi Xác nhận (Hoàn thành) hoặc Từ chối để NVKT chỉnh lại.',
+            style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.success),
+                onPressed: () async {
+                  try {
+                    await WorkOrderService.xuongXacNhanKetQua(
+                      maHoSoBaoTri: hs.maHoSoBaoTri,
+                      xacNhan: true,
+                    );
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đã xác nhận — hồ sơ Hoàn thành'),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                    await _controller.taiChiTiet();
+                  } on ApiException catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.message), backgroundColor: AppColors.danger),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.check_circle_outline),
+                label: const Text('Xác nhận'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(foregroundColor: AppColors.danger),
+                onPressed: () async {
+                  final lyDoCtrl = TextEditingController();
+                  final lyDo = await showDialog<String>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Từ chối kết quả'),
+                      content: TextField(
+                        controller: lyDoCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          hintText: 'Lý do để NVKT chỉnh sửa…',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      actions: [
+                        TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Hủy')),
+                        FilledButton(
+                          onPressed: () =>
+                              Navigator.pop(ctx, lyDoCtrl.text.trim()),
+                          child: const Text('Từ chối'),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (lyDo == null || lyDo.isEmpty) return;
+                  try {
+                    await WorkOrderService.xuongXacNhanKetQua(
+                      maHoSoBaoTri: hs.maHoSoBaoTri,
+                      xacNhan: false,
+                      lyDo: lyDo,
+                    );
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Đã từ chối — NVKT chỉnh sửa lại'),
+                        backgroundColor: AppColors.warning,
+                      ),
+                    );
+                    await _controller.taiChiTiet();
+                  } on ApiException catch (e) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(e.message), backgroundColor: AppColors.danger),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Từ chối'),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

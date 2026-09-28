@@ -38,6 +38,7 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
     'Tất cả',
     'Chờ phân công',
     'Đang thực hiện',
+    'Chờ xác nhận',
     'Đã hoàn thành',
   ];
 

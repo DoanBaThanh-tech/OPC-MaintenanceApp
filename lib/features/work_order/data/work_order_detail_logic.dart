@@ -89,6 +89,9 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
   TimeOfDay? gioBatDau;
   TimeOfDay? gioKetThuc;
   DateTime? ngayDuKien;
+  /// Tháng/năm kế hoạch ban đầu — không được đổi khi sửa.
+  DateTime? ngayDuKienGoc;
+  DateTime? ngayTaoHoSo;
   int? soGioDuKien;
 
   bool get thoiGianHopLe =>
@@ -116,6 +119,8 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
 
   void batDauChinhSua(HoSoBaoTri hs, {required String thoiGianText}) {
     ngayDuKien = hs.ngayDuKienBaoTri;
+    ngayDuKienGoc = hs.ngayDuKienBaoTri;
+    ngayTaoHoSo = hs.ngayTao;
     gioBatDau = _parseGio(hs.gioBatDauDuKien);
     gioKetThuc = _parseGio(hs.gioKetThucDuKien);
     datThoiGianTuChuoi(thoiGianText);
@@ -162,7 +167,33 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
 
   void datNgayDuKien(DateTime d) {
     ngayDuKien = d;
+    loi = _kiemTraNgayDuKien(d);
     notifyListeners();
+  }
+
+  /// Khóa đúng tháng kế hoạch; ngày dự kiến > ngày tạo.
+  String? _kiemTraNgayDuKien(DateTime? ngayMoi) {
+    if (ngayMoi == null) return null;
+    final goc = ngayDuKienGoc;
+    final tao = ngayTaoHoSo;
+    if (tao != null) {
+      final taoOnly = DateTime(tao.year, tao.month, tao.day);
+      final moiOnly = DateTime(ngayMoi.year, ngayMoi.month, ngayMoi.day);
+      if (!moiOnly.isAfter(taoOnly)) {
+        return 'Ngày dự kiến phải lớn hơn ngày tạo '
+            '(${taoOnly.day.toString().padLeft(2, '0')}/'
+            '${taoOnly.month.toString().padLeft(2, '0')}/${taoOnly.year}). '
+            'Không được đặt trùng hoặc trước ngày tạo.';
+      }
+    }
+    if (goc != null &&
+        (ngayMoi.month != goc.month || ngayMoi.year != goc.year)) {
+      return 'Hồ sơ đang lập bảo trì cho tháng ${goc.month}/${goc.year}. '
+          'Không được chuyển sang tháng ${ngayMoi.month}/${ngayMoi.year} '
+          '(ví dụ không được sửa về ngày tạo thuộc tháng khác). '
+          'Chỉ được chọn ngày trong đúng tháng kế hoạch.';
+    }
+    return null;
   }
 
   void _tinhGioKetThuc() {
@@ -183,6 +214,12 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     final noiDung = noiDungCongViec.trim();
     if (noiDung.isEmpty) {
       loi = 'Vui lòng nhập nội dung công việc';
+      notifyListeners();
+      return false;
+    }
+    final loiNgay = _kiemTraNgayDuKien(ngayDuKien);
+    if (loiNgay != null) {
+      loi = loiNgay;
       notifyListeners();
       return false;
     }
@@ -313,6 +350,8 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     String? gioBatDauDuKien,
     String? gioKetThucDuKien,
     DateTime? ngayDuKienBaoTri,
+    DateTime? ngayDuKienGoc,
+    DateTime? ngayTao,
   }) async {
     if (noiDungCongViec.trim().isEmpty) {
       loi = 'Vui lòng nhập nội dung công việc';
@@ -324,6 +363,25 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     final gbd = gioBatDauDuKien ?? _fmtGio(gioBatDau);
     final gkt = gioKetThucDuKien ?? _fmtGio(gioKetThuc);
     final ngay = ngayDuKienBaoTri ?? this.ngayDuKienBaoTri;
+    final goc = ngayDuKienGoc ?? this.ngayDuKienBaoTri;
+    if (ngay != null && ngayTao != null) {
+      final taoOnly = DateTime(ngayTao.year, ngayTao.month, ngayTao.day);
+      final moiOnly = DateTime(ngay.year, ngay.month, ngay.day);
+      if (!moiOnly.isAfter(taoOnly)) {
+        loi =
+        'Ngày dự kiến phải lớn hơn ngày tạo — không được đặt trùng ngày tạo.';
+        notifyListeners();
+        return false;
+      }
+    }
+    if (ngay != null &&
+        goc != null &&
+        (ngay.month != goc.month || ngay.year != goc.year)) {
+      loi =
+      'Hồ sơ lập cho tháng ${goc.month}/${goc.year} — không được chuyển sang tháng ${ngay.month}/${ngay.year}.';
+      notifyListeners();
+      return false;
+    }
 
     if (soGio == null || soGio.isEmpty) {
       loi = 'Vui lòng nhập số giờ dự kiến hợp lệ';

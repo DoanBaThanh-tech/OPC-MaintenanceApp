@@ -3,8 +3,10 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/technician_logic.dart';
 import '../data/models/work_order_models.dart';
+import '../data/models/material_usage_models.dart';
 import '../data/services/work_order_service.dart';
-import 'quy_trinh_thuc_hien_screen.dart';
+import '../data/services/material_usage_service.dart';
+import 'quy_trinh_nvkt_screen.dart';
 
 // ============ QUẢN LÝ YÊU CẦU (NVKT) ============
 
@@ -153,10 +155,14 @@ class _QuanLyYeuCauScreenState extends State<QuanLyYeuCauScreen>
 
   Widget _buildList() {
     final canLam = _ctrl.canThucHien;
+    final choXn = _ctrl.choXacNhanKetQua;
     final xong = _ctrl.daHoanThanh;
-    final huy = _ctrl.danhSach.where((e) => e.daHuy || e.biTuChoi).toList();
+    final huy = _ctrl.danhSach
+        .where((e) =>
+    e.daHuy && !e.choXacNhanKetQua && !e.daHoanThanhPc && !e.canThucHien)
+        .toList();
 
-    if (canLam.isEmpty && xong.isEmpty && huy.isEmpty) {
+    if (canLam.isEmpty && choXn.isEmpty && xong.isEmpty && huy.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
@@ -185,6 +191,16 @@ class _QuanLyYeuCauScreenState extends State<QuanLyYeuCauScreen>
           )),
           const SizedBox(height: 18),
         ],
+        if (choXn.isNotEmpty) ...[
+          _sectionHeader('Chờ xác nhận', choXn.length, const Color(0xFF0284C7)),
+          const SizedBox(height: 10),
+          ...choXn.asMap().entries.map((e) => _YeuCauCard(
+            yeuCau: e.value,
+            index: e.key,
+            onTap: () => _moChiTiet(e.value),
+          )),
+          const SizedBox(height: 18),
+        ],
         if (xong.isNotEmpty) ...[
           _sectionHeader('Đã hoàn thành', xong.length, AppColors.success),
           const SizedBox(height: 10),
@@ -196,7 +212,7 @@ class _QuanLyYeuCauScreenState extends State<QuanLyYeuCauScreen>
           const SizedBox(height: 18),
         ],
         if (huy.isNotEmpty) ...[
-          _sectionHeader('Đã hủy / khác', huy.length, Colors.grey),
+          _sectionHeader('Từ chối / đã hủy', huy.length, Colors.grey),
           const SizedBox(height: 10),
           ...huy.asMap().entries.map((e) => _YeuCauCard(
             yeuCau: e.value,
@@ -249,17 +265,14 @@ class _YeuCauCard extends StatelessWidget {
     required this.onTap,
   });
 
-  Color _statusColor(String tt) {
-    switch (tt) {
-      case 'Chờ xác nhận':
-      case 'Đã phân công':
-      case 'Xác nhận':
-        return const Color(0xFFD97706);
+  Color _statusColorFor(YeuCauPhanCong y) {
+    if (y.daHoanThanhPc) return AppColors.success;
+    if (y.daHuy || y.biTuChoi) return AppColors.danger;
+    if (y.choXacNhanKetQua) return const Color(0xFF0284C7); // xanh dương — chờ Xưởng
+    if (y.canThucHien) return const Color(0xFFD97706); // cam — cần làm
+    switch (y.trangThaiPhanCong) {
       case 'Đang thực hiện':
-        return AppColors.primary; // xanh đồng bộ
-      case 'Từ chối':
-      case 'Đã hủy':
-        return AppColors.danger;
+        return AppColors.primary;
       case 'Hoàn thành':
         return AppColors.success;
       default:
@@ -270,6 +283,7 @@ class _YeuCauCard extends StatelessWidget {
   String _statusLabel(YeuCauPhanCong y) {
     if (y.daHoanThanhPc) return 'Hoàn thành';
     if (y.daHuy) return 'Đã hủy';
+    if (y.choXacNhanKetQua) return 'Chờ xác nhận';
     if (y.biTuChoi) return 'Từ chối';
     if (y.canThucHien) return 'Cần làm';
     return y.trangThaiPhanCong;
@@ -277,7 +291,7 @@ class _YeuCauCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final c = _statusColor(yeuCau.trangThaiPhanCong);
+    final c = _statusColorFor(yeuCau);
     final label = _statusLabel(yeuCau);
 
     return TweenAnimationBuilder<double>(
@@ -452,12 +466,59 @@ class ChiTietYeuCauScreen extends StatefulWidget {
 
 class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   bool _dangXuLy = false;
+  bool _dangTaiQuyTrinh = false;
+  HoSoVatTuItem? _hoSoVatTu;
+  String? _loiQuyTrinh;
 
   String _fmtDt(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
   String _fmtGio(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+
+  String _fmtTien(int v) {
+    final s = v.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return '$buf ₫';
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.yeuCau.daGuiQuyTrinh || widget.yeuCau.biTuChoi) {
+      _taiQuyTrinhVatTu();
+    }
+  }
+
+  Future<void> _taiQuyTrinhVatTu() async {
+    final y = widget.yeuCau;
+    if (y.maHoSo == null) return;
+    setState(() {
+      _dangTaiQuyTrinh = true;
+      _loiQuyTrinh = null;
+    });
+    try {
+      final hs = await MaterialUsageService.layHoSoTheoCongViec(
+        maHoSoBaoTri: y.laBaoTri ? y.maHoSo : null,
+        maHoSoSuaChua: y.laBaoTri ? null : y.maHoSo,
+      );
+      if (!mounted) return;
+      setState(() {
+        _hoSoVatTu = hs;
+        _dangTaiQuyTrinh = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loiQuyTrinh = e is ApiException ? e.message : '$e';
+        _dangTaiQuyTrinh = false;
+      });
+    }
+  }
 
   Future<void> _tienHanh() async {
     final y = widget.yeuCau;
@@ -488,7 +549,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
       context,
       PageRouteBuilder(
         pageBuilder: (_, a, __) =>
-            QuyTrinhThucHienScreen(yeuCau: widget.yeuCau),
+            QuyTrinhNvktScreen(yeuCau: widget.yeuCau),
         transitionsBuilder: (_, a, __, child) =>
             FadeTransition(opacity: a, child: child),
         transitionDuration: const Duration(milliseconds: 260),
@@ -503,10 +564,25 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   Widget build(BuildContext context) {
     final y = widget.yeuCau;
     final top = MediaQuery.paddingOf(context).top;
-    final showHoanThanh = !y.daHuy &&
+    // Chỉ hiện "Tiến hành" khi còn cần làm — ẩn khi Chờ xác nhận / Hoàn thành
+    final showTienHanh = !y.daHuy &&
         !y.daHoanThanhPc &&
+        !y.choXacNhanKetQua &&
         y.maHoSo != null &&
         y.canThucHien;
+
+    String trangThaiHienThi;
+    if (y.daHoanThanhPc) {
+      trangThaiHienThi = 'Hoàn thành';
+    } else if (y.choXacNhanKetQua) {
+      trangThaiHienThi = 'Chờ xác nhận';
+    } else if (y.biTuChoi) {
+      trangThaiHienThi = 'Từ chối';
+    } else if (y.canThucHien) {
+      trangThaiHienThi = 'Cần thực hiện';
+    } else {
+      trangThaiHienThi = y.trangThaiPhanCong;
+    }
 
     return Scaffold(
       backgroundColor: const Color(0xFFF3F6FA),
@@ -628,11 +704,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
 
                 _infoCard([
                   _row('Loại', y.loai),
-                  _row(
-                      'Trạng thái',
-                      y.daHoanThanhPc
-                          ? 'Hoàn thành'
-                          : (y.canThucHien ? 'Cần thực hiện' : y.trangThaiPhanCong)),
+                  _row('Trạng thái', trangThaiHienThi),
                   _row('Trạng thái hồ sơ', y.trangThaiHoSo ?? '—'),
                   _row('Người phân công', y.tenNhanVienPhanCong ?? '—'),
                   _row('Ngày phân công', _fmtDt(y.ngayPhanCong)),
@@ -650,7 +722,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                   const SizedBox(height: 14),
                   _infoCard([
                     const Text(
-                      'Nội dung công việc',
+                      'Nội dung công việc (hồ sơ)',
                       style:
                       TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                     ),
@@ -661,6 +733,97 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                       TextStyle(color: Colors.grey.shade800, height: 1.4),
                     ),
                   ]),
+                ],
+
+                // Quy trình + vật tư đã thực hiện (khi đã gửi / chờ xác nhận / hoàn thành)
+                if (y.daGuiQuyTrinh || y.biTuChoi) ...[
+                  const SizedBox(height: 14),
+                  _buildQuyTrinhDaThucHien(),
+                ],
+
+                // Chỉ hiện khi đang chờ Xưởng — biến mất nếu Xưởng từ chối
+                if (y.choXacNhanKetQua) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0284C7).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: const Color(0xFF0284C7).withValues(alpha: 0.35)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.hourglass_top_rounded,
+                            color: Color(0xFF0284C7)),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Đã gửi quy trình — đang chờ Xưởng xác nhận. Không thể tiến hành lại.',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Xưởng từ chối → hết banner chờ, hiện lý do + hướng dẫn cập nhật
+                if (y.biTuChoi && !y.choXacNhanKetQua && !y.daHoanThanhPc) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.danger.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: AppColors.danger.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.feedback_outlined,
+                                color: AppColors.danger),
+                            SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Xưởng đã từ chối kết quả',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.danger,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (y.lyDoTuChoi != null &&
+                            y.lyDoTuChoi!.trim().isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Text(
+                            'Lý do: ${y.lyDoTuChoi}',
+                            style: TextStyle(
+                              color: Colors.grey.shade800,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 6),
+                        Text(
+                          'Vui lòng bấm "Cập nhật quy trình thực hiện" để thêm/bớt bước hoặc chỉnh vật tư theo yêu cầu Xưởng, rồi gửi lại.',
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 12.5,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
 
                 if (y.daHuy) ...[
@@ -724,8 +887,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
             ),
           ),
 
-          // Nút Tiến hành bảo trì / sửa chữa → trang quy trình từng bước
-          if (showHoanThanh)
+          // Nút Tiến hành — ẩn khi đã Chờ xác nhận / Hoàn thành
+          if (showTienHanh)
             Container(
               padding: EdgeInsets.fromLTRB(
                   16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
@@ -759,13 +922,19 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                       : Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.play_circle_outline_rounded,
-                          size: 22),
+                      Icon(
+                        y.biTuChoi
+                            ? Icons.edit_note_rounded
+                            : Icons.play_circle_outline_rounded,
+                        size: 22,
+                      ),
                       const SizedBox(width: 8),
                       Text(
-                        y.laBaoTri
+                        y.biTuChoi
+                            ? 'Cập nhật quy trình thực hiện'
+                            : (y.laBaoTri
                             ? 'Tiến hành bảo trì'
-                            : 'Tiến hành sửa chữa',
+                            : 'Tiến hành sửa chữa'),
                         style: const TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 15.5),
                       ),
@@ -777,6 +946,128 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
         ],
       ),
     );
+  }
+
+  /// Hiển thị các bước quy trình + vật tư đã dùng (gộp theo số bước).
+  Widget _buildQuyTrinhDaThucHien() {
+    if (_dangTaiQuyTrinh) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_loiQuyTrinh != null) {
+      return _infoCard([
+        const Text('Quy trình đã thực hiện',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+        const SizedBox(height: 8),
+        Text(_loiQuyTrinh!, style: TextStyle(color: Colors.grey.shade700)),
+        TextButton(onPressed: _taiQuyTrinhVatTu, child: const Text('Thử lại')),
+      ]);
+    }
+    final hs = _hoSoVatTu;
+    if (hs == null || hs.chiTiet.isEmpty) {
+      return _infoCard([
+        const Text('Quy trình đã thực hiện',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+        const SizedBox(height: 8),
+        Text(
+          'Chưa có dữ liệu bước/vật tư (có thể không dùng vật tư).',
+          style: TextStyle(color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+        ),
+      ]);
+    }
+
+    final map = <int, List<ChiTietVatTuSuDung>>{};
+    for (final c in hs.chiTiet) {
+      map.putIfAbsent(c.soBuoc, () => []).add(c);
+    }
+    final keys = map.keys.toList()..sort();
+
+    return _infoCard([
+      const Text('Quy trình đã thực hiện',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+      const SizedBox(height: 4),
+      Text(
+        '${keys.length} bước · ${hs.chiTiet.length} dòng vật tư',
+        style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
+      ),
+      const SizedBox(height: 12),
+      for (final k in keys) ...[
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0F9FF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFBAE6FD)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 12,
+                    backgroundColor: AppColors.primary,
+                    child: Text(
+                      '$k',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Bước $k',
+                      style: const TextStyle(fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              if (map[k]!.first.moTaBuoc.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Text(
+                  map[k]!
+                      .map((e) => e.moTaBuoc.trim())
+                      .where((s) => s.isNotEmpty)
+                      .toSet()
+                      .join(' · '),
+                  style: TextStyle(
+                      color: Colors.grey.shade800, height: 1.35, fontSize: 13),
+                ),
+              ],
+              const SizedBox(height: 8),
+              for (final c in map[k]!)
+                if (c.tenVatTu.isNotEmpty && c.soLuong > 0)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.inventory_2_outlined,
+                            size: 16, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${c.tenVatTu} × ${c.soLuong}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ),
+                        Text(
+                          _fmtTien(c.thanhTien),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 12.5),
+                        ),
+                      ],
+                    ),
+                  ),
+            ],
+          ),
+        ),
+      ],
+    ]);
   }
 
   Widget _infoCard(List<Widget> children) {

@@ -37,14 +37,21 @@ class QuanLyYeuCauController extends ChangeNotifier {
     tai();
   }
 
-  /// Việc cần làm (đã phân công, chưa hoàn thành).
+  /// Việc cần làm (chưa gửi Xưởng).
   List<YeuCauPhanCong> get canThucHien =>
       danhSach.where((e) => e.canThucHien && !e.daHuy && !e.daHoanThanhPc).toList();
-  List<YeuCauPhanCong> get choXacNhan => canThucHien; // alias
+  /// Đã gửi quy trình — chờ Xưởng xác nhận.
+  List<YeuCauPhanCong> get choXacNhanKetQua =>
+      danhSach.where((e) => e.choXacNhanKetQua).toList();
+  List<YeuCauPhanCong> get choXacNhan => canThucHien; // alias cũ
   List<YeuCauPhanCong> get daHoanThanh =>
       danhSach.where((e) => e.daHoanThanhPc).toList();
-  List<YeuCauPhanCong> get khac =>
-      danhSach.where((e) => !e.canThucHien || e.daHuy || e.daHoanThanhPc).toList();
+  List<YeuCauPhanCong> get khac => danhSach
+      .where((e) =>
+  !e.canThucHien &&
+      !e.choXacNhanKetQua &&
+      (e.daHuy || e.biTuChoi || (!e.daHoanThanhPc)))
+      .toList();
 
   /// NVKT hoàn thành bảo trì theo mã hồ sơ.
   Future<(bool ok, String? message)> hoanThanhBaoTri(int maHoSo) async {

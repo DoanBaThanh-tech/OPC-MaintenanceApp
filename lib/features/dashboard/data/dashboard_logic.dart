@@ -75,15 +75,21 @@ class DashboardLogic {
           ]),
         ];
 
-    // Xưởng: xem hồ sơ Chờ duyệt, điều chỉnh ngày, xác nhận lịch trước khi GĐ duyệt + tạo hồ sơ sửa chữa
+    // Xưởng: lịch BT Chờ duyệt + xác nhận kết quả NVKT (Chờ xác nhận) + SC
       case 'Xưởng':
       case 'Tổ trưởng sản xuất': // tương thích JWT/DB cũ
         return [
           MenuGroup(tieuDe: 'Hồ sơ bảo trì', muc: [
             MenuItemData(
               icon: Icons.fact_check_rounded,
-              label: 'Hồ sơ bảo trì',
+              label: 'Hồ sơ bảo trì (chờ lịch)',
               screenBuilder: () => const WorkOrderBaoTriListScreen(trangThaiMacDinh: 'Chờ duyệt'),
+            ),
+            MenuItemData(
+              icon: Icons.task_alt_rounded,
+              label: 'Kết quả chờ xác nhận',
+              screenBuilder: () =>
+              const WorkOrderBaoTriListScreen(trangThaiMacDinh: 'Chờ xác nhận'),
             ),
           ]),
           MenuGroup(tieuDe: 'Sửa chữa', muc: [
@@ -92,6 +98,13 @@ class DashboardLogic {
               label: 'Hồ sơ sửa chữa',
               screenBuilder: () =>
               const WorkOrderSuaChuaListScreen(hienFabTao: true),
+            ),
+            MenuItemData(
+              icon: Icons.task_alt_rounded,
+              label: 'SC chờ xác nhận',
+              screenBuilder: () => const WorkOrderSuaChuaListScreen(
+                trangThaiMacDinh: 'Chờ xác nhận',
+              ),
             ),
           ]),
         ];

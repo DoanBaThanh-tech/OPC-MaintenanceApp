@@ -27,6 +27,7 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
     'Chờ duyệt',
     'Đã duyệt',
     'Đang thực hiện',
+    'Chờ xác nhận',
     'Đã hoàn thành',
     'Từ chối'
   ];

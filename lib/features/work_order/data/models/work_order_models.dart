@@ -124,6 +124,8 @@ class HoSoBaoTri {
           trangThaiPhanCong != 'Hoàn thành';
   bool get biTuChoi => trangThai == 'Từ chối';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
+  /// NVKT đã bấm Xong — chờ Xưởng xác nhận kết quả thực hiện.
+  bool get choXacNhanKetQua => trangThai == 'Chờ xác nhận';
 
   factory HoSoBaoTri.fromJson(Map<String, dynamic> j) {
     int asInt(dynamic v) => (v as num?)?.toInt() ?? 0;
@@ -294,19 +296,36 @@ class YeuCauPhanCong {
     this.ngayTaoHoSo,
   });
 
-  /// Cần thực hiện (không còn bước xác nhận nhận việc).
+  /// NVKT đã gửi quy trình — chờ Xưởng xác nhận (không còn "Cần làm").
+  bool get choXacNhanKetQua =>
+      trangThaiHoSo == 'Chờ xác nhận' ||
+          (trangThaiPhanCong == 'Chờ xác nhận' &&
+              trangThaiHoSo != null &&
+              trangThaiHoSo != 'Đã duyệt' &&
+              trangThaiHoSo != 'Đang thực hiện' &&
+              trangThaiHoSo != 'Từ chối');
+
+  /// Còn được làm quy trình (chưa gửi Xưởng / bị từ chối cần sửa lại).
   bool get canThucHien =>
-      trangThaiPhanCong == 'Chờ xác nhận' ||
-          trangThaiPhanCong == 'Đã phân công' ||
-          trangThaiPhanCong == 'Xác nhận' ||
-          trangThaiPhanCong == 'Đang thực hiện' ||
-          trangThaiHoSo == 'Đang thực hiện';
-  bool get choXacNhan => canThucHien; // giữ alias cũ
+      !choXacNhanKetQua &&
+          !daHoanThanhPc &&
+          !daHuy &&
+          (trangThaiPhanCong == 'Chờ xác nhận' ||
+              trangThaiPhanCong == 'Đã phân công' ||
+              trangThaiPhanCong == 'Xác nhận' ||
+              trangThaiPhanCong == 'Đang thực hiện' ||
+              trangThaiHoSo == 'Đang thực hiện' ||
+              trangThaiHoSo == 'Từ chối');
+
+  bool get choXacNhan => canThucHien; // alias cũ (nhận việc / cần làm)
   bool get daXacNhan => trangThaiPhanCong == 'Xác nhận';
-  bool get biTuChoi => trangThaiPhanCong == 'Từ chối';
+  bool get biTuChoi =>
+      trangThaiPhanCong == 'Từ chối' || trangThaiHoSo == 'Từ chối';
   bool get daHuy => trangThaiPhanCong == 'Đã hủy';
   bool get daHoanThanhPc =>
       trangThaiPhanCong == 'Hoàn thành' || trangThaiHoSo == 'Đã hoàn thành';
+  /// Đã có quy trình gửi đi — chi tiết nên hiện bước + vật tư.
+  bool get daGuiQuyTrinh => choXacNhanKetQua || daHoanThanhPc;
   bool get laBaoTri => loai == 'Bảo trì' || loai.toLowerCase().contains('bảo trì');
   /// Hồ sơ / yêu cầu thuộc loại sửa chữa.
   bool get laSuaChua =>
@@ -372,6 +391,7 @@ class HoSoSuaChua {
   bool get dangThucHien => trangThai == 'Đang thực hiện';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
   bool get biTuChoi => trangThai == 'Từ chối';
+  bool get choXacNhanKetQua => trangThai == 'Chờ xác nhận';
 
   /// Đã từng phân công NV (có mã PC hoặc danh sách NV thực hiện).
   bool get daCoPhanCong =>

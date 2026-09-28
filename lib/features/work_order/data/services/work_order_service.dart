@@ -282,6 +282,24 @@ class WorkOrderService {
     );
   }
 
+  /// Xưởng xác nhận / từ chối kết quả sau khi NVKT bấm Xong.
+  static Future<void> xuongXacNhanKetQua({
+    int? maHoSoBaoTri,
+    int? maHoSoSuaChua,
+    required bool xacNhan,
+    String? lyDo,
+  }) async {
+    await ApiClient.instance.put<dynamic>(
+      '${ApiConstants.workOrder}/xuong-xac-nhan-ket-qua',
+      {
+        if (maHoSoBaoTri != null) 'maHoSoBaoTri': maHoSoBaoTri,
+        if (maHoSoSuaChua != null) 'maHoSoSuaChua': maHoSoSuaChua,
+        'xacNhan': xacNhan,
+        if (lyDo != null) 'lyDo': lyDo,
+      },
+    );
+  }
+
   static Future<void> nhanVienHoanThanhSuaChua(int maHoSoSuaChua) async {
     await ApiClient.instance.put<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/sua-chua/$maHoSoSuaChua/hoan-thanh',

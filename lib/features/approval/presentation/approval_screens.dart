@@ -541,7 +541,7 @@ class _LichSuPheDuyetScreenState extends State<LichSuPheDuyetScreen>
   final _ctrl = LichSuPheDuyetController();
   late TabController _tabCtrl;
 
-  static const _tabs = ['Bảo trì', 'Sửa chữa', 'Vật tư'];
+  static const _tabs = ['Bảo trì', 'Sửa chữa'];
 
   @override
   void initState() {
@@ -595,11 +595,9 @@ class _LichSuPheDuyetScreenState extends State<LichSuPheDuyetScreen>
           indicatorWeight: 3,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
-          isScrollable: true,
           tabs: const [
             Tab(text: 'Bảo trì'),
             Tab(text: 'Sửa chữa'),
-            Tab(text: 'Vật tư'),
           ],
         ),
       ),
@@ -750,9 +748,7 @@ class _LichSuCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final daDuyet = item.daDuyet;
     final mau = daDuyet ? AppColors.success : AppColors.danger;
-    final nhanTrangThai = item.loai == 'Vật tư'
-        ? (daDuyet ? 'Đã xác nhận' : 'Từ chối')
-        : (daDuyet ? 'Đã duyệt' : 'Từ chối');
+    final nhanTrangThai = daDuyet ? 'Đã duyệt' : 'Từ chối';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
