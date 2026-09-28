@@ -29,9 +29,17 @@ class WorkOrderSuaChuaListScreen extends StatefulWidget {
 }
 
 class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late final WorkOrderSuaChuaListController _ctrl;
   late final AnimationController _headerAnim;
+  late final TabController _tab;
+
+  static const _tabs = [
+    'Tất cả',
+    'Chờ phân công',
+    'Đang thực hiện',
+    'Đã hoàn thành',
+  ];
 
   @override
   void initState() {
@@ -40,6 +48,14 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     )..forward();
+    _tab = TabController(length: _tabs.length, vsync: this);
+    if (widget.trangThaiMacDinh != null) {
+      final idx = _tabs.indexOf(widget.trangThaiMacDinh!);
+      if (idx >= 0) _tab.index = idx;
+    }
+    _tab.addListener(() {
+      if (!_tab.indexIsChanging && mounted) setState(() {});
+    });
     _ctrl = WorkOrderSuaChuaListController(
         trangThaiMacDinh: widget.trangThaiMacDinh);
     _ctrl.addListener(_onCtrl);
@@ -55,6 +71,7 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
     _ctrl.removeListener(_onCtrl);
     _ctrl.dispose();
     _headerAnim.dispose();
+    _tab.dispose();
     super.dispose();
   }
 
@@ -123,7 +140,7 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
           : null,
       body: Column(
         children: [
-          // ===== Header gradient + glass =====
+          // ===== Header gradient + TabBar (đồng bộ hồ sơ bảo trì) =====
           FadeTransition(
             opacity: _headerAnim,
             child: SlideTransition(
@@ -134,7 +151,7 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
                   parent: _headerAnim, curve: Curves.easeOutCubic)),
               child: Container(
                 width: double.infinity,
-                padding: EdgeInsets.fromLTRB(20, top + 14, 20, 22),
+                padding: EdgeInsets.fromLTRB(16, top + 10, 12, 0),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [
@@ -146,127 +163,97 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(28)),
+                      bottom: Radius.circular(26)),
                   boxShadow: [
                     BoxShadow(
                       color: _scPrimary.withValues(alpha: 0.35),
-                      blurRadius: 24,
+                      blurRadius: 22,
                       offset: const Offset(0, 10),
                     ),
                   ],
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.3)),
-                      ),
-                      child: const Icon(Icons.handyman_rounded,
-                          color: Colors.white, size: 26),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Hồ sơ sửa chữa',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 20,
-                              letterSpacing: -0.3,
-                            ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(11),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                                color: Colors.white.withValues(alpha: 0.28)),
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _ctrl.dangTai
-                                ? 'Đang tải…'
-                                : '${_ctrl.danhSach.length} hồ sơ',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Material(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(14),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: _tai,
-                        child: const Padding(
-                          padding: EdgeInsets.all(10),
-                          child: Icon(Icons.refresh_rounded,
-                              color: Colors.white, size: 22),
+                          child: const Icon(Icons.handyman_rounded,
+                              color: Colors.white, size: 24),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Hồ sơ sửa chữa',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 20,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                _ctrl.dangTai
+                                    ? 'Đang tải…'
+                                    : '${_ctrl.danhSach.length} hồ sơ',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.88),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Material(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: _tai,
+                            child: const Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Icon(Icons.refresh_rounded,
+                                  color: Colors.white, size: 22),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    TabBar(
+                      controller: _tab,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
+                      labelColor: Colors.white,
+                      unselectedLabelColor: Colors.white70,
+                      indicatorColor: Colors.white,
+                      indicatorWeight: 3,
+                      indicatorSize: TabBarIndicatorSize.label,
+                      dividerColor: Colors.transparent,
+                      labelStyle: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 13),
+                      unselectedLabelStyle: const TextStyle(
+                          fontWeight: FontWeight.w600, fontSize: 13),
+                      tabs: _tabs.map((e) => Tab(text: e)).toList(),
                     ),
                   ],
                 ),
               ),
             ),
           ),
-          // Thanh trạng thái SC: Tất cả | Chờ phân công | Đang thực hiện | Đã hoàn thành
-          _buildStatusBar(),
           Expanded(child: _buildBody()),
         ],
-      ),
-    );
-  }
-
-  static const _tabsSc = [
-    (null, 'Tất cả'),
-    ('Chờ phân công', 'Chờ phân công'),
-    ('Đang thực hiện', 'Đang thực hiện'),
-    ('Đã hoàn thành', 'Đã hoàn thành'),
-  ];
-
-  Widget _buildStatusBar() {
-    return Container(
-      width: double.infinity,
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: Row(
-          children: [
-            for (final (key, label) in _tabsSc) ...[
-              _statusChip(key, label),
-              const SizedBox(width: 8),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _statusChip(String? key, String label) {
-    final selected = _ctrl.locTrangThai == key;
-    return Material(
-      color: selected ? _scPrimary : const Color(0xFFF1F5F9),
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () => _ctrl.datLocTrangThai(key),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              fontSize: 13,
-              color: selected ? Colors.white : const Color(0xFF475569),
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -327,10 +314,11 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
         ),
       );
     }
+    final list = _ctrl.locTheoTab(_tabs[_tab.index]);
     return RefreshIndicator(
       color: _scPrimary,
       onRefresh: _tai,
-      child: _ctrl.danhSach.isEmpty
+      child: list.isEmpty
           ? ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
@@ -385,9 +373,9 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
         physics: const AlwaysScrollableScrollPhysics(
             parent: BouncingScrollPhysics()),
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-        itemCount: _ctrl.danhSach.length,
+        itemCount: list.length,
         itemBuilder: (context, i) {
-          final hs = _ctrl.danhSach[i];
+          final hs = list[i];
           final c = _mauTt(hs.trangThai);
           return TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: 1),

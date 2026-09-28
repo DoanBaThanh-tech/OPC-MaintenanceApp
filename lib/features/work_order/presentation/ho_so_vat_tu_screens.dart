@@ -16,13 +16,18 @@ class HoSoVatTuListScreen extends StatefulWidget {
 }
 
 class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
-  List<HoSoVatTuItem> _list = [];
+  List<HoSoVatTuItem> _all = [];
   bool _dangTai = true;
   String? _loi;
+
+  /// Tổ trưởng: Chờ gửi | Chờ duyệt | Xác nhận
+  static const _tabsTt = ['Chờ gửi', 'Chờ duyệt', 'Xác nhận'];
+  String _tab = 'Chờ gửi';
 
   @override
   void initState() {
     super.initState();
+    if (widget.chiXemDaGui) _tab = 'Chờ duyệt';
     _tai();
   }
 
@@ -34,18 +39,41 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
     try {
       final all = await MaterialUsageService.layDanhSachHoSoVatTu();
       setState(() {
-        _list = widget.chiXemDaGui
-            ? all.where((e) => e.daGuiGiamDoc).toList()
-            : all;
+        _all = all;
         _dangTai = false;
       });
     } catch (e) {
       setState(() {
         _loi = e is ApiException ? e.message : '$e';
         _dangTai = false;
-        _list = [];
+        _all = [];
       });
     }
+  }
+
+  List<HoSoVatTuItem> get _list {
+    if (widget.chiXemDaGui) {
+      // GĐ: hồ sơ đã gửi (Chờ duyệt / Xác nhận)
+      final gui = _all.where((e) => e.daGuiGiamDoc).toList();
+      if (_tab == 'Xác nhận') return gui.where((e) => e.daXacNhan).toList();
+      if (_tab == 'Chờ duyệt') return gui.where((e) => e.choDuyet).toList();
+      return gui;
+    }
+    switch (_tab) {
+      case 'Chờ duyệt':
+        return _all.where((e) => e.choDuyet).toList();
+      case 'Xác nhận':
+        return _all.where((e) => e.daXacNhan).toList();
+      case 'Chờ gửi':
+      default:
+        return _all.where((e) => e.choGui).toList();
+    }
+  }
+
+  String _nhanHienThi(String tt) {
+    if (tt == 'Đã gửi GĐ') return 'Chờ duyệt';
+    if (tt == 'Đã xem') return 'Xác nhận';
+    return tt;
   }
 
   String _fmtDt(DateTime d) =>
@@ -62,9 +90,10 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
   }
 
   Color _mauTrangThai(String tt) {
-    if (tt.contains('gửi') || tt.contains('GĐ')) return const Color(0xFF2563EB);
-    if (tt.contains('xem')) return AppColors.success;
-    return const Color(0xFFD97706);
+    final n = _nhanHienThi(tt);
+    if (n == 'Xác nhận') return AppColors.success;
+    if (n == 'Chờ duyệt') return const Color(0xFF2563EB);
+    return const Color(0xFFD97706); // Chờ gửi
   }
 
   Future<void> _moChiTiet(HoSoVatTuItem item) async {
@@ -147,6 +176,102 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
               ],
             ),
           ),
+
+          // ===== Thanh trạng thái (Tổ trưởng + GĐ) =====
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: (widget.chiXemDaGui
+                    ? const ['Chờ duyệt', 'Xác nhận']
+                    : _tabsTt)
+                    .map((tab) {
+                  final selected = _tab == tab;
+                  final count = () {
+                    if (tab == 'Chờ gửi') {
+                      return _all.where((e) => e.choGui).length;
+                    }
+                    if (tab == 'Chờ duyệt') {
+                      return _all.where((e) => e.choDuyet).length;
+                    }
+                    return _all.where((e) => e.daXacNhan).length;
+                  }();
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _tab = tab),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 220),
+                        curve: Curves.easeOutCubic,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          gradient: selected
+                              ? const LinearGradient(
+                            colors: [
+                              Color(0xFF0068A9),
+                              Color(0xFF0EA5E9),
+                            ],
+                          )
+                              : null,
+                          color: selected ? null : Colors.transparent,
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: selected
+                              ? [
+                            BoxShadow(
+                              color: AppColors.primary
+                                  .withValues(alpha: 0.28),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ]
+                              : null,
+                        ),
+                        child: Column(
+                          children: [
+                            Text(
+                              tab,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 12.5,
+                                color: selected
+                                    ? Colors.white
+                                    : Colors.grey.shade700,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$count',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                                color: selected
+                                    ? Colors.white.withValues(alpha: 0.9)
+                                    : Colors.grey.shade500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+
           Expanded(
             child: _dangTai
                 ? const Center(child: CircularProgressIndicator())
@@ -188,7 +313,7 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
                       color: Colors.grey.shade400),
                   const SizedBox(height: 12),
                   Text(
-                    'Chưa có hồ sơ vật tư',
+                    'Chưa có hồ sơ · $_tab',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         color: Colors.grey.shade600,
@@ -256,7 +381,7 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        item.trangThai,
+                        _nhanHienThi(item.trangThai),
                         style: TextStyle(
                           color: mau,
                           fontWeight: FontWeight.w700,
@@ -327,16 +452,33 @@ class HoSoVatTuDetailScreen extends StatefulWidget {
   State<HoSoVatTuDetailScreen> createState() => _HoSoVatTuDetailScreenState();
 }
 
-class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen> {
+class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
+    with SingleTickerProviderStateMixin {
   HoSoVatTuItem? _item;
   bool _dangTai = true;
   bool _dangGui = false;
   String? _loi;
+  late AnimationController _animCtrl;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
 
   @override
   void initState() {
     super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 480),
+    );
+    _fade = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _slide = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
+        .animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
     _tai();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _tai() async {
@@ -351,6 +493,7 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen> {
         _item = item;
         _dangTai = false;
       });
+      _animCtrl.forward(from: 0);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -373,21 +516,91 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen> {
     return '$buf ₫';
   }
 
-  Future<void> _guiGiamDoc() async {
+  String _nhanHienThi(String tt) {
+    if (tt == 'Đã gửi GĐ') return 'Chờ duyệt';
+    if (tt == 'Đã xem') return 'Xác nhận';
+    return tt;
+  }
+
+  int get _tongSoLuong {
+    final item = _item;
+    if (item == null) return 0;
+    return item.chiTiet.fold<int>(0, (s, c) => s + c.soLuong);
+  }
+
+  int get _tongTien {
+    final item = _item;
+    if (item == null) return 0;
+    if (item.tongTien > 0) return item.tongTien;
+    return item.chiTiet.fold<int>(0, (s, c) => s + c.thanhTien);
+  }
+
+  Future<void> _xacNhan() async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Gửi Giám đốc?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Xác nhận hồ sơ?'),
         content: const Text(
-            'Hồ sơ vật tư sẽ được gửi cho Giám đốc để xem và kiểm tra.'),
+            'Xác nhận đã xem / duyệt hồ sơ vật tư này.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(ctx, false),
               child: const Text('Hủy')),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Gửi'),
+            child: const Text('Xác nhận'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    setState(() => _dangGui = true);
+    try {
+      await MaterialUsageService.xacNhan(widget.maHoSoVatTu);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Đã xác nhận hồ sơ vật tư'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      Navigator.pop(context, true);
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message), backgroundColor: AppColors.danger),
+      );
+    } finally {
+      if (mounted) setState(() => _dangGui = false);
+    }
+  }
+
+  Future<void> _guiGiamDoc() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Row(
+          children: [
+            Icon(Icons.send_rounded, color: AppColors.primary),
+            SizedBox(width: 10),
+            Text('Gửi Giám đốc?'),
+          ],
+        ),
+        content: const Text(
+            'Hồ sơ vật tư sẽ được gửi cho Giám đốc để xem và kiểm tra.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Hủy')),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(ctx, true),
+            icon: const Icon(Icons.check_rounded, size: 18),
+            label: const Text('Gửi'),
           ),
         ],
       ),
@@ -404,7 +617,7 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen> {
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
           shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       );
       Navigator.pop(context, true);
@@ -421,119 +634,332 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
+    final bottom = MediaQuery.paddingOf(context).bottom;
     final item = _item;
     final showGui = widget.choPhepGuiGiamDoc &&
         item != null &&
         item.trangThai == 'Chờ gửi';
+    final showXacNhan = !widget.choPhepGuiGiamDoc &&
+        item != null &&
+        (item.trangThai == 'Chờ duyệt' || item.trangThai == 'Đã gửi GĐ');
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F6FB),
       body: Column(
         children: [
+          // ===== Header gradient =====
           Container(
-            padding: EdgeInsets.fromLTRB(8, top + 4, 16, 18),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Color(0xFF0F766E), Color(0xFF115E59)],
+            width: double.infinity,
+            padding: EdgeInsets.fromLTRB(8, top + 6, 16, 22),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [
+                  Color(0xFF0068A9),
+                  Color(0xFF0284C7),
+                  Color(0xFF0EA5E9),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius:
-              BorderRadius.vertical(bottom: Radius.circular(22)),
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_rounded,
-                      color: Colors.white),
-                ),
-                const Expanded(
-                  child: Text(
-                    'Chi tiết hồ sơ vật tư',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 18,
-                    ),
-                  ),
+              const BorderRadius.vertical(bottom: Radius.circular(28)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 22,
+                  offset: const Offset(0, 10),
                 ),
               ],
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.arrow_back_rounded,
+                          color: Colors.white),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'Chi tiết hồ sơ vật tư',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 18,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                    if (item != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.22),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35)),
+                        ),
+                        child: Text(
+                          _nhanHienThi(item.trangThai),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                if (item != null) ...[
+                  const SizedBox(height: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Text(
+                      item.tenThietBi,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 17,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 12),
+                    child: Text(
+                      '${item.loaiCongViec} · ${_fmtDt(item.ngayThucHien)}'
+                          '${item.tenNhanVien != null ? ' · ${item.tenNhanVien}' : ''}',
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.88),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
+
           Expanded(
             child: _dangTai
                 ? const Center(child: CircularProgressIndicator())
                 : _loi != null
-                ? Center(child: Text(_loi!))
+                ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cloud_off_rounded,
+                        size: 48,
+                        color: AppColors.danger
+                            .withValues(alpha: 0.7)),
+                    const SizedBox(height: 12),
+                    Text(_loi!, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    FilledButton(
+                        onPressed: _tai, child: const Text('Thử lại')),
+                  ],
+                ),
+              ),
+            )
                 : item == null
                 ? const Center(child: Text('Không có dữ liệu'))
-                : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-              children: [
-                _infoBox([
-                  _row('Thiết bị', item.tenThietBi),
-                  _row('Loại', item.loaiCongViec),
-                  _row('Ngày thực hiện',
-                      _fmtDt(item.ngayThucHien)),
-                  if (item.tenNhanVien != null)
-                    _row('NV kỹ thuật', item.tenNhanVien!),
-                  _row('Trạng thái', item.trangThai),
-                  _row('Tổng tiền', _fmtTien(item.tongTien)),
-                ]),
-                const SizedBox(height: 14),
-                const Text(
-                  'Chi tiết vật tư theo bước',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800, fontSize: 15),
-                ),
-                const SizedBox(height: 10),
-                ...item.chiTiet.map((c) => Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                        color: Colors.grey.shade200),
-                  ),
-                  child: Column(
-                    crossAxisAlignment:
-                    CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Bước ${c.soBuoc}',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800),
+                : FadeTransition(
+              opacity: _fade,
+              child: SlideTransition(
+                position: _slide,
+                child: ListView(
+                  padding: EdgeInsets.fromLTRB(
+                      16, 18, 16, showGui ? 12 : 24 + bottom),
+                  children: [
+                    // ===== Info chips =====
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _statChip(
+                            Icons.category_rounded,
+                            'Loại',
+                            item.loaiCongViec,
+                            const Color(0xFF0284C7),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _statChip(
+                            Icons.calendar_month_rounded,
+                            'Ngày',
+                            _fmtDt(item.ngayThucHien),
+                            const Color(0xFF0EA5E9),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (item.tenNhanVien != null) ...[
+                      const SizedBox(height: 10),
+                      _statChip(
+                        Icons.engineering_rounded,
+                        'NV kỹ thuật',
+                        item.tenNhanVien!,
+                        const Color(0xFF0369A1),
+                        full: true,
                       ),
-                      const SizedBox(height: 4),
-                      Text(c.moTaBuoc,
-                          style: TextStyle(
-                              color: Colors.grey.shade700,
-                              height: 1.35,
-                              fontSize: 13)),
-                      const SizedBox(height: 8),
-                      _row('Vật tư', c.tenVatTu),
-                      _row('Số lượng', '${c.soLuong}'),
-                      _row('Đơn giá', _fmtTien(c.donGia)),
-                      _row('Thành tiền',
-                          _fmtTien(c.thanhTien)),
                     ],
-                  ),
-                )),
-              ],
+
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius:
+                            BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text(
+                          'Chi tiết theo bước',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${item.chiTiet.length} bước',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 12.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // ===== Step cards =====
+                    ...item.chiTiet.asMap().entries.map((e) {
+                      final i = e.key;
+                      final c = e.value;
+                      return TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: 1),
+                        duration: Duration(
+                            milliseconds: 320 + i * 70),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, v, child) => Opacity(
+                          opacity: v,
+                          child: Transform.translate(
+                            offset: Offset(0, 12 * (1 - v)),
+                            child: child,
+                          ),
+                        ),
+                        child: _buocCard(c),
+                      );
+                    }),
+
+                    const SizedBox(height: 8),
+
+                    // ===== Tổng số lượng + Tổng tiền =====
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFF0068A9),
+                            Color(0xFF0284C7),
+                            Color(0xFF38BDF8),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary
+                                .withValues(alpha: 0.35),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.summarize_rounded,
+                                  color: Colors.white, size: 22),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Tổng kết hồ sơ',
+                                style: TextStyle(
+                                  color: Colors.white
+                                      .withValues(alpha: 0.95),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 14),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _tongItem(
+                                  'Tổng số lượng',
+                                  '$_tongSoLuong',
+                                  Icons.inventory_2_outlined,
+                                ),
+                              ),
+                              Container(
+                                width: 1,
+                                height: 48,
+                                color: Colors.white
+                                    .withValues(alpha: 0.28),
+                              ),
+                              Expanded(
+                                child: _tongItem(
+                                  'Tổng tiền',
+                                  _fmtTien(_tongTien),
+                                  Icons.payments_outlined,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              ),
             ),
           ),
-          if (showGui)
+
+          if (showGui || showXacNhan)
             Container(
-              padding: EdgeInsets.fromLTRB(
-                  16, 12, 16, 12 + MediaQuery.paddingOf(context).bottom),
-              color: Colors.white,
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottom),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
+              ),
               child: SizedBox(
-                height: 52,
+                height: 54,
                 width: double.infinity,
                 child: FilledButton.icon(
-                  onPressed: _dangGui ? null : _guiGiamDoc,
+                  onPressed: _dangGui
+                      ? null
+                      : (showGui ? _guiGiamDoc : _xacNhan),
                   icon: _dangGui
                       ? const SizedBox(
                     width: 20,
@@ -541,13 +967,19 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen> {
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: Colors.white),
                   )
-                      : const Icon(Icons.send_rounded),
-                  label: const Text('Gửi Giám đốc',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                      : Icon(showGui
+                      ? Icons.send_rounded
+                      : Icons.verified_rounded),
+                  label: Text(
+                    showGui ? 'Gửi Giám đốc' : 'Xác nhận hồ sơ',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
                   ),
                 ),
               ),
@@ -557,36 +989,246 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen> {
     );
   }
 
-  Widget _infoBox(List<Widget> children) {
+  Widget _statChip(IconData icon, String label, String value, Color color,
+      {bool full = false}) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: full ? double.infinity : null,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey.shade200),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
-      child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 18, color: color),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 11.5,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800, fontSize: 13.5),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _row(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(label,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+  Widget _buocCard(ChiTietVatTuSuDung c) {
+    final coVatTu = c.tenVatTu.isNotEmpty && c.soLuong > 0;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
-          Expanded(
-            child: Text(
-              value,
-              textAlign: TextAlign.right,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w700, fontSize: 13.5),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Step header
+          Container(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withValues(alpha: 0.1),
+                  AppColors.primary.withValues(alpha: 0.03),
+                ],
+              ),
+              borderRadius:
+              const BorderRadius.vertical(top: Radius.circular(17)),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF0068A9), Color(0xFF0EA5E9)],
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    '${c.soBuoc}',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Bước ${c.soBuoc}',
+                    style: const TextStyle(
+                        fontWeight: FontWeight.w800, fontSize: 15),
+                  ),
+                ),
+                if (coVatTu)
+                  Text(
+                    _fmtTien(c.thanhTien),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.primary,
+                      fontSize: 14,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  c.moTaBuoc,
+                  style: TextStyle(
+                    color: Colors.grey.shade800,
+                    height: 1.4,
+                    fontSize: 13.5,
+                  ),
+                ),
+                if (coVatTu) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0F9FF),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFBAE6FD)),
+                    ),
+                    child: Column(
+                      children: [
+                        _miniRow(Icons.inventory_2_outlined, 'Vật tư',
+                            c.tenVatTu),
+                        const SizedBox(height: 6),
+                        _miniRow(Icons.numbers_rounded, 'Số lượng',
+                            '${c.soLuong}'),
+                        const SizedBox(height: 6),
+                        _miniRow(Icons.sell_outlined, 'Đơn giá',
+                            _fmtTien(c.donGia)),
+                        const SizedBox(height: 6),
+                        _miniRow(Icons.payments_outlined, 'Thành tiền',
+                            _fmtTien(c.thanhTien),
+                            bold: true),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Không dùng vật tư',
+                    style: TextStyle(
+                      color: Colors.grey.shade500,
+                      fontStyle: FontStyle.italic,
+                      fontSize: 12.5,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _miniRow(IconData icon, String label, String value,
+      {bool bold = false}) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: AppColors.primary),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 88,
+          child: Text(label,
+              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            textAlign: TextAlign.right,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: bold ? FontWeight.w800 : FontWeight.w600,
+              color: bold ? AppColors.primary : Colors.black87,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tongItem(String label, String value, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white.withValues(alpha: 0.9), size: 22),
+          const SizedBox(height: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.85),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
             ),
           ),
         ],

@@ -8,11 +8,20 @@ import '../data/services/material_usage_service.dart';
 import 'quy_trinh_cong_viec_screen.dart';
 
 /// Trang 1: Quy trình chọn vật tư bảo trì / sửa chữa.
-/// Nút "Lưu" → ghi hồ sơ vật tư → chuyển sang trang Quy trình thực hiện.
+/// - Mỗi bước có thể chọn **nhiều vật tư**.
+/// - Số lượng: số nguyên ≥ 0, không âm, không thập phân, không ký tự đặc biệt.
+/// - Mode cập nhật: load hồ sơ đã lưu, Lưu → PUT cập nhật.
 class QuyTrinhThucHienScreen extends StatefulWidget {
   final YeuCauPhanCong yeuCau;
 
-  const QuyTrinhThucHienScreen({super.key, required this.yeuCau});
+  /// true = mở từ nút "Cập nhật vật tư" trên trang quy trình công việc.
+  final bool cheDoCapNhat;
+
+  const QuyTrinhThucHienScreen({
+    super.key,
+    required this.yeuCau,
+    this.cheDoCapNhat = false,
+  });
 
   @override
   State<QuyTrinhThucHienScreen> createState() => _QuyTrinhThucHienScreenState();
@@ -25,11 +34,16 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
   bool _dangTai = true;
   String? _loiTai;
   bool _dangXuLy = false;
-  final Map<int, TextEditingController> _slCtrls = {};
-  final Map<int, TextEditingController> _giaCtrls = {};
+  int? _maHoSoVatTu; // có khi đang cập nhật
   late final AnimationController _anim;
 
+  /// Controllers: key = "$soBuoc_$indexDong"
+  final Map<String, TextEditingController> _slCtrls = {};
+  final Map<String, TextEditingController> _giaCtrls = {};
+
   bool get _laBaoTri => widget.yeuCau.laBaoTri;
+
+  String _keyDong(int soBuoc, int idx) => '${soBuoc}_$idx';
 
   @override
   void initState() {
@@ -59,26 +73,49 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
           )
         else
           Future.value(<BuocQuyTrinh>[]),
+        if (y.maHoSo != null)
+          MaterialUsageService.layHoSoTheoCongViec(
+            maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+            maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+          )
+        else
+          Future.value(null),
       ]);
       if (!mounted) return;
       final vatTu = results[0] as List<VatTuOption>;
       var buoc = results[1] as List<BuocQuyTrinh>;
+      final hoSoCu = results[2] as HoSoVatTuItem?;
+
       if (buoc.isEmpty) {
         _loiTai = maTb <= 0
             ? 'Thiếu mã thiết bị — không tải được bước từ database.'
             : 'Chưa có quy trình $loai cho thiết bị này trong database.';
       }
-      for (final c in _slCtrls.values) {
-        c.dispose();
+
+      // Gắn vật tư đã lưu theo bước (hỗ trợ nhiều dòng / bước)
+      if (hoSoCu != null && hoSoCu.chiTiet.isNotEmpty) {
+        _maHoSoVatTu = hoSoCu.maHoSoVatTu;
+        for (final b in buoc) {
+          final dong = hoSoCu.chiTiet.where((c) => c.soBuoc == b.soBuoc).toList();
+          b.vatTuList = dong
+              .map((c) => VatTuDong(
+            maVatTu: c.maVatTu,
+            tenVatTu: c.tenVatTu,
+            soLuong: c.soLuong,
+            donGia: c.donGia,
+          ))
+              .toList();
+        }
       }
-      for (final c in _giaCtrls.values) {
-        c.dispose();
-      }
-      _slCtrls.clear();
-      _giaCtrls.clear();
+
+      _disposeCtrls();
       for (final b in buoc) {
-        _slCtrls[b.soBuoc] = TextEditingController(text: '0');
-        _giaCtrls[b.soBuoc] = TextEditingController(text: '0');
+        for (var i = 0; i < b.vatTuList.length; i++) {
+          final d = b.vatTuList[i];
+          final k = _keyDong(b.soBuoc, i);
+          _slCtrls[k] = TextEditingController(text: d.soLuong.toString());
+          _giaCtrls[k] = TextEditingController(text: d.donGia.toString());
+        }
       }
       setState(() {
         _dsVatTu = vatTu;
@@ -96,15 +133,21 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
     }
   }
 
-  @override
-  void dispose() {
-    _anim.dispose();
+  void _disposeCtrls() {
     for (final c in _slCtrls.values) {
       c.dispose();
     }
     for (final c in _giaCtrls.values) {
       c.dispose();
     }
+    _slCtrls.clear();
+    _giaCtrls.clear();
+  }
+
+  @override
+  void dispose() {
+    _anim.dispose();
+    _disposeCtrls();
     super.dispose();
   }
 
@@ -118,8 +161,97 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
     return '$buf ₫';
   }
 
-  Future<void> _chonVatTu(BuocQuyTrinh b) async {
-    final selected = await showModalBottomSheet<VatTuOption>(
+  /// Validate số lượng: số nguyên ≥ 0, không thập phân / ký tự đặc biệt.
+  String? _validateSoLuong(String raw) {
+    final t = raw.trim();
+    if (t.isEmpty) return 'Vui lòng nhập số lượng';
+    if (t.contains('.') || t.contains(',') || t.contains('-')) {
+      return 'Số lượng phải là số nguyên không âm';
+    }
+    if (!RegExp(r'^\d+$').hasMatch(t)) {
+      return 'Số lượng không được chứa ký tự đặc biệt';
+    }
+    final n = int.tryParse(t);
+    if (n == null) return 'Số lượng không hợp lệ';
+    if (n < 0) return 'Số lượng không được âm';
+    return null;
+  }
+
+  Future<void> _themVatTuVaoBuoc(BuocQuyTrinh b) async {
+    final selected = await _showChonVatTuSheet(
+      excludeMa: b.vatTuList.map((e) => e.maVatTu).whereType<int>().toSet(),
+    );
+    if (selected == null) return;
+    setState(() {
+      final dong = VatTuDong(
+        maVatTu: selected.maVatTu,
+        tenVatTu: selected.tenVatTu,
+        soLuong: 1,
+        donGia: selected.donGia,
+        donViTinh: selected.donViTinh,
+      );
+      b.vatTuList.add(dong);
+      final idx = b.vatTuList.length - 1;
+      final k = _keyDong(b.soBuoc, idx);
+      _slCtrls[k] = TextEditingController(text: '1');
+      _giaCtrls[k] = TextEditingController(text: selected.donGia.toString());
+    });
+  }
+
+  Future<void> _doiVatTuDong(BuocQuyTrinh b, int idx) async {
+    final selected = await _showChonVatTuSheet(
+      excludeMa: b.vatTuList
+          .asMap()
+          .entries
+          .where((e) => e.key != idx)
+          .map((e) => e.value.maVatTu)
+          .whereType<int>()
+          .toSet(),
+    );
+    if (selected == null) return;
+    setState(() {
+      final d = b.vatTuList[idx];
+      d.maVatTu = selected.maVatTu;
+      d.tenVatTu = selected.tenVatTu;
+      d.donGia = selected.donGia;
+      d.donViTinh = selected.donViTinh;
+      final k = _keyDong(b.soBuoc, idx);
+      _giaCtrls[k]?.text = selected.donGia.toString();
+      if ((_slCtrls[k]?.text ?? '0') == '0' || (_slCtrls[k]?.text ?? '').isEmpty) {
+        _slCtrls[k]?.text = '1';
+        d.soLuong = 1;
+      }
+    });
+  }
+
+  void _xoaVatTuDong(BuocQuyTrinh b, int idx) {
+    setState(() {
+      final k = _keyDong(b.soBuoc, idx);
+      _slCtrls[k]?.dispose();
+      _giaCtrls[k]?.dispose();
+      _slCtrls.remove(k);
+      _giaCtrls.remove(k);
+      b.vatTuList.removeAt(idx);
+      // Re-index controllers sau khi xóa
+      final remaining = List<VatTuDong>.from(b.vatTuList);
+      for (var i = 0; i < remaining.length; i++) {
+        final oldK = _keyDong(b.soBuoc, i >= idx ? i + 1 : i);
+        final newK = _keyDong(b.soBuoc, i);
+        if (oldK != newK) {
+          if (_slCtrls.containsKey(oldK)) {
+            _slCtrls[newK] = _slCtrls.remove(oldK)!;
+          }
+          if (_giaCtrls.containsKey(oldK)) {
+            _giaCtrls[newK] = _giaCtrls.remove(oldK)!;
+          }
+        }
+      }
+    });
+  }
+
+  Future<VatTuOption?> _showChonVatTuSheet({Set<int> excludeMa = const {}}) {
+    final list = _dsVatTu.where((v) => !excludeMa.contains(v.maVatTu)).toList();
+    return showModalBottomSheet<VatTuOption>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -148,8 +280,7 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
                   padding: const EdgeInsets.fromLTRB(20, 14, 20, 8),
                   child: Row(
                     children: [
-                      Icon(Icons.inventory_2_rounded,
-                          color: AppColors.primary),
+                      Icon(Icons.inventory_2_rounded, color: AppColors.primary),
                       const SizedBox(width: 10),
                       const Text(
                         'Chọn vật tư',
@@ -161,13 +292,14 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
                 ),
                 const Divider(height: 1),
                 Expanded(
-                  child: _dsVatTu.isEmpty
-                      ? const Center(child: Text('Chưa có vật tư trong kho'))
+                  child: list.isEmpty
+                      ? const Center(
+                      child: Text('Không còn vật tư khả dụng / kho trống'))
                       : ListView.builder(
                     controller: scrollCtrl,
-                    itemCount: _dsVatTu.length,
+                    itemCount: list.length,
                     itemBuilder: (_, i) {
-                      final v = _dsVatTu[i];
+                      final v = list[i];
                       return ListTile(
                         leading: CircleAvatar(
                           backgroundColor:
@@ -194,17 +326,6 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
         );
       },
     );
-    if (selected == null) return;
-    setState(() {
-      b.maVatTu = selected.maVatTu;
-      b.tenVatTu = selected.tenVatTu;
-      b.donGia = selected.donGia;
-      _giaCtrls[b.soBuoc]?.text = selected.donGia.toString();
-      if ((_slCtrls[b.soBuoc]?.text ?? '0') == '0') {
-        _slCtrls[b.soBuoc]?.text = '1';
-        b.soLuong = 1;
-      }
-    });
   }
 
   int get tongTien {
@@ -215,39 +336,96 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
     return t;
   }
 
+  bool _syncVaValidate() {
+    for (final b in _buoc) {
+      for (var i = 0; i < b.vatTuList.length; i++) {
+        final d = b.vatTuList[i];
+        final k = _keyDong(b.soBuoc, i);
+        final rawSl = _slCtrls[k]?.text ?? '0';
+        final err = _validateSoLuong(rawSl);
+        if (err != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Bước ${b.soBuoc} — ${d.tenVatTu}: $err'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+          return false;
+        }
+        d.soLuong = int.parse(rawSl.trim());
+        d.donGia = int.tryParse(_giaCtrls[k]?.text ?? '0') ?? d.donGia;
+        if (d.donGia < 0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Bước ${b.soBuoc}: đơn giá không được âm'),
+              backgroundColor: AppColors.danger,
+            ),
+          );
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
   Future<void> _luuVatTu() async {
     final y = widget.yeuCau;
     if (y.maHoSo == null) return;
-
-    // Sync qty/price from controllers
-    for (final b in _buoc) {
-      b.soLuong = int.tryParse(_slCtrls[b.soBuoc]?.text ?? '0') ?? 0;
-      b.donGia = int.tryParse(_giaCtrls[b.soBuoc]?.text ?? '0') ?? b.donGia;
-    }
+    if (!_syncVaValidate()) return;
 
     final buocCoVatTu = _buoc
-        .where((b) => b.soLuong > 0 && b.tenVatTu.isNotEmpty)
+        .where((b) => b.vatTuList.any((d) => d.soLuong > 0 && d.tenVatTu.isNotEmpty))
         .toList();
+
+    final isUpdate = widget.cheDoCapNhat || _maHoSoVatTu != null;
+
+    if (isUpdate && buocCoVatTu.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cần ít nhất 1 vật tư khi cập nhật hồ sơ.'),
+          backgroundColor: AppColors.warning,
+        ),
+      );
+      return;
+    }
 
     setState(() => _dangXuLy = true);
     try {
       if (buocCoVatTu.isNotEmpty) {
-        await MaterialUsageService.taoHoSoVatTu(
-          maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
-          maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
-          maThietBi: y.maThietBi ?? 0,
-          tenThietBi: y.tenThietBi ?? 'Thiết bị',
-          loaiCongViec: _laBaoTri ? 'Bảo trì' : 'Sửa chữa',
-          buoc: buocCoVatTu,
-        );
+        if (isUpdate && _maHoSoVatTu != null) {
+          final updated = await MaterialUsageService.capNhatHoSoVatTu(
+            maHoSoVatTu: _maHoSoVatTu!,
+            maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+            maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+            maThietBi: y.maThietBi ?? 0,
+            tenThietBi: y.tenThietBi ?? 'Thiết bị',
+            loaiCongViec: _laBaoTri ? 'Bảo trì' : 'Sửa chữa',
+            buoc: _buoc,
+          );
+          _maHoSoVatTu = updated.maHoSoVatTu;
+        } else {
+          final created = await MaterialUsageService.taoHoSoVatTu(
+            maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+            maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+            maThietBi: y.maThietBi ?? 0,
+            tenThietBi: y.tenThietBi ?? 'Thiết bị',
+            loaiCongViec: _laBaoTri ? 'Bảo trì' : 'Sửa chữa',
+            buoc: _buoc,
+          );
+          if (created != null) _maHoSoVatTu = created.maHoSoVatTu;
+        }
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(buocCoVatTu.isEmpty
-              ? 'Không chọn vật tư — chuyển sang quy trình thực hiện'
-              : 'Đã lưu hồ sơ vật tư — chuyển sang quy trình thực hiện'),
+          content: Text(
+            isUpdate
+                ? 'Đã cập nhật số lượng vật tư — hồ sơ Tổ trưởng đã đồng bộ'
+                : (buocCoVatTu.isEmpty
+                ? 'Không chọn vật tư — chuyển sang quy trình thực hiện'
+                : 'Đã lưu hồ sơ vật tư — chuyển sang quy trình thực hiện'),
+          ),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
           shape:
@@ -255,7 +433,13 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
         ),
       );
 
-      // Trang 2: Quy trình bảo trì / sửa chữa (kết quả từng bước + Hoàn thành)
+      // Mode cập nhật: quay lại trang quy trình công việc
+      if (widget.cheDoCapNhat) {
+        Navigator.pop(context, true);
+        return;
+      }
+
+      // Lần đầu: sang trang 2
       final done = await Navigator.push<bool>(
         context,
         PageRouteBuilder(
@@ -296,14 +480,22 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
-    final title = _laBaoTri
+    final title = widget.cheDoCapNhat
+        ? (_laBaoTri
+        ? 'Cập nhật vật tư bảo trì'
+        : 'Cập nhật vật tư sửa chữa')
+        : (_laBaoTri
         ? 'Quy trình chọn vật tư bảo trì'
-        : 'Quy trình chọn vật tư sửa chữa';
+        : 'Quy trình chọn vật tư sửa chữa');
 
     return PopScope(
-      canPop: false,
+      canPop: widget.cheDoCapNhat,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
+        if (widget.cheDoCapNhat) {
+          Navigator.pop(context);
+          return;
+        }
         _canhBaoKhongQuayLai();
       },
       child: Scaffold(
@@ -317,12 +509,16 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
                 padding: EdgeInsets.fromLTRB(8, top + 6, 16, 20),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)],
+                    colors: [
+                      Color(0xFF0068A9),
+                      Color(0xFF0284C7),
+                      Color(0xFF0EA5E9)
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius:
-                  const BorderRadius.vertical(bottom: Radius.circular(24)),
+                  borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(24)),
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primary.withValues(alpha: 0.3),
@@ -333,12 +529,19 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
                 ),
                 child: Row(
                   children: [
-                    // Không cho quay lại cho đến khi hoàn thành quy trình
                     IconButton(
-                      onPressed: _canhBaoKhongQuayLai,
-                      icon: const Icon(Icons.lock_outline_rounded,
-                          color: Colors.white70),
-                      tooltip: 'Phải hoàn thành quy trình',
+                      onPressed: widget.cheDoCapNhat
+                          ? () => Navigator.pop(context)
+                          : _canhBaoKhongQuayLai,
+                      icon: Icon(
+                        widget.cheDoCapNhat
+                            ? Icons.arrow_back_rounded
+                            : Icons.lock_outline_rounded,
+                        color: Colors.white70,
+                      ),
+                      tooltip: widget.cheDoCapNhat
+                          ? 'Quay lại'
+                          : 'Phải hoàn thành quy trình',
                     ),
                     Expanded(
                       child: Column(
@@ -439,9 +642,11 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
                         height: 22,
                         child: CircularProgressIndicator(
                             strokeWidth: 2, color: Colors.white))
-                        : const Text('Lưu',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 15)),
+                        : Text(
+                      widget.cheDoCapNhat ? 'Lưu cập nhật' : 'Lưu',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w800, fontSize: 15),
+                    ),
                   ),
                 ],
               ),
@@ -528,90 +733,36 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
               ],
             ),
             const SizedBox(height: 12),
-            InkWell(
-              onTap: (_dangTai || _dsVatTu.isEmpty)
+            // Danh sách vật tư đã chọn
+            for (var i = 0; i < b.vatTuList.length; i++) ...[
+              _buildDongVatTu(b, i),
+              const SizedBox(height: 8),
+            ],
+            // Nút thêm vật tư
+            OutlinedButton.icon(
+              onPressed: (_dangTai || _dsVatTu.isEmpty)
                   ? null
-                  : () => _chonVatTu(b),
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: double.infinity,
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FAFC),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFE2E8F0)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.category_outlined,
-                        size: 18, color: AppColors.primary),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        b.tenVatTu.isEmpty
-                            ? 'Chọn vật tư (tuỳ chọn)'
-                            : b.tenVatTu,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          color: b.tenVatTu.isEmpty
-                              ? Colors.grey.shade600
-                              : const Color(0xFF0F172A),
-                        ),
-                      ),
-                    ),
-                    const Icon(Icons.chevron_right_rounded, color: Colors.grey),
-                  ],
-                ),
+                  : () => _themVatTuVaoBuoc(b),
+              icon: const Icon(Icons.add_circle_outline, size: 18),
+              label: Text(
+                b.vatTuList.isEmpty
+                    ? 'Thêm vật tư (có thể chọn nhiều)'
+                    : 'Thêm vật tư khác',
+                style: const TextStyle(fontWeight: FontWeight.w600),
               ),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _slCtrls[b.soBuoc],
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: InputDecoration(
-                      labelText: 'Số lượng',
-                      isDense: true,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    onChanged: (v) {
-                      setState(() {
-                        b.soLuong = int.tryParse(v) ?? 0;
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: _giaCtrls[b.soBuoc],
-                    keyboardType: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                    decoration: InputDecoration(
-                      labelText: 'Đơn giá',
-                      isDense: true,
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    onChanged: (v) {
-                      setState(() {
-                        b.donGia = int.tryParse(v) ?? 0;
-                      });
-                    },
-                  ),
-                ),
-              ],
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                minimumSize: const Size(double.infinity, 42),
+              ),
             ),
             if (b.thanhTien > 0) ...[
               const SizedBox(height: 8),
               Align(
                 alignment: Alignment.centerRight,
-                child: Text('Thành tiền: ${_fmtTien(b.thanhTien)}',
+                child: Text('Thành tiền bước: ${_fmtTien(b.thanhTien)}',
                     style: const TextStyle(
                         fontWeight: FontWeight.w700,
                         color: AppColors.primary)),
@@ -619,6 +770,119 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
             ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDongVatTu(BuocQuyTrinh b, int idx) {
+    final d = b.vatTuList[idx];
+    final k = _keyDong(b.soBuoc, idx);
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => _doiVatTuDong(b, idx),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.category_outlined,
+                          size: 18, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          d.tenVatTu.isEmpty ? 'Chọn vật tư' : d.tenVatTu,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: d.tenVatTu.isEmpty
+                                ? Colors.grey.shade600
+                                : const Color(0xFF0F172A),
+                          ),
+                        ),
+                      ),
+                      const Icon(Icons.swap_horiz, size: 18, color: Colors.grey),
+                    ],
+                  ),
+                ),
+              ),
+              IconButton(
+                onPressed: () => _xoaVatTuDong(b, idx),
+                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                tooltip: 'Xóa vật tư',
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _slCtrls[k],
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly, // chỉ số nguyên
+                  ],
+                  decoration: InputDecoration(
+                    labelText: 'Số lượng',
+                    hintText: '≥ 0',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    helperText: 'Số nguyên, không âm',
+                    helperStyle: TextStyle(
+                        fontSize: 10, color: Colors.grey.shade600),
+                  ),
+                  onChanged: (v) {
+                    setState(() {
+                      d.soLuong = int.tryParse(v) ?? 0;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _giaCtrls[k],
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                  decoration: InputDecoration(
+                    labelText: 'Đơn giá',
+                    isDense: true,
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onChanged: (v) {
+                    setState(() {
+                      d.donGia = int.tryParse(v) ?? 0;
+                    });
+                  },
+                ),
+              ),
+            ],
+          ),
+          if (d.thanhTien > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Text(_fmtTien(d.thanhTien),
+                    style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12.5,
+                        color: Colors.grey.shade700)),
+              ),
+            ),
+        ],
       ),
     );
   }

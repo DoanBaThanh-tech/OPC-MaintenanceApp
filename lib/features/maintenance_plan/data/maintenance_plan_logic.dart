@@ -745,18 +745,65 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   List<String> get danhSachDanhMuc =>
       dsThietBi.map((t) => t.loaiThietBi ?? 'Chưa phân loại').toSet().toList()..sort();
 
+  /// Bỏ dấu tiếng Việt để tìm "lo" vẫn ra "Lò", "auto" ra "Autoclave", ...
+  static String _boDau(String input) {
+    const map = {
+      'à': 'a', 'á': 'a', 'ả': 'a', 'ã': 'a', 'ạ': 'a',
+      'ă': 'a', 'ằ': 'a', 'ắ': 'a', 'ẳ': 'a', 'ẵ': 'a', 'ặ': 'a',
+      'â': 'a', 'ầ': 'a', 'ấ': 'a', 'ẩ': 'a', 'ẫ': 'a', 'ậ': 'a',
+      'è': 'e', 'é': 'e', 'ẻ': 'e', 'ẽ': 'e', 'ẹ': 'e',
+      'ê': 'e', 'ề': 'e', 'ế': 'e', 'ể': 'e', 'ễ': 'e', 'ệ': 'e',
+      'ì': 'i', 'í': 'i', 'ỉ': 'i', 'ĩ': 'i', 'ị': 'i',
+      'ò': 'o', 'ó': 'o', 'ỏ': 'o', 'õ': 'o', 'ọ': 'o',
+      'ô': 'o', 'ồ': 'o', 'ố': 'o', 'ổ': 'o', 'ỗ': 'o', 'ộ': 'o',
+      'ơ': 'o', 'ờ': 'o', 'ớ': 'o', 'ở': 'o', 'ỡ': 'o', 'ợ': 'o',
+      'ù': 'u', 'ú': 'u', 'ủ': 'u', 'ũ': 'u', 'ụ': 'u',
+      'ư': 'u', 'ừ': 'u', 'ứ': 'u', 'ử': 'u', 'ữ': 'u', 'ự': 'u',
+      'ỳ': 'y', 'ý': 'y', 'ỷ': 'y', 'ỹ': 'y', 'ỵ': 'y',
+      'đ': 'd',
+    };
+    final sb = StringBuffer();
+    for (final ch in input.toLowerCase().split('')) {
+      sb.write(map[ch] ?? ch);
+    }
+    return sb.toString();
+  }
+
+  /// Khớp nếu từ khóa (đã bỏ dấu) nằm trong tên / loại thiết bị (cũng bỏ dấu).
+  /// Chỉ cần 1–2 ký tự là ra kết quả chứa — không bắt buộc gõ đúng cả tên.
+  static bool _khopTen(String haystack, String needle) {
+    if (needle.isEmpty) return true;
+    final h = _boDau(haystack.trim());
+    final n = _boDau(needle.trim());
+    if (n.isEmpty) return true;
+    if (h.contains(n)) return true;
+    // Tách từ: "lo hap" khớp "Lò hấp tiệt trùng Autoclave..."
+    final parts = n.split(RegExp(r'\s+')).where((p) => p.isNotEmpty);
+    return parts.every((p) => h.contains(p));
+  }
+
   List<ThietBiRutGon> get dsThietBiDaLoc {
     return dsThietBi.where((tb) {
-      final khopDanhMuc = danhMucChon == null || (tb.loaiThietBi ?? 'Chưa phân loại') == danhMucChon;
-      final khopTuKhoa = tuKhoaTimKiem.isEmpty ||
-          tb.tenThietBi.toLowerCase().contains(tuKhoaTimKiem.toLowerCase()) ||
-          (tb.loaiThietBi ?? '').toLowerCase().contains(tuKhoaTimKiem.toLowerCase());
+      final khopDanhMuc =
+          danhMucChon == null || (tb.loaiThietBi ?? 'Chưa phân loại') == danhMucChon;
+      final khopTuKhoa = tuKhoaTimKiem.trim().isEmpty ||
+          _khopTen(tb.tenThietBi, tuKhoaTimKiem) ||
+          _khopTen(tb.loaiThietBi ?? '', tuKhoaTimKiem);
       return khopDanhMuc && khopTuKhoa;
     }).toList();
   }
 
   void datTuKhoaTimKiem(String tk) {
     tuKhoaTimKiem = tk;
+    // Nếu đang chọn thiết bị nhưng không còn khớp từ khóa → bỏ chọn để dropdown không lỗi
+    if (thietBiChon != null &&
+        tk.trim().isNotEmpty &&
+        !_khopTen(thietBiChon!.tenThietBi, tk) &&
+        !_khopTen(thietBiChon!.loaiThietBi ?? '', tk)) {
+      thietBiChon = null;
+      chiTietChon = null;
+      loi = null;
+    }
     notifyListeners();
   }
 
@@ -764,6 +811,12 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     danhMucChon = dm;
     thietBiChon = null;
     chiTietChon = null;
+    loi = null;
+    notifyListeners();
+  }
+
+  void xoaTuKhoaTimKiem() {
+    tuKhoaTimKiem = '';
     notifyListeners();
   }
 }

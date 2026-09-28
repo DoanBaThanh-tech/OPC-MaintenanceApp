@@ -5,9 +5,11 @@ import '../data/models/work_order_models.dart';
 import '../data/models/material_usage_models.dart';
 import '../data/services/work_order_service.dart';
 import '../data/services/material_usage_service.dart';
+import 'quy_trinh_thuc_hien_screen.dart';
 
 /// Trang 2: Quy trình bảo trì / sửa chữa — từng bước + kết quả thực hiện + Hoàn thành.
 /// Nút Hoàn thành đồng bộ trạng thái hồ sơ / phân công / thiết bị cho mọi vai trò.
+/// Nút "Cập nhật vật tư" cho phép quay lại chỉnh số lượng / thêm vật tư từng bước.
 class QuyTrinhCongViecScreen extends StatefulWidget {
   final YeuCauPhanCong yeuCau;
 
@@ -411,6 +413,23 @@ class _QuyTrinhCongViecScreenState extends State<QuyTrinhCongViecScreen>
                     ),
                   ),
                   const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: _dangXuLy ? null : _moCapNhatVatTu,
+                    icon: const Icon(Icons.inventory_2_outlined, size: 20),
+                    label: const Text(
+                      'Cập nhật vật tư',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                      side: BorderSide(
+                          color: AppColors.primary.withValues(alpha: 0.55)),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   FilledButton(
                     onPressed: (_dangXuLy || !_tatCaBuocCoKetQua)
                         ? null
@@ -448,6 +467,28 @@ class _QuyTrinhCongViecScreenState extends State<QuyTrinhCongViecScreen>
         ),
       ),
     );
+  }
+
+  /// Mở lại trang chọn vật tư ở chế độ cập nhật — Lưu sẽ PUT số lượng mới.
+  Future<void> _moCapNhatVatTu() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => QuyTrinhThucHienScreen(
+          yeuCau: widget.yeuCau,
+          cheDoCapNhat: true,
+        ),
+      ),
+    );
+    if (result == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã cập nhật vật tư — hồ sơ Tổ trưởng đã đồng bộ'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _canhBaoKhongQuayLai() async {

@@ -922,11 +922,21 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                       // --- Thiết bị ---
                       _card(
                         children: [
-                          _sectionLabel('Thiết bị', hint: 'Tìm kiếm hoặc lọc theo danh mục'),
+                          _sectionLabel(
+                            'Thiết bị',
+                            hint: 'Gõ 2–3 chữ (có/không dấu) là hiện danh sách khớp',
+                          ),
                           TextField(
                             decoration: _fieldDeco(
-                              hint: 'Tìm theo tên thiết bị hoặc danh mục',
+                              hint: 'VD: lo, auto, hap, autoclave…',
                               prefix: const Icon(Icons.search_rounded, size: 22),
+                              suffix: _controller.tuKhoaTimKiem.isEmpty
+                                  ? null
+                                  : IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 20),
+                                onPressed: _controller.xoaTuKhoaTimKiem,
+                                tooltip: 'Xóa tìm kiếm',
+                              ),
                             ),
                             onChanged: _controller.datTuKhoaTimKiem,
                           ),
@@ -939,36 +949,145 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                               prefix: const Icon(Icons.category_outlined, size: 22),
                             ),
                             hint: const Text('Tất cả danh mục'),
-                            items: _controller.danhSachDanhMuc
-                                .map(
-                                  (dm) => DropdownMenuItem(
-                                value: dm,
-                                child: Text(dm, overflow: TextOverflow.ellipsis),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('Tất cả danh mục'),
                               ),
-                            )
-                                .toList(),
+                              ..._controller.danhSachDanhMuc.map(
+                                    (dm) => DropdownMenuItem(
+                                  value: dm,
+                                  child: Text(dm, overflow: TextOverflow.ellipsis),
+                                ),
+                              ),
+                            ],
                             onChanged: _controller.chonDanhMuc,
                           ),
                           const SizedBox(height: 12),
-                          DropdownButtonFormField<ThietBiRutGon>(
-                            value: _controller.thietBiChon,
-                            isExpanded: true,
-                            decoration: _fieldDeco(
-                              hint: _controller.danhMucChon == null
-                                  ? 'Chọn thiết bị'
-                                  : 'Chọn thiết bị trong danh mục',
-                              prefix: const Icon(Icons.precision_manufacturing_outlined, size: 22),
-                            ),
-                            items: _controller.dsThietBiDaLoc
-                                .map(
-                                  (tb) => DropdownMenuItem(
-                                value: tb,
-                                child: Text(tb.tenThietBi, overflow: TextOverflow.ellipsis),
-                              ),
-                            )
-                                .toList(),
-                            onChanged: _controller.chonThietBi,
+                          // Danh sách kết quả tìm kiếm — bấm chọn thiết bị
+                          Builder(
+                            builder: (context) {
+                              final list = _controller.dsThietBiDaLoc;
+                              final coTuKhoa =
+                                  _controller.tuKhoaTimKiem.trim().isNotEmpty;
+                              if (list.isEmpty) {
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: Text(
+                                    coTuKhoa
+                                        ? 'Không tìm thấy thiết bị khớp «${_controller.tuKhoaTimKiem.trim()}»'
+                                        : 'Không có thiết bị trong danh mục đã chọn',
+                                    style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 13.5),
+                                  ),
+                                );
+                              }
+                              // Giới hạn chiều cao khi nhiều kết quả
+                              final maxH = coTuKhoa || list.length <= 6
+                                  ? null
+                                  : 220.0;
+                              final content = ListView.separated(
+                                shrinkWrap: true,
+                                physics: maxH == null
+                                    ? const NeverScrollableScrollPhysics()
+                                    : const BouncingScrollPhysics(),
+                                itemCount: list.length,
+                                separatorBuilder: (_, __) => Divider(
+                                    height: 1, color: Colors.grey.shade200),
+                                itemBuilder: (_, i) {
+                                  final tb = list[i];
+                                  final dangChon = _controller.thietBiChon
+                                      ?.maThietBi ==
+                                      tb.maThietBi;
+                                  return ListTile(
+                                    dense: true,
+                                    selected: dangChon,
+                                    selectedTileColor: AppColors.primary
+                                        .withValues(alpha: 0.08),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
+                                    leading: Icon(
+                                      dangChon
+                                          ? Icons.check_circle_rounded
+                                          : Icons.precision_manufacturing_outlined,
+                                      color: dangChon
+                                          ? AppColors.primary
+                                          : Colors.grey.shade600,
+                                      size: 22,
+                                    ),
+                                    title: Text(
+                                      tb.tenThietBi,
+                                      style: TextStyle(
+                                        fontWeight: dangChon
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      tb.loaiThietBi ?? 'Chưa phân loại',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600),
+                                    ),
+                                    onTap: () =>
+                                        _controller.chonThietBi(tb),
+                                  );
+                                },
+                              );
+                              return Container(
+                                width: double.infinity,
+                                constraints: maxH != null
+                                    ? BoxConstraints(maxHeight: maxH)
+                                    : null,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: content,
+                              );
+                            },
                           ),
+                          if (_controller.thietBiChon != null) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: AppColors.success
+                                        .withValues(alpha: 0.35)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.check_circle,
+                                      color: AppColors.success, size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Đã chọn: ${_controller.thietBiChon!.tenThietBi}',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           AnimatedSize(
                             duration: const Duration(milliseconds: 250),
                             curve: Curves.easeOutCubic,

@@ -23,8 +23,8 @@ class WorkOrderSuaChuaListController extends ChangeNotifier {
     loi = null;
     notifyListeners();
     try {
-      danhSach =
-      await WorkOrderService.layDanhSachHoSoSuaChua(trangThai: locTrangThai);
+      // Load tất cả rồi lọc client-side (giống hồ sơ bảo trì)
+      danhSach = await WorkOrderService.layDanhSachHoSoSuaChua(trangThai: null);
     } catch (e) {
       loi = e is ApiException ? e.message : '$e';
       danhSach = [];
@@ -36,7 +36,17 @@ class WorkOrderSuaChuaListController extends ChangeNotifier {
 
   void datLocTrangThai(String? tt) {
     locTrangThai = tt;
-    tai();
+    notifyListeners();
+  }
+
+  List<HoSoSuaChua> locTheoTab(String tab) {
+    if (tab == 'Tất cả') return List.from(danhSach);
+    return danhSach.where((h) {
+      if (tab == 'Chờ phân công') {
+        return h.trangThai == 'Chờ phân công' || h.trangThai == 'Đã duyệt';
+      }
+      return h.trangThai == tab;
+    }).toList();
   }
 }
 

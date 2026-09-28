@@ -36,7 +36,7 @@ class MaterialUsageService {
         .toList();
   }
 
-  static Future<void> taoHoSoVatTu({
+  static Future<HoSoVatTuItem?> taoHoSoVatTu({
     int? maHoSoBaoTri,
     int? maHoSoSuaChua,
     required int maThietBi,
@@ -44,7 +44,13 @@ class MaterialUsageService {
     required String loaiCongViec,
     required List<BuocQuyTrinh> buoc,
   }) async {
-    await ApiClient.instance.post<dynamic>(
+    final chiTiet = <Map<String, dynamic>>[];
+    for (final b in buoc) {
+      chiTiet.addAll(b.toChiTietJsonList());
+    }
+    if (chiTiet.isEmpty) return null;
+
+    final data = await ApiClient.instance.post<dynamic>(
       '${ApiConstants.inventory}/ho-so-vat-tu',
       {
         if (maHoSoBaoTri != null) 'maHoSoBaoTri': maHoSoBaoTri,
@@ -53,9 +59,64 @@ class MaterialUsageService {
         'tenThietBi': tenThietBi,
         'loaiCongViec': loaiCongViec,
         'ngayThucHien': DateTime.now().toIso8601String(),
-        'chiTiet': buoc.map((b) => b.toJson()).toList(),
+        'chiTiet': chiTiet,
       },
     );
+    if (data is Map) {
+      return HoSoVatTuItem.fromJson(Map<String, dynamic>.from(data));
+    }
+    return null;
+  }
+
+  /// Cập nhật hồ sơ vật tư (chỉ khi còn Chờ gửi).
+  static Future<HoSoVatTuItem> capNhatHoSoVatTu({
+    required int maHoSoVatTu,
+    int? maHoSoBaoTri,
+    int? maHoSoSuaChua,
+    required int maThietBi,
+    required String tenThietBi,
+    required String loaiCongViec,
+    required List<BuocQuyTrinh> buoc,
+  }) async {
+    final chiTiet = <Map<String, dynamic>>[];
+    for (final b in buoc) {
+      chiTiet.addAll(b.toChiTietJsonList());
+    }
+    final data = await ApiClient.instance.put<dynamic>(
+      '${ApiConstants.inventory}/ho-so-vat-tu/$maHoSoVatTu',
+      {
+        if (maHoSoBaoTri != null) 'maHoSoBaoTri': maHoSoBaoTri,
+        if (maHoSoSuaChua != null) 'maHoSoSuaChua': maHoSoSuaChua,
+        'maThietBi': maThietBi,
+        'tenThietBi': tenThietBi,
+        'loaiCongViec': loaiCongViec,
+        'ngayThucHien': DateTime.now().toIso8601String(),
+        'chiTiet': chiTiet,
+      },
+    );
+    return HoSoVatTuItem.fromJson(Map<String, dynamic>.from(data as Map));
+  }
+
+  /// Lấy hồ sơ vật tư theo mã hồ sơ BT/SC (mới nhất).
+  static Future<HoSoVatTuItem?> layHoSoTheoCongViec({
+    int? maHoSoBaoTri,
+    int? maHoSoSuaChua,
+  }) async {
+    try {
+      final data = await ApiClient.instance.get<dynamic>(
+        '${ApiConstants.inventory}/ho-so-vat-tu/theo-cong-viec',
+        query: {
+          if (maHoSoBaoTri != null) 'maHoSoBaoTri': maHoSoBaoTri,
+          if (maHoSoSuaChua != null) 'maHoSoSuaChua': maHoSoSuaChua,
+        },
+      );
+      if (data is Map) {
+        return HoSoVatTuItem.fromJson(Map<String, dynamic>.from(data));
+      }
+    } catch (_) {
+      // 404 → chưa có hồ sơ
+    }
+    return null;
   }
 
   static Future<List<HoSoVatTuItem>> layDanhSachHoSoVatTu(
@@ -81,6 +142,14 @@ class MaterialUsageService {
   static Future<void> guiGiamDoc(int id) async {
     await ApiClient.instance.put<dynamic>(
       '${ApiConstants.inventory}/ho-so-vat-tu/$id/gui-giam-doc',
+      {},
+    );
+  }
+
+  /// Giám đốc xác nhận hồ sơ vật tư.
+  static Future<void> xacNhan(int id) async {
+    await ApiClient.instance.put<dynamic>(
+      '${ApiConstants.inventory}/ho-so-vat-tu/$id/xac-nhan',
       {},
     );
   }

@@ -22,33 +22,112 @@ class VatTuOption {
   );
 }
 
-/// Một bước trong quy trình (tối đa 4) — mô tả lấy theo thiết bị từ DB.
-class BuocQuyTrinh {
-  final int soBuoc;
-  final String moTa;
+/// Một dòng vật tư trong một bước quy trình (mỗi bước có thể nhiều dòng).
+class VatTuDong {
   int? maVatTu;
   String tenVatTu;
   int soLuong;
   int donGia;
+  String? donViTinh;
+
+  VatTuDong({
+    this.maVatTu,
+    this.tenVatTu = '',
+    this.soLuong = 1,
+    this.donGia = 0,
+    this.donViTinh,
+  });
+
+  int get thanhTien => soLuong * donGia;
+
+  Map<String, dynamic> toChiTietJson(int soBuoc, String moTaBuoc) => {
+    'soBuoc': soBuoc,
+    'moTaBuoc': moTaBuoc,
+    if (maVatTu != null) 'maVatTu': maVatTu,
+    'tenVatTu': tenVatTu,
+    'soLuong': soLuong,
+    'donGia': donGia,
+  };
+
+  VatTuDong copy() => VatTuDong(
+    maVatTu: maVatTu,
+    tenVatTu: tenVatTu,
+    soLuong: soLuong,
+    donGia: donGia,
+    donViTinh: donViTinh,
+  );
+}
+
+/// Một bước trong quy trình — mô tả lấy theo thiết bị từ DB; mỗi bước có list vật tư.
+class BuocQuyTrinh {
+  final int soBuoc;
+  final String moTa;
+  /// Nhiều vật tư cho cùng một bước.
+  List<VatTuDong> vatTuList;
   String ketQuaThucHien;
+
+  // Giữ tương thích cũ (1 vật tư) — lấy phần tử đầu nếu có
+  int? get maVatTu => vatTuList.isEmpty ? null : vatTuList.first.maVatTu;
+  set maVatTu(int? v) {
+    if (vatTuList.isEmpty) {
+      vatTuList.add(VatTuDong(maVatTu: v));
+    } else {
+      vatTuList.first.maVatTu = v;
+    }
+  }
+
+  String get tenVatTu => vatTuList.isEmpty ? '' : vatTuList.first.tenVatTu;
+  set tenVatTu(String v) {
+    if (vatTuList.isEmpty) {
+      vatTuList.add(VatTuDong(tenVatTu: v));
+    } else {
+      vatTuList.first.tenVatTu = v;
+    }
+  }
+
+  int get soLuong => vatTuList.isEmpty ? 0 : vatTuList.first.soLuong;
+  set soLuong(int v) {
+    if (vatTuList.isEmpty) {
+      vatTuList.add(VatTuDong(soLuong: v));
+    } else {
+      vatTuList.first.soLuong = v;
+    }
+  }
+
+  int get donGia => vatTuList.isEmpty ? 0 : vatTuList.first.donGia;
+  set donGia(int v) {
+    if (vatTuList.isEmpty) {
+      vatTuList.add(VatTuDong(donGia: v));
+    } else {
+      vatTuList.first.donGia = v;
+    }
+  }
 
   BuocQuyTrinh({
     required this.soBuoc,
     required this.moTa,
-    this.maVatTu,
-    this.tenVatTu = '',
-    this.soLuong = 0,
-    this.donGia = 0,
+    List<VatTuDong>? vatTuList,
     this.ketQuaThucHien = '',
-  });
+  }) : vatTuList = vatTuList ?? [];
 
-  int get thanhTien => soLuong * donGia;
+  int get thanhTien => vatTuList.fold(0, (s, d) => s + d.thanhTien);
 
   factory BuocQuyTrinh.fromJson(Map<String, dynamic> j) => BuocQuyTrinh(
     soBuoc: (j['soBuoc'] as num?)?.toInt() ?? 0,
     moTa: (j['moTaBuoc'] ?? j['moTa'])?.toString() ?? '',
   );
 
+  /// Xuất tất cả dòng vật tư của bước (mỗi dòng 1 chi tiết API).
+  List<Map<String, dynamic>> toChiTietJsonList() {
+    final out = <Map<String, dynamic>>[];
+    for (final d in vatTuList) {
+      if (d.tenVatTu.isEmpty || d.soLuong <= 0) continue;
+      out.add(d.toChiTietJson(soBuoc, moTa));
+    }
+    return out;
+  }
+
+  /// Tương thích cũ — 1 dòng.
   Map<String, dynamic> toJson() => {
     'soBuoc': soBuoc,
     'moTaBuoc': moTa,
@@ -61,10 +140,7 @@ class BuocQuyTrinh {
   BuocQuyTrinh copy() => BuocQuyTrinh(
     soBuoc: soBuoc,
     moTa: moTa,
-    maVatTu: maVatTu,
-    tenVatTu: tenVatTu,
-    soLuong: soLuong,
-    donGia: donGia,
+    vatTuList: vatTuList.map((e) => e.copy()).toList(),
     ketQuaThucHien: ketQuaThucHien,
   );
 }
@@ -99,7 +175,16 @@ class HoSoVatTuItem {
   });
 
   bool get daGuiGiamDoc =>
-      trangThai == 'Đã gửi GĐ' || trangThai == 'Đã xem';
+      trangThai == 'Chờ duyệt' ||
+          trangThai == 'Xác nhận' ||
+          trangThai == 'Đã gửi GĐ' ||
+          trangThai == 'Đã xem';
+
+  bool get choGui => trangThai == 'Chờ gửi';
+  bool get choDuyet =>
+      trangThai == 'Chờ duyệt' || trangThai == 'Đã gửi GĐ';
+  bool get daXacNhan =>
+      trangThai == 'Xác nhận' || trangThai == 'Đã xem';
 
   factory HoSoVatTuItem.fromJson(Map<String, dynamic> j) {
     final ct = j['chiTiet'] ?? j['ChiTiet'];
