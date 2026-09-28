@@ -831,7 +831,7 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                         ),
                         const Spacer(),
                         Text(
-                          '${item.chiTiet.length} bước',
+                          '${_nhomChiTietTheoBuoc(item.chiTiet).length} bước',
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontWeight: FontWeight.w600,
@@ -842,14 +842,16 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                     ),
                     const SizedBox(height: 12),
 
-                    // ===== Step cards =====
-                    ...item.chiTiet.asMap().entries.map((e) {
+                    // ===== Step cards (gộp nhiều vật tư cùng bước) =====
+                    ..._nhomChiTietTheoBuoc(item.chiTiet)
+                        .asMap()
+                        .entries
+                        .map((e) {
                       final i = e.key;
-                      final c = e.value;
+                      final nhom = e.value;
                       return TweenAnimationBuilder<double>(
                         tween: Tween(begin: 0, end: 1),
-                        duration: Duration(
-                            milliseconds: 320 + i * 70),
+                        duration: Duration(milliseconds: 320 + i * 70),
                         curve: Curves.easeOutCubic,
                         builder: (context, v, child) => Opacity(
                           opacity: v,
@@ -858,7 +860,7 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                             child: child,
                           ),
                         ),
-                        child: _buocCard(c),
+                        child: _buocCardNhom(nhom),
                       );
                     }),
 
@@ -1042,8 +1044,31 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
     );
   }
 
-  Widget _buocCard(ChiTietVatTuSuDung c) {
-    final coVatTu = c.tenVatTu.isNotEmpty && c.soLuong > 0;
+  /// Gộp các dòng chi tiết cùng số bước thành 1 nhóm (nhiều vật tư / bước).
+  List<List<ChiTietVatTuSuDung>> _nhomChiTietTheoBuoc(
+      List<ChiTietVatTuSuDung> chiTiet) {
+    final map = <int, List<ChiTietVatTuSuDung>>{};
+    for (final c in chiTiet) {
+      map.putIfAbsent(c.soBuoc, () => []).add(c);
+    }
+    final keys = map.keys.toList()..sort();
+    return [for (final k in keys) map[k]!];
+  }
+
+  /// 1 card / bước — liệt kê tất cả vật tư của bước đó bên trong.
+  Widget _buocCardNhom(List<ChiTietVatTuSuDung> dong) {
+    if (dong.isEmpty) return const SizedBox.shrink();
+    final soBuoc = dong.first.soBuoc;
+    final moTa = dong
+        .map((e) => e.moTaBuoc.trim())
+        .where((s) => s.isNotEmpty)
+        .toSet()
+        .join(' · ');
+    final vatTuCoSl =
+    dong.where((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0).toList();
+    final tongTienBuoc =
+    vatTuCoSl.fold<int>(0, (s, c) => s + c.thanhTien);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -1061,7 +1086,6 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Step header
           Container(
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             decoration: BoxDecoration(
@@ -1094,7 +1118,7 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                     ],
                   ),
                   child: Text(
-                    '${c.soBuoc}',
+                    '$soBuoc',
                     style: const TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
@@ -1104,15 +1128,29 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Bước ${c.soBuoc}',
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800, fontSize: 15),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Bước $soBuoc',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 15),
+                      ),
+                      if (vatTuCoSl.length > 1)
+                        Text(
+                          '${vatTuCoSl.length} vật tư',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: Colors.grey.shade600,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                    ],
                   ),
                 ),
-                if (coVatTu)
+                if (vatTuCoSl.isNotEmpty)
                   Text(
-                    _fmtTien(c.thanhTien),
+                    _fmtTien(tongTienBuoc),
                     style: const TextStyle(
                       fontWeight: FontWeight.w800,
                       color: AppColors.primary,
@@ -1127,41 +1165,16 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  c.moTaBuoc,
-                  style: TextStyle(
-                    color: Colors.grey.shade800,
-                    height: 1.4,
-                    fontSize: 13.5,
-                  ),
-                ),
-                if (coVatTu) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF0F9FF),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFBAE6FD)),
-                    ),
-                    child: Column(
-                      children: [
-                        _miniRow(Icons.inventory_2_outlined, 'Vật tư',
-                            c.tenVatTu),
-                        const SizedBox(height: 6),
-                        _miniRow(Icons.numbers_rounded, 'Số lượng',
-                            '${c.soLuong}'),
-                        const SizedBox(height: 6),
-                        _miniRow(Icons.sell_outlined, 'Đơn giá',
-                            _fmtTien(c.donGia)),
-                        const SizedBox(height: 6),
-                        _miniRow(Icons.payments_outlined, 'Thành tiền',
-                            _fmtTien(c.thanhTien),
-                            bold: true),
-                      ],
+                if (moTa.isNotEmpty)
+                  Text(
+                    moTa,
+                    style: TextStyle(
+                      color: Colors.grey.shade800,
+                      height: 1.4,
+                      fontSize: 13.5,
                     ),
                   ),
-                ] else ...[
+                if (vatTuCoSl.isEmpty) ...[
                   const SizedBox(height: 8),
                   Text(
                     'Không dùng vật tư',
@@ -1171,6 +1184,53 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                       fontSize: 12.5,
                     ),
                   ),
+                ] else ...[
+                  const SizedBox(height: 12),
+                  for (var i = 0; i < vatTuCoSl.length; i++) ...[
+                    if (i > 0) const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0F9FF),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFBAE6FD)),
+                      ),
+                      child: Column(
+                        children: [
+                          if (vatTuCoSl.length > 1)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 6),
+                              child: Align(
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Vật tư ${i + 1}/${vatTuCoSl.length}',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.primary.withValues(
+                                        alpha: 0.85),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          _miniRow(Icons.inventory_2_outlined, 'Vật tư',
+                              vatTuCoSl[i].tenVatTu),
+                          const SizedBox(height: 6),
+                          _miniRow(Icons.numbers_rounded, 'Số lượng',
+                              '${vatTuCoSl[i].soLuong}'),
+                          const SizedBox(height: 6),
+                          _miniRow(Icons.sell_outlined, 'Đơn giá',
+                              _fmtTien(vatTuCoSl[i].donGia)),
+                          const SizedBox(height: 6),
+                          _miniRow(
+                              Icons.payments_outlined,
+                              'Thành tiền',
+                              _fmtTien(vatTuCoSl[i].thanhTien),
+                              bold: true),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ],
             ),

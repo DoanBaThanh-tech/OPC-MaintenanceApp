@@ -541,13 +541,15 @@ class _LichSuPheDuyetScreenState extends State<LichSuPheDuyetScreen>
   final _ctrl = LichSuPheDuyetController();
   late TabController _tabCtrl;
 
+  static const _tabs = ['Bảo trì', 'Sửa chữa', 'Vật tư'];
+
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl = TabController(length: _tabs.length, vsync: this);
     _tabCtrl.addListener(() {
       if (!_tabCtrl.indexIsChanging) {
-        _ctrl.doiTab(_tabCtrl.index == 0 ? 'Bảo trì' : 'Sửa chữa');
+        _ctrl.doiTab(_tabs[_tabCtrl.index]);
       }
     });
     _ctrl.addListener(() {
@@ -593,9 +595,11 @@ class _LichSuPheDuyetScreenState extends State<LichSuPheDuyetScreen>
           indicatorWeight: 3,
           labelColor: Colors.white,
           unselectedLabelColor: Colors.white70,
+          isScrollable: true,
           tabs: const [
             Tab(text: 'Bảo trì'),
             Tab(text: 'Sửa chữa'),
+            Tab(text: 'Vật tư'),
           ],
         ),
       ),
@@ -746,7 +750,9 @@ class _LichSuCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final daDuyet = item.daDuyet;
     final mau = daDuyet ? AppColors.success : AppColors.danger;
-    final nhanTrangThai = daDuyet ? 'Đã duyệt' : 'Từ chối';
+    final nhanTrangThai = item.loai == 'Vật tư'
+        ? (daDuyet ? 'Đã xác nhận' : 'Từ chối')
+        : (daDuyet ? 'Đã duyệt' : 'Từ chối');
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),

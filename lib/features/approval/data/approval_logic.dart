@@ -92,7 +92,11 @@ class LichSuPheDuyetItem {
     required this.nam,
   });
 
-  bool get daDuyet => trangThaiHoSo == 'Đã duyệt' || quyetDinh == 'Duyệt';
+  bool get daDuyet =>
+      trangThaiHoSo == 'Đã duyệt' ||
+          trangThaiHoSo == 'Xác nhận' ||
+          quyetDinh == 'Duyệt' ||
+          quyetDinh == 'Xác nhận';
   bool get tuChoi => trangThaiHoSo == 'Từ chối' || quyetDinh == 'Từ chối';
 
   factory LichSuPheDuyetItem.fromJson(Map<String, dynamic> j) {
@@ -157,6 +161,20 @@ class ApprovalService {
     String? loai,
     int? nam,
   }) async {
+    // Hồ sơ vật tư: endpoint Inventory riêng
+    if (loai == 'Vật tư') {
+      final query = <String, dynamic>{};
+      if (nam != null) query['nam'] = nam;
+      final data = await ApiClient.instance.get<List<dynamic>>(
+        '${ApiConstants.inventory}/ho-so-vat-tu/lich-su-xac-nhan',
+        query: query.isEmpty ? null : query,
+      );
+      return data
+          .map((e) =>
+          LichSuPheDuyetItem.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+    }
+
     final query = <String, dynamic>{};
     if (loai != null) query['loai'] = loai;
     if (nam != null) query['nam'] = nam;
@@ -171,6 +189,12 @@ class ApprovalService {
   }
 
   static Future<List<int>> layNamCoLichSu({String? loai}) async {
+    if (loai == 'Vật tư') {
+      final data = await ApiClient.instance.get<List<dynamic>>(
+        '${ApiConstants.inventory}/ho-so-vat-tu/lich-su-xac-nhan/nam',
+      );
+      return data.map((e) => (e as num).toInt()).toList();
+    }
     final data = await ApiClient.instance.get<List<dynamic>>(
       '${ApiConstants.workOrder}/lich-su-phe-duyet/nam',
       query: loai != null ? {'loai': loai} : null,
