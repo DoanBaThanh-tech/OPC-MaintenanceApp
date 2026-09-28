@@ -34,11 +34,11 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
   late final AnimationController _headerAnim;
   late final TabController _tab;
 
+  // Không hiện tab "Chờ xác nhận" trên Hồ sơ SC — Xưởng dùng trang Quy trình riêng.
   static const _tabs = [
     'Tất cả',
     'Chờ phân công',
     'Đang thực hiện',
-    'Chờ xác nhận',
     'Đã hoàn thành',
   ];
 

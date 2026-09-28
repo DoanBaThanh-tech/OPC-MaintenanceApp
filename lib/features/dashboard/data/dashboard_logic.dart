@@ -4,6 +4,7 @@ import '../../maintenance_plan/presentation/maintenance_plan_screens.dart';
 import '../../work_order/presentation/work_order_screens.dart';
 import '../../work_order/presentation/technician_screens.dart';
 import '../../work_order/presentation/work_order_repair_screens.dart';
+import '../../work_order/presentation/xuong_quy_trinh_screen.dart';
 import '../../approval/presentation/approval_screens.dart';
 import '../../equipment/presentation/equipment_screens.dart';
 import '../../work_order/presentation/work_order_assign_history_screen.dart';
@@ -75,36 +76,29 @@ class DashboardLogic {
           ]),
         ];
 
-    // Xưởng: lịch BT Chờ duyệt + xác nhận kết quả NVKT (Chờ xác nhận) + SC
+    // Xưởng: lịch BT chờ duyệt + trang Quy trình (NVKT gửi sau Xong) + SC
       case 'Xưởng':
       case 'Tổ trưởng sản xuất': // tương thích JWT/DB cũ
         return [
-          MenuGroup(tieuDe: 'Hồ sơ bảo trì', muc: [
+          MenuGroup(tieuDe: 'Hồ sơ', muc: [
             MenuItemData(
               icon: Icons.fact_check_rounded,
               label: 'Hồ sơ bảo trì (chờ lịch)',
-              screenBuilder: () => const WorkOrderBaoTriListScreen(trangThaiMacDinh: 'Chờ duyệt'),
-            ),
-            MenuItemData(
-              icon: Icons.task_alt_rounded,
-              label: 'Kết quả chờ xác nhận',
               screenBuilder: () =>
-              const WorkOrderBaoTriListScreen(trangThaiMacDinh: 'Chờ xác nhận'),
+              const WorkOrderBaoTriListScreen(trangThaiMacDinh: 'Chờ duyệt'),
             ),
-          ]),
-          MenuGroup(tieuDe: 'Sửa chữa', muc: [
             MenuItemData(
               icon: Icons.handyman_rounded,
               label: 'Hồ sơ sửa chữa',
               screenBuilder: () =>
               const WorkOrderSuaChuaListScreen(hienFabTao: true),
             ),
+          ]),
+          MenuGroup(tieuDe: 'Quy trình', muc: [
             MenuItemData(
-              icon: Icons.task_alt_rounded,
-              label: 'SC chờ xác nhận',
-              screenBuilder: () => const WorkOrderSuaChuaListScreen(
-                trangThaiMacDinh: 'Chờ xác nhận',
-              ),
+              icon: Icons.account_tree_rounded,
+              label: 'Quy trình',
+              screenBuilder: () => const XuongQuyTrinhScreen(),
             ),
           ]),
         ];

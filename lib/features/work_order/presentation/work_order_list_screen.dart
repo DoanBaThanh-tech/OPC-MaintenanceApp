@@ -22,12 +22,12 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
   late TabController _tab;
   late AnimationController _headerAnim;
 
+  // Không hiện tab "Chờ xác nhận" trên Hồ sơ BT — Xưởng dùng trang Quy trình riêng.
   final _tabs = const [
     'Tất cả',
     'Chờ duyệt',
     'Đã duyệt',
     'Đang thực hiện',
-    'Chờ xác nhận',
     'Đã hoàn thành',
     'Từ chối'
   ];
