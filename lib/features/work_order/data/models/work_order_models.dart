@@ -369,12 +369,29 @@ class HoSoSuaChua {
     this.rowVersion,
   });
 
-  bool get choPhanCong =>
-      trangThai == 'Chờ phân công' || trangThai == 'Đã duyệt';
   bool get dangThucHien => trangThai == 'Đang thực hiện';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
   bool get biTuChoi => trangThai == 'Từ chối';
-  bool get coTheCapNhatPhanCong => dangThucHien;
+
+  /// Đã từng phân công NV (có mã PC hoặc danh sách NV thực hiện).
+  bool get daCoPhanCong =>
+      maPhanCong != null ||
+          maNhanVienThucHiens.isNotEmpty ||
+          (tenNhanVienThucHiens != null && tenNhanVienThucHiens!.trim().isNotEmpty);
+
+  /// Chưa phân công lần nào — nút "Phân công nhân viên".
+  bool get choPhanCong =>
+      !daCoPhanCong &&
+          (trangThai == 'Chờ phân công' || trangThai == 'Đã duyệt');
+
+  /// Đã phân công, còn được đổi NV (NV báo bận) — nút "Cập nhật phân công".
+  bool get coTheCapNhatPhanCong =>
+      daCoPhanCong &&
+          !daHoanThanh &&
+          !biTuChoi &&
+          (trangThai == 'Chờ phân công' ||
+              trangThai == 'Đã duyệt' ||
+              trangThai == 'Đang thực hiện');
 
   factory HoSoSuaChua.fromJson(Map<String, dynamic> j) {
     int asInt(dynamic v) => (v as num?)?.toInt() ?? 0;

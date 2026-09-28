@@ -1425,7 +1425,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                       ],
                     ),
                   ),
-                  if (hs.daHoanThanh &&
+                  if (hs.daCoPhanCong &&
                       hs.tenNhanVienThucHiens != null &&
                       hs.tenNhanVienThucHiens!.isNotEmpty) ...[
                     const SizedBox(height: 12),
@@ -1433,13 +1433,16 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          const Row(
+                          Row(
                             children: [
-                              Icon(Icons.groups_rounded,
+                              const Icon(Icons.groups_rounded,
                                   color: _scPrimary, size: 20),
-                              SizedBox(width: 8),
-                              Text('Nhân viên đã đảm nhận',
-                                  style: TextStyle(
+                              const SizedBox(width: 8),
+                              Text(
+                                  hs.daHoanThanh
+                                      ? 'Nhân viên đã đảm nhận'
+                                      : 'Nhân viên đang được phân công',
+                                  style: const TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 13.5)),
                             ],
