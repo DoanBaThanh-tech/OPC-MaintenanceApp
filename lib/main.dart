@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'core/network/api_client.dart';
 import 'core/storage/token_storage.dart';
+import 'core/theme/app_theme.dart';
 import 'features/auth/presentation/auth_screens.dart';
+import 'features/auth/presentation/splash_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
@@ -9,8 +11,8 @@ void main() {
   ApiClient.instance.onUnauthorized = () async {
     await TokenStorage.xoaPhienDangNhap();
     navigatorKey.currentState?.pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginScreen()), // ← sửa: về LoginScreen, không phải DashboardScreen
-      (route) => false,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
     );
   };
 
@@ -26,7 +28,9 @@ class OPCApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       title: 'OPC Maintenance',
       debugShowCheckedModeBanner: false,
-      home: const LoginScreen(), // ← sửa: mở app luôn vào màn Đăng nhập trước
+      theme: AppTheme.light,
+      // Splash → Đăng nhập (sau ~2.8s + hiệu ứng)
+      home: const SplashScreen(),
     );
   }
 }
