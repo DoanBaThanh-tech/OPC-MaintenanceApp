@@ -3,10 +3,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/theme/app_theme.dart';
 import 'auth_screens.dart';
 
-/// Splash OPC — xanh chủ đạo, hiệu ứng vào/ra hiện đại → Đăng nhập.
+/// Splash OPC — nền trắng, điểm nhấn xanh, co giãn theo phone/tablet → Đăng nhập.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -18,8 +17,7 @@ class _SplashScreenState extends State<SplashScreen>
     with TickerProviderStateMixin {
   static const _blue = Color(0xFF0068A9);
   static const _blueMid = Color(0xFF0284C7);
-  static const _blueSoft = Color(0xFF0EA5E9);
-  static const _blueDeep = Color(0xFF004E80);
+  static const _blueSoft = Color(0xFF38BDF8);
 
   late final AnimationController _mainCtrl;
   late final AnimationController _pulseCtrl;
@@ -41,70 +39,72 @@ class _SplashScreenState extends State<SplashScreen>
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
+        systemNavigationBarColor: Colors.white,
+        systemNavigationBarIconBrightness: Brightness.dark,
       ),
     );
 
     _mainCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 1500),
     );
     _pulseCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1800),
+      duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
     _ringCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2400),
+      duration: const Duration(milliseconds: 2800),
     )..repeat();
     _exitCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 480),
+      duration: const Duration(milliseconds: 420),
     );
 
-    _logoScale = Tween<double>(begin: 0.55, end: 1).animate(
+    _logoScale = Tween<double>(begin: 0.72, end: 1).animate(
       CurvedAnimation(
         parent: _mainCtrl,
-        curve: const Interval(0.0, 0.55, curve: Curves.easeOutBack),
+        curve: const Interval(0.0, 0.55, curve: Curves.easeOutCubic),
       ),
     );
     _logoFade = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _mainCtrl,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeOut),
+        curve: const Interval(0.0, 0.35, curve: Curves.easeOut),
       ),
     );
     _titleFade = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _mainCtrl,
-        curve: const Interval(0.35, 0.7, curve: Curves.easeOut),
+        curve: const Interval(0.3, 0.65, curve: Curves.easeOut),
       ),
     );
     _titleSlide = Tween<Offset>(
-      begin: const Offset(0, 0.35),
+      begin: const Offset(0, 0.18),
       end: Offset.zero,
     ).animate(
       CurvedAnimation(
         parent: _mainCtrl,
-        curve: const Interval(0.35, 0.75, curve: Curves.easeOutCubic),
+        curve: const Interval(0.3, 0.7, curve: Curves.easeOutCubic),
       ),
     );
     _subFade = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _mainCtrl,
-        curve: const Interval(0.5, 0.85, curve: Curves.easeOut),
+        curve: const Interval(0.48, 0.82, curve: Curves.easeOut),
       ),
     );
     _barFade = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _mainCtrl,
-        curve: const Interval(0.65, 1.0, curve: Curves.easeOut),
+        curve: const Interval(0.62, 1.0, curve: Curves.easeOut),
       ),
     );
     _exitFade = Tween<double>(begin: 1, end: 0).animate(
-      CurvedAnimation(parent: _exitCtrl, curve: Curves.easeInCubic),
+      CurvedAnimation(parent: _exitCtrl, curve: Curves.easeIn),
     );
-    _exitScale = Tween<double>(begin: 1, end: 1.08).animate(
+    _exitScale = Tween<double>(begin: 1, end: 0.97).animate(
       CurvedAnimation(parent: _exitCtrl, curve: Curves.easeIn),
     );
 
@@ -113,19 +113,18 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _scheduleGoLogin() async {
-    await Future.delayed(const Duration(milliseconds: 2800));
+    await Future.delayed(const Duration(milliseconds: 2600));
     if (!mounted) return;
     await _exitCtrl.forward();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 520),
-        reverseTransitionDuration: const Duration(milliseconds: 320),
+        transitionDuration: const Duration(milliseconds: 480),
         pageBuilder: (_, __, ___) => const LoginScreen(),
         transitionsBuilder: (_, anim, __, child) {
           final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
           final slide = Tween<Offset>(
-            begin: const Offset(0, 0.06),
+            begin: const Offset(0, 0.04),
             end: Offset.zero,
           ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic));
           return FadeTransition(
@@ -148,11 +147,25 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
+    final media = MediaQuery.of(context);
+    final size = media.size;
+    final shortest = size.shortestSide;
+    final isTablet = shortest >= 600;
+    final isWide = size.width >= 900;
+
+    // Co giãn theo kích thước thiết bị
+    final logoSize = (shortest * 0.22).clamp(88.0, isTablet ? 140.0 : 118.0);
+    final titleSize = (shortest * 0.055).clamp(22.0, isTablet ? 32.0 : 26.0);
+    final subSize = (shortest * 0.032).clamp(13.0, 16.0);
+    final companySize = (shortest * 0.034).clamp(13.5, 16.0);
+    final hPad = isWide ? size.width * 0.18 : (isTablet ? 48.0 : 28.0);
+    final ringSize = logoSize * 1.85;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: AnimatedBuilder(
-        animation: Listenable.merge([_mainCtrl, _pulseCtrl, _ringCtrl, _exitCtrl]),
+        animation: Listenable.merge(
+            [_mainCtrl, _pulseCtrl, _ringCtrl, _exitCtrl]),
         builder: (context, _) {
           return Opacity(
             opacity: _exitFade.value,
@@ -161,168 +174,156 @@ class _SplashScreenState extends State<SplashScreen>
               child: Container(
                 width: double.infinity,
                 height: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(0xFF003D66),
-                      _blueDeep,
-                      _blue,
-                      _blueMid,
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    stops: [0.0, 0.35, 0.7, 1.0],
-                  ),
-                ),
+                color: Colors.white,
                 child: Stack(
                   children: [
-                    // Vòng sáng nền
+                    // Soft blue blobs (nhẹ, nền trắng)
                     Positioned(
-                      top: -size.height * 0.12,
-                      right: -size.width * 0.2,
-                      child: _GlowOrb(
-                        size: size.width * 0.7,
-                        color: _blueSoft.withValues(alpha: 0.22),
+                      top: -size.height * 0.08,
+                      right: -size.width * 0.15,
+                      child: _SoftBlob(
+                        size: size.width * (isTablet ? 0.45 : 0.55),
+                        color: _blueSoft.withValues(alpha: 0.12),
                         pulse: _pulseCtrl.value,
                       ),
                     ),
                     Positioned(
-                      bottom: -size.height * 0.08,
-                      left: -size.width * 0.25,
-                      child: _GlowOrb(
-                        size: size.width * 0.65,
-                        color: Colors.white.withValues(alpha: 0.08),
+                      bottom: -size.height * 0.06,
+                      left: -size.width * 0.18,
+                      child: _SoftBlob(
+                        size: size.width * (isTablet ? 0.4 : 0.5),
+                        color: _blue.withValues(alpha: 0.08),
                         pulse: 1 - _pulseCtrl.value,
                       ),
                     ),
-                    // Vòng quay trang trí
+                    // Vòng dashed quanh logo
                     Center(
-                      child: Transform.rotate(
-                        angle: _ringCtrl.value * 2 * math.pi,
-                        child: Opacity(
-                          opacity: 0.18 * _logoFade.value,
-                          child: CustomPaint(
-                            size: const Size(220, 220),
-                            painter: _DashedRingPainter(
-                              color: Colors.white.withValues(alpha: 0.45),
+                      child: Transform.translate(
+                        offset: Offset(0, -size.height * 0.06),
+                        child: Transform.rotate(
+                          angle: _ringCtrl.value * 2 * math.pi,
+                          child: Opacity(
+                            opacity: 0.35 * _logoFade.value,
+                            child: CustomPaint(
+                              size: Size(ringSize, ringSize),
+                              painter: _DashedRingPainter(
+                                color: _blue.withValues(alpha: 0.28),
+                              ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                    // Nội dung chính
                     SafeArea(
-                      child: Column(
-                        children: [
-                          const Spacer(flex: 3),
-                          // Logo
-                          FadeTransition(
-                            opacity: _logoFade,
-                            child: ScaleTransition(
-                              scale: _logoScale,
-                              child: _LogoBadge(pulse: _pulseCtrl.value),
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: hPad),
+                        child: Column(
+                          children: [
+                            const Spacer(flex: 5),
+                            FadeTransition(
+                              opacity: _logoFade,
+                              child: ScaleTransition(
+                                scale: _logoScale,
+                                child: _LogoBadge(
+                                  size: logoSize,
+                                  pulse: _pulseCtrl.value,
+                                ),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 28),
-                          // Tên app
-                          SlideTransition(
-                            position: _titleSlide,
-                            child: FadeTransition(
-                              opacity: _titleFade,
-                              child: const Column(
+                            SizedBox(height: isTablet ? 32 : 24),
+                            SlideTransition(
+                              position: _titleSlide,
+                              child: FadeTransition(
+                                opacity: _titleFade,
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      'OPC Maintenance',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: const Color(0xFF0F172A),
+                                        fontSize: titleSize,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: -0.3,
+                                        height: 1.15,
+                                      ),
+                                    ),
+                                    SizedBox(height: isTablet ? 8 : 6),
+                                    Text(
+                                      'Công ty CP Dược phẩm OPC',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: _blue,
+                                        fontSize: companySize,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SizedBox(height: isTablet ? 16 : 12),
+                            FadeTransition(
+                              opacity: _subFade,
+                              child: ConstrainedBox(
+                                constraints:
+                                BoxConstraints(maxWidth: isTablet ? 420 : 320),
+                                child: Text(
+                                  'Quản lý hồ sơ bảo trì & sửa chữa cơ điện',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: const Color(0xFF64748B),
+                                    fontSize: subSize,
+                                    height: 1.45,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const Spacer(flex: 4),
+                            FadeTransition(
+                              opacity: _barFade,
+                              child: Column(
                                 children: [
-                                  Text(
-                                    'OPC Maintenance',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -0.4,
-                                      height: 1.15,
+                                  SizedBox(
+                                    width: isTablet ? 140 : 112,
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: LinearProgressIndicator(
+                                        minHeight: 3,
+                                        backgroundColor:
+                                        _blue.withValues(alpha: 0.12),
+                                        valueColor:
+                                        const AlwaysStoppedAnimation(_blueMid),
+                                      ),
                                     ),
                                   ),
-                                  SizedBox(height: 6),
+                                  const SizedBox(height: 12),
                                   Text(
-                                    'Công ty CP Dược phẩm OPC',
-                                    textAlign: TextAlign.center,
+                                    'Đang khởi động…',
                                     style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 14.5,
-                                      fontWeight: FontWeight.w600,
-                                      letterSpacing: 0.2,
+                                      color: const Color(0xFF94A3B8),
+                                      fontSize: isTablet ? 13.5 : 12.5,
+                                      fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 14),
-                          FadeTransition(
-                            opacity: _subFade,
-                            child: Padding(
-                              padding:
-                              const EdgeInsets.symmetric(horizontal: 40),
+                            SizedBox(height: isTablet ? 28 : 20),
+                            FadeTransition(
+                              opacity: _barFade,
                               child: Text(
-                                'Quản lý hồ sơ bảo trì & sửa chữa cơ điện',
-                                textAlign: TextAlign.center,
+                                '© OPC · Cơ điện nhà máy',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.88),
-                                  fontSize: 14,
-                                  height: 1.4,
-                                  fontWeight: FontWeight.w500,
+                                  color: const Color(0xFFCBD5E1),
+                                  fontSize: isTablet ? 12.5 : 11.5,
                                 ),
                               ),
                             ),
-                          ),
-                          const Spacer(flex: 2),
-                          // Progress
-                          FadeTransition(
-                            opacity: _barFade,
-                            child: Column(
-                              children: [
-                                SizedBox(
-                                  width: 120,
-                                  child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: LinearProgressIndicator(
-                                      minHeight: 3.5,
-                                      backgroundColor:
-                                      Colors.white.withValues(alpha: 0.2),
-                                      valueColor:
-                                      const AlwaysStoppedAnimation<Color>(
-                                          Colors.white),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  'Đang khởi động…',
-                                  style: TextStyle(
-                                    color:
-                                    Colors.white.withValues(alpha: 0.75),
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 36),
-                          FadeTransition(
-                            opacity: _barFade,
-                            child: Text(
-                              '© OPC · Cơ điện nhà máy',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.45),
-                                fontSize: 11.5,
-                              ),
-                            ),
-                          ),
-                          SizedBox(
-                              height:
-                              16 + MediaQuery.paddingOf(context).bottom),
-                        ],
+                            SizedBox(height: 12 + media.padding.bottom),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -337,59 +338,46 @@ class _SplashScreenState extends State<SplashScreen>
 }
 
 class _LogoBadge extends StatelessWidget {
+  final double size;
   final double pulse;
-  const _LogoBadge({required this.pulse});
+  const _LogoBadge({required this.size, required this.pulse});
 
   @override
   Widget build(BuildContext context) {
-    final glow = 0.35 + pulse * 0.25;
+    final iconSize = size * 0.42;
     return Container(
-      width: 112,
-      height: 112,
+      width: size,
+      height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         gradient: const LinearGradient(
-          colors: [Color(0xFF0EA5E9), Color(0xFF0068A9), Color(0xFF004E80)],
+          colors: [Color(0xFF38BDF8), Color(0xFF0068A9)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0EA5E9).withValues(alpha: glow),
-            blurRadius: 28 + pulse * 12,
-            spreadRadius: 2,
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 16,
+            color: const Color(0xFF0068A9).withValues(alpha: 0.22 + pulse * 0.1),
+            blurRadius: 20 + pulse * 8,
             offset: const Offset(0, 8),
           ),
         ],
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.35),
-          width: 2.5,
-        ),
       ),
-      child: const Stack(
-        alignment: Alignment.center,
-        children: [
-          Icon(
-            Icons.precision_manufacturing_rounded,
-            size: 48,
-            color: Colors.white,
-          ),
-        ],
+      child: Icon(
+        Icons.precision_manufacturing_rounded,
+        size: iconSize,
+        color: Colors.white,
       ),
     );
   }
 }
 
-class _GlowOrb extends StatelessWidget {
+class _SoftBlob extends StatelessWidget {
   final double size;
   final Color color;
   final double pulse;
 
-  const _GlowOrb({
+  const _SoftBlob({
     required this.size,
     required this.color,
     required this.pulse,
@@ -397,7 +385,7 @@ class _GlowOrb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final s = size * (0.92 + pulse * 0.08);
+    final s = size * (0.94 + pulse * 0.06);
     return Container(
       width: s,
       height: s,
@@ -420,14 +408,15 @@ class _DashedRingPainter extends CustomPainter {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.6
+      ..strokeWidth = 1.4
       ..strokeCap = StrokeCap.round;
 
-    final rect = Rect.fromLTWH(8, 8, size.width - 16, size.height - 16);
-    const dash = 10.0;
-    const gap = 8.0;
-    final circumference = 2 * math.pi * (rect.width / 2);
-    final n = (circumference / (dash + gap)).floor();
+    final rect = Rect.fromLTWH(6, 6, size.width - 12, size.height - 12);
+    const dash = 9.0;
+    const gap = 7.0;
+    final r = rect.width / 2;
+    final circumference = 2 * math.pi * r;
+    final n = math.max(8, (circumference / (dash + gap)).floor());
     final sweep = (2 * math.pi) / n;
 
     for (var i = 0; i < n; i++) {
