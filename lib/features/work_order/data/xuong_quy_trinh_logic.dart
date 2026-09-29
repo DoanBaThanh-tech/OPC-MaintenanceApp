@@ -7,8 +7,8 @@ import 'services/work_order_service.dart';
 import 'services/material_usage_service.dart';
 
 /// Logic nghiệp vụ trang **Quy trình** của Xưởng.
-/// NVKT bấm Xong → HS BT/SC = "Chờ xác nhận" → xuất hiện tại đây.
-/// Xưởng Xác nhận → Hoàn thành; Từ chối → NVKT cập nhật lại quy trình.
+/// NVKT Xong → HS vẫn **Đang thực hiện**, PC = Chờ xác nhận → hiện tại đây.
+/// Xưởng Xác nhận → HS **Đã hoàn thành**; Từ chối → PC Từ chối (HS vẫn Đang thực hiện).
 class XuongQuyTrinhController extends ChangeNotifier {
   List<HoSoBaoTri> dsBaoTri = [];
   List<HoSoSuaChua> dsSuaChua = [];
@@ -29,7 +29,7 @@ class XuongQuyTrinhController extends ChangeNotifier {
       ]);
       final allBt = results[0] as List<HoSoBaoTri>;
       final allSc = results[1] as List<HoSoSuaChua>;
-      // Chỉ lấy hồ sơ NVKT đã gửi quy trình (Chờ xác nhận)
+      // HS Đang thực hiện + PC Chờ xác nhận (hoặc HS cũ còn Chờ xác nhận)
       dsBaoTri = allBt.where((e) => e.choXacNhanKetQua).toList();
       dsSuaChua = allSc.where((e) => e.choXacNhanKetQua).toList();
     } catch (e) {

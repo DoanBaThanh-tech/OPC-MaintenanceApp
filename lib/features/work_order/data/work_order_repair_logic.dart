@@ -45,6 +45,12 @@ class WorkOrderSuaChuaListController extends ChangeNotifier {
       if (tab == 'Chờ phân công') {
         return h.trangThai == 'Chờ phân công' || h.trangThai == 'Đã duyệt';
       }
+      // Gồm HS đã gửi quy trình (PC chờ Xưởng) + dữ liệu cũ nhãn "Chờ xác nhận"
+      if (tab == 'Đang thực hiện') {
+        return h.trangThai == 'Đang thực hiện' ||
+            h.trangThai == 'Chờ xác nhận' ||
+            h.choXacNhanKetQua;
+      }
       return h.trangThai == tab;
     }).toList();
   }

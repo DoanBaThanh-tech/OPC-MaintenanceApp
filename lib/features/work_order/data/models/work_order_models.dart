@@ -124,8 +124,10 @@ class HoSoBaoTri {
           trangThaiPhanCong != 'Hoàn thành';
   bool get biTuChoi => trangThai == 'Từ chối';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
-  /// NVKT đã bấm Xong — chờ Xưởng xác nhận kết quả thực hiện.
-  bool get choXacNhanKetQua => trangThai == 'Chờ xác nhận';
+  /// NVKT đã gửi quy trình — HS vẫn Đang thực hiện; PC = Chờ xác nhận (Xưởng).
+  bool get choXacNhanKetQua =>
+      trangThai == 'Chờ xác nhận' ||
+          (trangThai == 'Đang thực hiện' && trangThaiPhanCong == 'Chờ xác nhận');
 
   factory HoSoBaoTri.fromJson(Map<String, dynamic> j) {
     int asInt(dynamic v) => (v as num?)?.toInt() ?? 0;
@@ -206,6 +208,7 @@ TrangThaiHoSoBaoTri phanLoaiTrangThaiHoSo(String tt) {
     case 'Đã duyệt':
       return TrangThaiHoSoBaoTri.daDuyet;
     case 'Đang thực hiện':
+    case 'Chờ xác nhận': // dữ liệu cũ trên HS — hiển thị như Đang thực hiện
       return TrangThaiHoSoBaoTri.dangThucHien;
     case 'Đã hoàn thành':
       return TrangThaiHoSoBaoTri.daHoanThanh;
@@ -296,35 +299,32 @@ class YeuCauPhanCong {
     this.ngayTaoHoSo,
   });
 
-  /// NVKT đã gửi quy trình — chờ Xưởng xác nhận (không còn "Cần làm").
+  /// Đã gửi quy trình chờ Xưởng (HS Đang thực hiện + PC Chờ xác nhận).
   bool get choXacNhanKetQua =>
-      trangThaiHoSo == 'Chờ xác nhận' ||
-          (trangThaiPhanCong == 'Chờ xác nhận' &&
-              trangThaiHoSo != null &&
-              trangThaiHoSo != 'Đã duyệt' &&
-              trangThaiHoSo != 'Đang thực hiện' &&
-              trangThaiHoSo != 'Từ chối');
+      trangThaiPhanCong == 'Chờ xác nhận' &&
+          (trangThaiHoSo == 'Đang thực hiện' ||
+              trangThaiHoSo == 'Chờ xác nhận');
 
-  /// Còn được làm quy trình (chưa gửi Xưởng / bị từ chối cần sửa lại).
+  /// Còn làm / cập nhật quy trình (chưa gửi Xưởng hoặc Xưởng từ chối PC).
   bool get canThucHien =>
       !choXacNhanKetQua &&
           !daHoanThanhPc &&
           !daHuy &&
-          (trangThaiPhanCong == 'Chờ xác nhận' ||
+          (trangThaiPhanCong == 'Chờ xác nhận' || // nhận việc khi HS Đã duyệt
               trangThaiPhanCong == 'Đã phân công' ||
               trangThaiPhanCong == 'Xác nhận' ||
               trangThaiPhanCong == 'Đang thực hiện' ||
+              trangThaiPhanCong == 'Từ chối' || // Xưởng từ chối quy trình
               trangThaiHoSo == 'Đang thực hiện' ||
               trangThaiHoSo == 'Từ chối');
 
-  bool get choXacNhan => canThucHien; // alias cũ (nhận việc / cần làm)
+  bool get choXacNhan => canThucHien;
   bool get daXacNhan => trangThaiPhanCong == 'Xác nhận';
   bool get biTuChoi =>
       trangThaiPhanCong == 'Từ chối' || trangThaiHoSo == 'Từ chối';
   bool get daHuy => trangThaiPhanCong == 'Đã hủy';
   bool get daHoanThanhPc =>
       trangThaiPhanCong == 'Hoàn thành' || trangThaiHoSo == 'Đã hoàn thành';
-  /// Đã có quy trình gửi đi — chi tiết nên hiện bước + vật tư.
   bool get daGuiQuyTrinh => choXacNhanKetQua || daHoanThanhPc;
   bool get laBaoTri => loai == 'Bảo trì' || loai.toLowerCase().contains('bảo trì');
   /// Hồ sơ / yêu cầu thuộc loại sửa chữa.
@@ -367,6 +367,8 @@ class HoSoSuaChua {
   final DateTime ngayTao;
   final DateTime? ngayDuyet;
   final int? maPhanCong;
+  final String? trangThaiPhanCong;
+  final String? lyDoTuChoiPhanCong;
   final List<int> maNhanVienThucHiens;
   final String? tenNhanVienThucHiens;
   final String? rowVersion;
@@ -383,6 +385,8 @@ class HoSoSuaChua {
     required this.ngayTao,
     this.ngayDuyet,
     this.maPhanCong,
+    this.trangThaiPhanCong,
+    this.lyDoTuChoiPhanCong,
     this.maNhanVienThucHiens = const [],
     this.tenNhanVienThucHiens,
     this.rowVersion,
@@ -391,7 +395,10 @@ class HoSoSuaChua {
   bool get dangThucHien => trangThai == 'Đang thực hiện';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
   bool get biTuChoi => trangThai == 'Từ chối';
-  bool get choXacNhanKetQua => trangThai == 'Chờ xác nhận';
+  /// NVKT đã gửi quy trình — HS Đang thực hiện + PC Chờ xác nhận.
+  bool get choXacNhanKetQua =>
+      trangThai == 'Chờ xác nhận' ||
+          (trangThai == 'Đang thực hiện' && trangThaiPhanCong == 'Chờ xác nhận');
 
   /// Đã từng phân công NV (có mã PC hoặc danh sách NV thực hiện).
   bool get daCoPhanCong =>
@@ -449,6 +456,10 @@ class HoSoSuaChua {
       ngayTao: asDate(j['ngayTao'] ?? j['NgayTao']) ?? DateTime.now(),
       ngayDuyet: asDate(j['ngayDuyet'] ?? j['NgayDuyet']),
       maPhanCong: asIntN(j['maPhanCong'] ?? j['MaPhanCong']),
+      trangThaiPhanCong:
+      (j['trangThaiPhanCong'] ?? j['TrangThaiPhanCong'])?.toString(),
+      lyDoTuChoiPhanCong:
+      (j['lyDoTuChoiPhanCong'] ?? j['LyDoTuChoiPhanCong'])?.toString(),
       maNhanVienThucHiens: maList.isNotEmpty ? maList : fromDs,
       tenNhanVienThucHiens:
       (j['tenNhanVienThucHiens'] ?? j['TenNhanVienThucHiens'])?.toString(),

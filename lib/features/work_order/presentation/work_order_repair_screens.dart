@@ -84,6 +84,7 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
       case 'Đã duyệt':
         return const Color(0xFFF59E0B);
       case 'Đang thực hiện':
+      case 'Chờ xác nhận': // dữ liệu cũ trên HS → coi như Đang thực hiện
         return _scPrimary;
       case 'Đã hoàn thành':
         return AppColors.success;
@@ -93,6 +94,9 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
         return Colors.blueGrey;
     }
   }
+
+  String _tenTt(String tt) =>
+      tt == 'Chờ xác nhận' ? 'Đang thực hiện' : tt;
 
   @override
   Widget build(BuildContext context) {
@@ -378,6 +382,7 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
         itemBuilder: (context, i) {
           final hs = list[i];
           final c = _mauTt(hs.trangThai);
+          final tenTt = _tenTt(hs.trangThai);
           return TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: 1),
             duration: Duration(milliseconds: 320 + i * 45),
@@ -483,7 +488,7 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
                                 color: c.withValues(alpha: 0.25)),
                           ),
                           child: Text(
-                            hs.trangThai,
+                            tenTt,
                             style: TextStyle(
                               color: c,
                               fontWeight: FontWeight.w800,

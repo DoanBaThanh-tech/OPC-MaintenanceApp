@@ -51,6 +51,16 @@ class WorkOrderBaoTriListController extends ChangeNotifier {
           h.trangThai == 'Chờ GĐ duyệt')
           .toList();
     }
+    // Đang thực hiện: gồm HS đang làm + HS đã gửi quy trình (PC chờ Xưởng)
+    // — dữ liệu cũ có thể còn nhãn "Chờ xác nhận" trên HS, không được ẩn khỏi tab này.
+    if (tab == 'Đang thực hiện') {
+      return danhSach
+          .where((h) =>
+      h.trangThai == 'Đang thực hiện' ||
+          h.trangThai == 'Chờ xác nhận' ||
+          h.choXacNhanKetQua)
+          .toList();
+    }
     return danhSach.where((h) => h.trangThai == tab).toList();
   }
 }

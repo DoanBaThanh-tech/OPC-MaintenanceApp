@@ -448,10 +448,15 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
             itemCount: list.length,
             itemBuilder: (context, i) {
               final hs = list[i];
-              final loai = phanLoaiTrangThaiHoSo(hs.trangThai);
+              // HS "Chờ xác nhận" (dữ liệu cũ) hiển thị như Đang thực hiện trên hồ sơ
+              final ttHienThi = hs.trangThai == 'Chờ xưởng'
+                  ? 'Chờ duyệt'
+                  : (hs.trangThai == 'Chờ xác nhận'
+                  ? 'Đang thực hiện'
+                  : hs.trangThai);
+              final loai = phanLoaiTrangThaiHoSo(ttHienThi);
               final mau = _mau(loai);
-              final tenTt =
-              hs.trangThai == 'Chờ xưởng' ? 'Chờ duyệt' : hs.trangThai;
+              final tenTt = ttHienThi;
               return _HsCard(
                 index: i,
                 tenThietBi: hs.tenThietBi,
