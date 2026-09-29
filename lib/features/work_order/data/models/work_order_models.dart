@@ -65,6 +65,8 @@ class HoSoBaoTri {
   final int nam;
   final bool namTuKeHoach;
   final String? rowVersion;
+  /// API: đã gửi quy trình chờ Xưởng xác nhận.
+  final bool? choXuongXacNhanQuyTrinhFlag;
 
   HoSoBaoTri({
     required this.maHoSoBaoTri,
@@ -93,6 +95,7 @@ class HoSoBaoTri {
     required this.nam,
     required this.namTuKeHoach,
     this.rowVersion,
+    this.choXuongXacNhanQuyTrinhFlag,
   });
 
   /// Xưởng còn được chỉnh sửa / gửi GĐ (chưa gửi Giám đốc).
@@ -124,9 +127,11 @@ class HoSoBaoTri {
           trangThaiPhanCong != 'Hoàn thành';
   bool get biTuChoi => trangThai == 'Từ chối';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
+
   /// NVKT đã gửi quy trình — HS vẫn Đang thực hiện; PC = Chờ xác nhận (Xưởng).
   bool get choXacNhanKetQua =>
-      trangThai == 'Chờ xác nhận' ||
+      choXuongXacNhanQuyTrinhFlag == true ||
+          trangThai == 'Chờ xác nhận' ||
           (trangThai == 'Đang thực hiện' && trangThaiPhanCong == 'Chờ xác nhận');
 
   factory HoSoBaoTri.fromJson(Map<String, dynamic> j) {
@@ -191,6 +196,8 @@ class HoSoBaoTri {
       nam: asInt(j['nam'] ?? j['Nam'] ?? ngayTao.year),
       namTuKeHoach: (j['namTuKeHoach'] ?? j['NamTuKeHoach']) == true,
       rowVersion: (j['rowVersion'] ?? j['RowVersion'])?.toString(),
+      choXuongXacNhanQuyTrinhFlag: j['choXuongXacNhanQuyTrinh'] == true ||
+          j['ChoXuongXacNhanQuyTrinh'] == true,
     );
   }
 }
@@ -372,6 +379,7 @@ class HoSoSuaChua {
   final List<int> maNhanVienThucHiens;
   final String? tenNhanVienThucHiens;
   final String? rowVersion;
+  final bool? choXuongXacNhanQuyTrinhFlag;
 
   HoSoSuaChua({
     required this.maHoSoSuaChua,
@@ -390,6 +398,7 @@ class HoSoSuaChua {
     this.maNhanVienThucHiens = const [],
     this.tenNhanVienThucHiens,
     this.rowVersion,
+    this.choXuongXacNhanQuyTrinhFlag,
   });
 
   bool get dangThucHien => trangThai == 'Đang thực hiện';
@@ -397,7 +406,8 @@ class HoSoSuaChua {
   bool get biTuChoi => trangThai == 'Từ chối';
   /// NVKT đã gửi quy trình — HS Đang thực hiện + PC Chờ xác nhận.
   bool get choXacNhanKetQua =>
-      trangThai == 'Chờ xác nhận' ||
+      choXuongXacNhanQuyTrinhFlag == true ||
+          trangThai == 'Chờ xác nhận' ||
           (trangThai == 'Đang thực hiện' && trangThaiPhanCong == 'Chờ xác nhận');
 
   /// Đã từng phân công NV (có mã PC hoặc danh sách NV thực hiện).
@@ -464,6 +474,8 @@ class HoSoSuaChua {
       tenNhanVienThucHiens:
       (j['tenNhanVienThucHiens'] ?? j['TenNhanVienThucHiens'])?.toString(),
       rowVersion: (j['rowVersion'] ?? j['RowVersion'])?.toString(),
+      choXuongXacNhanQuyTrinhFlag: j['choXuongXacNhanQuyTrinh'] == true ||
+          j['ChoXuongXacNhanQuyTrinh'] == true,
     );
   }
 }

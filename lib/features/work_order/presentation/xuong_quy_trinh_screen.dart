@@ -74,7 +74,9 @@ class _XuongQuyTrinhScreenState extends State<XuongQuyTrinhScreen>
                   parent: _headerAnim, curve: Curves.easeOutCubic)),
               child: Container(
                 width: double.infinity,
-                padding: EdgeInsets.fromLTRB(8, top + 4, 16, 0),
+                // Không nút back: trang mở trong body Dashboard (slide menu),
+                // pop() sẽ thoát luôn shell → màn hình đen.
+                padding: EdgeInsets.fromLTRB(20, top + 12, 16, 0),
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
                     colors: [_blue, _blueMid, _blueSoft],
@@ -96,11 +98,6 @@ class _XuongQuyTrinhScreenState extends State<XuongQuyTrinhScreen>
                   children: [
                     Row(
                       children: [
-                        IconButton(
-                          onPressed: () => Navigator.pop(context),
-                          icon: const Icon(Icons.arrow_back_rounded,
-                              color: Colors.white),
-                        ),
                         const Expanded(
                           child: Text(
                             'Quy trình',
@@ -130,7 +127,7 @@ class _XuongQuyTrinhScreenState extends State<XuongQuyTrinhScreen>
                       ],
                     ),
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+                      padding: const EdgeInsets.fromLTRB(0, 6, 8, 8),
                       child: Text(
                         'Quy trình NVKT đã gửi — Xác nhận hoặc Từ chối',
                         style: TextStyle(

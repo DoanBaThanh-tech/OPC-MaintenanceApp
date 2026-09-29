@@ -28,7 +28,8 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
   late final AnimationController _animCtrl;
   late final Animation<double> _fadeIn;
 
-  static const _scPrimary = Color(0xFF7C3AED);
+  /// Cùng palette xanh chủ đạo (không còn tím cho SC).
+  static const _scPrimary = Color(0xFF0068A9);
 
   @override
   void initState() {
@@ -87,9 +88,9 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
   Widget build(BuildContext context) {
     final isCapNhat = widget.isCapNhat;
     final isSc = widget.isSuaChua;
-    final accent = isSc ? _scPrimary : AppColors.primary;
+    final accent = AppColors.primary;
     return Scaffold(
-      backgroundColor: isSc ? const Color(0xFFF6F4FB) : const Color(0xFFF3F6FA),
+      backgroundColor: const Color(0xFFF0F7FC),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
@@ -475,10 +476,9 @@ class _AssignHeader extends StatelessWidget {
     final List<Color> colors;
     if (isCapNhat) {
       colors = const [Color(0xFF0F766E), Color(0xFF0D9488)];
-    } else if (isSuaChua) {
-      colors = const [Color(0xFF7C3AED), Color(0xFF5B21B6)];
     } else {
-      colors = [AppColors.primary, AppColors.primaryDark];
+      // BT + SC cùng gradient xanh chủ đạo
+      colors = const [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)];
     }
     return Container(
       padding: EdgeInsets.fromLTRB(8, top + 8, 16, 18),
@@ -493,9 +493,7 @@ class _AssignHeader extends StatelessWidget {
           BoxShadow(
             color: (isCapNhat
                 ? const Color(0xFF0F766E)
-                : isSuaChua
-                ? const Color(0xFF7C3AED)
-                : AppColors.primary)
+                : const Color(0xFF0068A9))
                 .withValues(alpha: 0.28),
             blurRadius: 18,
             offset: const Offset(0, 8),

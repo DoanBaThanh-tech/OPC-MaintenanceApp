@@ -11,10 +11,17 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
   bool dangLuu = false;
   String? loi;
 
-  /// Ràng buộc số giờ — dùng trong Form validator.
-  String? validateThoiGian(String? v) => formValidateSoGioDuKien(v);
+  /// true = nhập phút; false = nhập giờ.
+  bool nhapPhut = false;
 
-  /// Trả về true nếu tạo thành công — presentation chỉ cần pop(context, true) khi true.
+  void datDonViThoiGian({required bool laPhut}) {
+    nhapPhut = laPhut;
+    notifyListeners();
+  }
+
+  String? validateThoiGian(String? v) =>
+      formValidateThoiGianDuKien(v, laPhut: nhapPhut);
+
   Future<bool> luu({
     required int maChiTietKeHoach,
     required int maThietBi,
@@ -22,9 +29,9 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
     required String thoiGianDuKien,
     required bool guiDuyet,
   }) async {
-    final kqGio = validateSoGioDuKien(thoiGianDuKien);
-    if (!kqGio.hopLe) {
-      loi = kqGio.loi;
+    final kq = validateThoiGianDuKien(thoiGianDuKien, laPhut: nhapPhut);
+    if (!kq.hopLe) {
+      loi = kq.loi;
       notifyListeners();
       return false;
     }
@@ -36,7 +43,7 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
         maChiTietKeHoach: maChiTietKeHoach,
         maThietBi: maThietBi,
         noiDungCongViec: noiDungCongViec,
-        thoiGianDuKien: thoiGianDuKien.trim(),
+        thoiGianDuKien: kq.chuoiLuu, // "4" hoặc "15p"
         guiDuyet: guiDuyet,
       );
       return true;

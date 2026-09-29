@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/work_order_logic.dart';
 import '../../../core/storage/token_storage.dart';
@@ -158,20 +159,52 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                           (v == null || v.trim().isEmpty) ? 'Vui lòng nhập nội dung công việc' : null,
                         ),
                         const SizedBox(height: 16),
-                        const Text('Thời gian dự kiến (giờ)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+                        const Text('Thời gian dự kiến',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 14)),
                         const SizedBox(height: 8),
-                        TextFormField(
-                          controller: _thoiGianController,
-                          keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
-                          decoration: const InputDecoration(
-                            hintText: 'Ví dụ: 4',
-                            border: OutlineInputBorder(),
-                            prefixIcon: Icon(Icons.schedule),
-                            suffixText: 'giờ',
-                          ),
-                          // Ràng buộc số giờ nằm ở CreateWorkOrderBaoTriController
-                          validator: _controller.validateThoiGian,
-                          autovalidateMode: AutovalidateMode.onUserInteraction,
+                        AnimatedBuilder(
+                          animation: _controller,
+                          builder: (context, _) {
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SegmentedButton<bool>(
+                                  segments: const [
+                                    ButtonSegment(
+                                        value: false, label: Text('Giờ')),
+                                    ButtonSegment(
+                                        value: true, label: Text('Phút')),
+                                  ],
+                                  selected: {_controller.nhapPhut},
+                                  onSelectionChanged: (s) {
+                                    _controller.datDonViThoiGian(
+                                        laPhut: s.first);
+                                  },
+                                ),
+                                const SizedBox(height: 10),
+                                TextFormField(
+                                  controller: _thoiGianController,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  decoration: InputDecoration(
+                                    hintText: _controller.nhapPhut
+                                        ? 'Ví dụ: 15'
+                                        : 'Ví dụ: 4',
+                                    border: const OutlineInputBorder(),
+                                    prefixIcon: const Icon(Icons.schedule),
+                                    suffixText:
+                                    _controller.nhapPhut ? 'phút' : 'giờ',
+                                  ),
+                                  validator: _controller.validateThoiGian,
+                                  autovalidateMode:
+                                  AutovalidateMode.onUserInteraction,
+                                ),
+                              ],
+                            );
+                          },
                         ),
                         AnimatedBuilder(
                           animation: _controller,

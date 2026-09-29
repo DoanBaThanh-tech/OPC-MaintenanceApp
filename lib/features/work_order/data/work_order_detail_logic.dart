@@ -93,14 +93,21 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
   DateTime? ngayDuKienGoc;
   DateTime? ngayTaoHoSo;
   int? soGioDuKien;
+  int? soPhutDuKien;
+  bool nhapPhut = false;
 
-  bool get thoiGianHopLe =>
-      loiThoiGian == null &&
-          soGioDuKien != null &&
-          soGioDuKien! > 0 &&
-          soGioDuKien! <= 24;
+  bool get thoiGianHopLe {
+    if (loiThoiGian != null) return false;
+    if (nhapPhut) return soPhutDuKien != null && soPhutDuKien! > 0;
+    return soGioDuKien != null && soGioDuKien! > 0 && soGioDuKien! <= 24;
+  }
 
   bool get choPhepChonGio => thoiGianHopLe;
+
+  String get chuoiThoiGianLuu {
+    if (nhapPhut && soPhutDuKien != null) return '${soPhutDuKien}p';
+    return '${soGioDuKien ?? ''}';
+  }
 
   TimeOfDay? _parseGio(String? s) {
     if (s == null || s.trim().isEmpty) return null;
@@ -140,10 +147,28 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void datDonViThoiGian({required bool laPhut}) {
+    nhapPhut = laPhut;
+    notifyListeners();
+  }
+
   void datThoiGianTuChuoi(String raw) {
-    final kq = validateSoGioDuKien(raw);
+    // Tự nhận "15p" từ dữ liệu cũ
+    final rawLower = raw.trim().toLowerCase();
+    if (rawLower.endsWith('p') || rawLower.contains('phút')) {
+      nhapPhut = true;
+    }
+    final kq = validateThoiGianDuKien(raw, laPhut: nhapPhut);
     loiThoiGian = kq.loi;
-    soGioDuKien = kq.soGio;
+    if (kq.laPhut) {
+      soPhutDuKien = kq.soPhut;
+      soGioDuKien = null;
+      nhapPhut = true;
+    } else {
+      soGioDuKien = kq.soGio;
+      soPhutDuKien = null;
+      if (kq.hopLe) nhapPhut = false;
+    }
     if (!thoiGianHopLe) {
       gioBatDau = null;
       gioKetThuc = null;
@@ -155,7 +180,7 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
 
   void datGioBatDau(TimeOfDay t) {
     if (!choPhepChonGio) {
-      loi = 'Nhập đúng số giờ dự kiến trước khi chọn giờ bắt đầu';
+      loi = 'Nhập đúng thời gian dự kiến trước khi chọn giờ bắt đầu';
       notifyListeners();
       return;
     }
@@ -197,12 +222,12 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
   }
 
   void _tinhGioKetThuc() {
-    if (!thoiGianHopLe || gioBatDau == null || soGioDuKien == null) {
+    final phutThem = nhapPhut ? (soPhutDuKien ?? 0) : (soGioDuKien ?? 0) * 60;
+    if (!thoiGianHopLe || gioBatDau == null || phutThem <= 0) {
       if (!thoiGianHopLe) gioKetThuc = null;
       return;
     }
-    final tongPhut =
-        gioBatDau!.hour * 60 + gioBatDau!.minute + soGioDuKien! * 60;
+    final tongPhut = gioBatDau!.hour * 60 + gioBatDau!.minute + phutThem;
     gioKetThuc = TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
   }
 
@@ -241,7 +266,7 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
       await WorkOrderService.xuongLuuHoSo(
         maHoSoBaoTri: maHoSoBaoTri,
         noiDungCongViec: noiDung,
-        thoiGianDuKien: thoiGianText.trim(),
+        thoiGianDuKien: chuoiThoiGianLuu,
         gioBatDauDuKien: fmtGio(gioBatDau),
         gioKetThucDuKien: fmtGio(gioKetThuc),
         ngayDuKienBaoTri: ngayDuKien,
@@ -262,18 +287,22 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
   bool dangLuu = false;
   String? loi;
 
-  int? thoiGianDuKien;          // số giờ > 0
-  String? loiThoiGianDuKien;    // lỗi đỏ dưới ô giờ
+  int? thoiGianDuKien; // số giờ (khi !nhapPhut)
+  int? thoiGianPhut; // số phút (khi nhapPhut)
+  bool nhapPhut = false;
+  String? loiThoiGianDuKien;
   TimeOfDay? gioBatDau;
-  TimeOfDay? gioKetThuc;        // chỉ tự tính, không chọn tay
+  TimeOfDay? gioKetThuc; // tự tính từ bắt đầu + thời lượng
   DateTime? ngayDuKienBaoTri;
 
-  /// true khi số giờ hợp lệ → mới cho chọn giờ bắt đầu
-  bool get choPhepChonGioBatDau =>
-      thoiGianDuKien != null &&
-          thoiGianDuKien! > 0 &&
-          thoiGianDuKien! <= 24 &&
-          loiThoiGianDuKien == null;
+  /// true khi thời lượng hợp lệ → mới cho chọn giờ bắt đầu
+  bool get choPhepChonGioBatDau {
+    if (loiThoiGianDuKien != null) return false;
+    if (nhapPhut) return thoiGianPhut != null && thoiGianPhut! > 0;
+    return thoiGianDuKien != null &&
+        thoiGianDuKien! > 0 &&
+        thoiGianDuKien! <= 24;
+  }
 
   void khoiTaoTuHoSo({
     String? thoiGianDuKienStr,
@@ -299,14 +328,28 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Số nguyên dương 1–24 — dùng validator chung.
+  void datDonViThoiGian({required bool laPhut}) {
+    nhapPhut = laPhut;
+    notifyListeners();
+  }
+
+  /// Số nguyên dương — giờ (1–24) hoặc phút (1–1440).
   void datThoiGianDuKienTuChuoi(String raw) {
-    final kq = validateSoGioDuKien(raw);
-    thoiGianDuKien = kq.soGio;
+    final kq = validateThoiGianDuKien(raw, laPhut: nhapPhut);
     loiThoiGianDuKien = kq.loi;
     if (kq.loi != null) {
+      thoiGianDuKien = null;
+      thoiGianPhut = null;
       gioKetThuc = null;
+    } else if (kq.laPhut) {
+      thoiGianPhut = kq.soPhut;
+      thoiGianDuKien = null;
+      nhapPhut = true;
+      _tinhGioKetThuc();
     } else {
+      thoiGianDuKien = kq.soGio;
+      thoiGianPhut = null;
+      nhapPhut = false;
       _tinhGioKetThuc();
     }
     notifyListeners();
@@ -314,7 +357,7 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
 
   void datGioBatDau(TimeOfDay t) {
     if (!choPhepChonGioBatDau) {
-      loi = 'Nhập đúng số giờ dự kiến trước khi chọn giờ bắt đầu';
+      loi = 'Nhập đúng thời gian dự kiến (giờ hoặc phút) trước khi chọn giờ bắt đầu';
       notifyListeners();
       return;
     }
@@ -330,12 +373,24 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
   }
 
   void _tinhGioKetThuc() {
-    if (gioBatDau == null || thoiGianDuKien == null) {
+    final phutThem = nhapPhut
+        ? (thoiGianPhut ?? 0)
+        : (thoiGianDuKien ?? 0) * 60;
+    if (gioBatDau == null || phutThem <= 0) {
       gioKetThuc = null;
       return;
     }
-    final tongPhut = gioBatDau!.hour * 60 + gioBatDau!.minute + thoiGianDuKien! * 60;
-    gioKetThuc = TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
+    final tongPhut =
+        gioBatDau!.hour * 60 + gioBatDau!.minute + phutThem;
+    gioKetThuc =
+        TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
+  }
+
+  /// Chuỗi lưu API: "4" hoặc "15p"
+  String? get chuoiThoiGianLuu {
+    if (nhapPhut && thoiGianPhut != null) return '${thoiGianPhut}p';
+    if (thoiGianDuKien != null) return '$thoiGianDuKien';
+    return null;
   }
 
   String? _fmtGio(TimeOfDay? t) {

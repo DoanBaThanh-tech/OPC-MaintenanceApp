@@ -276,20 +276,49 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          _InfoSection(
-            title: 'Lịch bảo trì',
-            icon: Icons.event_available_rounded,
-            rows: [
-              _InfoItem(
-                'Bảo trì gần nhất',
-                tb.ngayBaoTriGanNhat != null ? _fmtDate(tb.ngayBaoTriGanNhat) : 'Chưa có',
-              ),
-              _InfoItem(
-                'Bảo trì tiếp theo',
-                tb.ngayBaoTriTiepTheo != null ? _fmtDate(tb.ngayBaoTriTiepTheo) : 'Chưa lên lịch',
-              ),
-            ],
-          ),
+          // Đang sửa chữa: hiện lịch SC (gần nhất = ngày tạo HS SC; tiếp theo = ? / ngày SC sau)
+          Builder(builder: (context) {
+            final dangSc = tb.tinhTrangHienTai == TrangThaiThietBi.suaChua ||
+                tb.tinhTrangHienTai.toLowerCase().contains('sửa');
+            if (dangSc) {
+              return _InfoSection(
+                title: 'Lịch sửa chữa',
+                icon: Icons.handyman_rounded,
+                rows: [
+                  _InfoItem(
+                    'Sửa chữa gần nhất',
+                    tb.ngayBaoTriGanNhat != null
+                        ? _fmtDate(tb.ngayBaoTriGanNhat)
+                        : 'Chưa có',
+                  ),
+                  _InfoItem(
+                    'Sửa chữa tiếp theo',
+                    tb.ngayBaoTriTiepTheo != null
+                        ? _fmtDate(tb.ngayBaoTriTiepTheo)
+                        : 'Chưa rõ (? )',
+                  ),
+                ],
+              );
+            }
+            return _InfoSection(
+              title: 'Lịch bảo trì',
+              icon: Icons.event_available_rounded,
+              rows: [
+                _InfoItem(
+                  'Bảo trì gần nhất',
+                  tb.ngayBaoTriGanNhat != null
+                      ? _fmtDate(tb.ngayBaoTriGanNhat)
+                      : 'Chưa có',
+                ),
+                _InfoItem(
+                  'Bảo trì tiếp theo',
+                  tb.ngayBaoTriTiepTheo != null
+                      ? _fmtDate(tb.ngayBaoTriTiepTheo)
+                      : 'Chưa lên lịch',
+                ),
+              ],
+            );
+          }),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(14),
