@@ -137,31 +137,32 @@ class _LoginScreenState extends State<LoginScreen>
                 if (compact) ...[
                   Center(
                     child: Container(
-                      width: 64,
-                      height: 64,
+                      width: 148,
+                      height: 72,
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF38BDF8), _blue],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
-                            color: _blue.withValues(alpha: 0.25),
+                            color: _blue.withValues(alpha: 0.12),
                             blurRadius: 16,
                             offset: const Offset(0, 6),
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.precision_manufacturing_rounded,
-                        color: Colors.white,
-                        size: 32,
+                      child: Image.asset(
+                        'assets/images/logo_opc.png',
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.local_pharmacy_rounded,
+                          color: _blue,
+                          size: 36,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 22),
                 ],
                 Text(
                   'Đăng nhập',
@@ -358,19 +359,28 @@ class _LoginScreenState extends State<LoginScreen>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: isTablet ? 80 : 96,
-                    height: isTablet ? 80 : 96,
+                    width: isTablet ? 160 : 200,
+                    height: isTablet ? 78 : 96,
+                    padding: EdgeInsets.all(isTablet ? 10 : 14),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.25),
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.precision_manufacturing_rounded,
-                      size: isTablet ? 40 : 48,
                       color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: Image.asset(
+                      'assets/images/logo_opc.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.local_pharmacy_rounded,
+                        size: isTablet ? 40 : 48,
+                        color: _blue,
+                      ),
                     ),
                   ),
                   SizedBox(height: isTablet ? 20 : 28),

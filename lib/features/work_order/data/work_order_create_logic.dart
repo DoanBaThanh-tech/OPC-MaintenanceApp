@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart' show TimeOfDay;
 
 import '../../../core/network/api_exception.dart';
 import '../../equipment/data/equipment_logic.dart';
@@ -22,6 +23,7 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
   String? validateThoiGian(String? v) =>
       formValidateThoiGianDuKien(v, laPhut: nhapPhut);
 
+  /// Trả về true nếu tạo thành công — presentation chỉ cần pop(context, true) khi true.
   Future<bool> luu({
     required int maChiTietKeHoach,
     required int maThietBi,
@@ -43,7 +45,7 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
         maChiTietKeHoach: maChiTietKeHoach,
         maThietBi: maThietBi,
         noiDungCongViec: noiDungCongViec,
-        thoiGianDuKien: kq.chuoiLuu, // "4" hoặc "15p"
+        thoiGianDuKien: kq.chuoiLuu,
         guiDuyet: guiDuyet,
       );
       return true;
@@ -58,22 +60,23 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
 }
 
 // ============================================================
-// TẠO HỒ SƠ SỬA CHỮA (Xưởng) — ràng buộc nghiệp vụ nằm ở đây
+// TẠO HỒ SƠ SỬA CHỮA (Xưởng)
 // ============================================================
 
-/// Controller form tạo hồ sơ SC.
-///
-/// Ràng buộc:
-/// - Ngày sửa chữa = **hôm nay** (hư đột ngột, sửa liền) — không cho chọn ngày khác.
-/// - Chọn **danh mục** trước → danh sách thiết bị chỉ còn TB thuộc danh mục đó
-///   và đang **Sản xuất**.
 class CreateHoSoSuaChuaController extends ChangeNotifier {
   List<NhomThietBiTheoDanhMuc> nhoms = [];
   String? danhMucChon;
   ThietBiModel? thietBiChon;
 
-  /// Cố định ngày hiện tại lúc mở form.
   late final DateTime ngaySuaChua;
+
+  /// true = nhập phút; false = nhập giờ.
+  bool nhapPhut = false;
+  int? soGioDuKien;
+  int? soPhutDuKien;
+  String? loiThoiGian;
+  TimeOfDay? gioBatDau;
+  TimeOfDay? gioKetThuc;
 
   bool dangTai = true;
   bool dangGui = false;
@@ -85,17 +88,37 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
     ngaySuaChua = DateTime(now.year, now.month, now.day);
   }
 
-  /// Thiết bị thuộc danh mục đã chọn (rỗng nếu chưa chọn danh mục).
-  List<ThietBiModel> get dsThietBiTheoDanhMuc {
-    if (danhMucChon == null) return const [];
-    final match = nhoms.where((e) => e.tenDanhMuc == danhMucChon);
-    if (match.isEmpty) return const [];
-    return match.first.danhSach;
-  }
-
   String get ngaySuaChuaHienThi {
     final d = ngaySuaChua;
-    return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+    return '${d.day.toString().padLeft(2, '0')}/'
+        '${d.month.toString().padLeft(2, '0')}/'
+        '${d.year}';
+  }
+
+  bool get thoiGianHopLe {
+    if (loiThoiGian != null) return false;
+    if (nhapPhut) return soPhutDuKien != null && soPhutDuKien! > 0;
+    return soGioDuKien != null && soGioDuKien! > 0;
+  }
+
+  String? get chuoiThoiGianLuu {
+    if (nhapPhut && soPhutDuKien != null) return '${soPhutDuKien}p';
+    if (soGioDuKien != null) return '$soGioDuKien';
+    return null;
+  }
+
+  String? fmtGio(TimeOfDay? t) {
+    if (t == null) return null;
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
+  List<ThietBiModel> get dsThietBiTheoDanhMuc {
+    if (danhMucChon == null) return const [];
+    final match = nhoms.where((n) => n.tenDanhMuc == danhMucChon);
+    if (match.isEmpty) return const [];
+    return match.first.danhSach
+        .where((t) => t.tinhTrangHienTai == TrangThaiThietBi.sanXuat)
+        .toList();
   }
 
   Future<void> khoiTao() async {
@@ -103,13 +126,11 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
     loi = null;
     notifyListeners();
     try {
-      final raw = await EquipmentService.layTheoDanhMuc(trangThai: 'Sản xuất');
-      // Chỉ giữ nhóm còn thiết bị đang Sản xuất
-      nhoms = raw.where((n) => n.danhSach.isNotEmpty).toList();
-      danhMucChon = null;
-      thietBiChon = null;
+      nhoms = await EquipmentService.layTheoDanhMuc(
+        trangThai: TrangThaiThietBi.sanXuat,
+      );
     } catch (e) {
-      loi = e is ApiException ? e.message : 'Không tải được thiết bị';
+      loi = 'Không tải được danh mục thiết bị: $e';
       nhoms = [];
     } finally {
       dangTai = false;
@@ -117,7 +138,6 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
     }
   }
 
-  /// Đổi danh mục → reset thiết bị đã chọn.
   void chonDanhMuc(String? dm) {
     danhMucChon = dm;
     thietBiChon = null;
@@ -126,80 +146,144 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
   }
 
   void chonThietBi(ThietBiModel? tb) {
-    if (tb != null && tb.tinhTrangHienTai != TrangThaiThietBi.sanXuat) {
-      if (tb.tinhTrangHienTai == TrangThaiThietBi.baoTri) {
-        loi = 'Thiết bị đang bảo trì — không thể tạo hồ sơ sửa chữa.';
-      } else if (tb.tinhTrangHienTai == TrangThaiThietBi.suaChua) {
-        loi = 'Thiết bị đang sửa chữa — không thể tạo thêm hồ sơ sửa chữa.';
-      } else {
-        loi = 'Chỉ chọn thiết bị đang Sản xuất.';
-      }
-      thietBiChon = null;
-      notifyListeners();
-      return;
-    }
     thietBiChon = tb;
     loi = null;
     notifyListeners();
   }
 
   void xoaLoiMoTa() {
-    if (loiMoTa == null) return;
-    loiMoTa = null;
+    if (loiMoTa != null) {
+      loiMoTa = null;
+      notifyListeners();
+    }
+  }
+
+  void datDonViThoiGian({required bool laPhut}) {
+    nhapPhut = laPhut;
     notifyListeners();
   }
 
-  /// Validate + gọi API. Trả về true nếu thành công.
+  void datThoiGianTuChuoi(String raw) {
+    final kq = validateThoiGianDuKien(
+      raw,
+      laPhut: nhapPhut,
+      gioBatDau: gioBatDau,
+    );
+    loiThoiGian = kq.loi;
+    if (!kq.hopLe) {
+      soGioDuKien = null;
+      soPhutDuKien = null;
+      gioKetThuc = null;
+    } else if (kq.laPhut) {
+      soPhutDuKien = kq.soPhut;
+      soGioDuKien = null;
+      nhapPhut = true;
+      _tinhGioKetThuc();
+    } else {
+      soGioDuKien = kq.soGio;
+      soPhutDuKien = null;
+      nhapPhut = false;
+      _tinhGioKetThuc();
+    }
+    notifyListeners();
+  }
+
+  void datGioBatDau(TimeOfDay t) {
+    if (!thoiGianHopLe) {
+      loi = 'Nhập thời gian dự kiến hợp lệ trước khi chọn giờ bắt đầu';
+      notifyListeners();
+      return;
+    }
+    gioBatDau = t;
+    loi = null;
+    // Re-validate với giờ bắt đầu mới (không tràn ngày)
+    final raw = nhapPhut
+        ? (soPhutDuKien?.toString() ?? '')
+        : (soGioDuKien?.toString() ?? '');
+    if (raw.isNotEmpty) {
+      final kq = validateThoiGianDuKien(
+        raw,
+        laPhut: nhapPhut,
+        gioBatDau: t,
+      );
+      loiThoiGian = kq.loi;
+      if (!kq.hopLe) {
+        gioKetThuc = null;
+        notifyListeners();
+        return;
+      }
+    }
+    _tinhGioKetThuc();
+    notifyListeners();
+  }
+
+  void _tinhGioKetThuc() {
+    final phutThem =
+    nhapPhut ? (soPhutDuKien ?? 0) : (soGioDuKien ?? 0) * 60;
+    if (gioBatDau == null || phutThem <= 0) {
+      gioKetThuc = null;
+      return;
+    }
+    gioKetThuc = tinhGioKetThuc(gioBatDau: gioBatDau!, tongPhut: phutThem);
+    if (gioKetThuc == null) {
+      loiThoiGian =
+      'Thời lượng + giờ bắt đầu vượt quá 24:00 — không được lấn sang ngày khác';
+    }
+  }
+
   Future<bool> gui({
     required String moTaHuHong,
     String? phuongAnSuaChua,
   }) async {
-    if (danhMucChon == null || danhMucChon!.isEmpty) {
-      loi = 'Vui lòng chọn danh mục thiết bị';
-      notifyListeners();
-      return false;
-    }
-    if (thietBiChon == null) {
-      loi = 'Vui lòng chọn thiết bị hư hỏng';
-      notifyListeners();
-      return false;
-    }
+    loi = null;
+    loiMoTa = null;
     final moTa = moTaHuHong.trim();
     if (moTa.isEmpty) {
       loiMoTa = 'Vui lòng mô tả hư hỏng';
       notifyListeners();
       return false;
     }
-
-    if (thietBiChon!.tinhTrangHienTai == TrangThaiThietBi.baoTri) {
-      loi = 'Thiết bị đang bảo trì — không thể tạo hồ sơ sửa chữa.';
+    if (thietBiChon == null) {
+      loi = 'Vui lòng chọn thiết bị';
       notifyListeners();
       return false;
     }
-    if (thietBiChon!.tinhTrangHienTai == TrangThaiThietBi.suaChua) {
-      loi = 'Thiết bị đang sửa chữa — không thể tạo hồ sơ sửa chữa.';
+    if (!thoiGianHopLe || chuoiThoiGianLuu == null) {
+      loi = loiThoiGian ?? 'Vui lòng nhập thời gian dự kiến (giờ hoặc phút)';
       notifyListeners();
       return false;
     }
-
+    if (gioBatDau == null) {
+      loi = 'Vui lòng chọn giờ bắt đầu';
+      notifyListeners();
+      return false;
+    }
+    if (gioKetThuc == null) {
+      loi =
+      'Chưa tính được giờ kết thúc (thời lượng có thể tràn sang ngày sau)';
+      notifyListeners();
+      return false;
+    }
     dangGui = true;
-    loi = null;
-    loiMoTa = null;
     notifyListeners();
     try {
-      // Ngày SC = hôm nay; server ghi NgayTao = DateTime.Now
-      // Sau khi tạo: server chuyển TB → Sửa chữa
       await WorkOrderService.taoHoSoSuaChua(
         maThietBi: thietBiChon!.maThietBi,
         moTaHuHong: moTa,
-        phuongAnSuaChua: (phuongAnSuaChua == null || phuongAnSuaChua.trim().isEmpty)
+        phuongAnSuaChua: phuongAnSuaChua?.trim().isEmpty == true
             ? null
-            : phuongAnSuaChua.trim(),
+            : phuongAnSuaChua?.trim(),
+        thoiGianDuKien: chuoiThoiGianLuu,
+        gioBatDauDuKien: fmtGio(gioBatDau),
+        gioKetThucDuKien: fmtGio(gioKetThuc),
         guiDuyet: true,
       );
       return true;
     } on ApiException catch (e) {
       loi = e.message;
+      return false;
+    } catch (e) {
+      loi = 'Lỗi: $e';
       return false;
     } finally {
       dangGui = false;

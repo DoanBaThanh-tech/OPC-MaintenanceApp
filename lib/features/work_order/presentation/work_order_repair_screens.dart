@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../equipment/data/equipment_logic.dart' show ThietBiModel;
 import '../data/work_order_logic.dart';
@@ -576,6 +577,7 @@ class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
   final _ctrl = CreateHoSoSuaChuaController();
   final _moTaCtrl = TextEditingController();
   final _phuongAnCtrl = TextEditingController();
+  final _thoiGianCtrl = TextEditingController();
   late final AnimationController _anim;
   late final Animation<double> _fade;
   late final AnimationController _pulse;
@@ -602,6 +604,7 @@ class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
     _ctrl.dispose();
     _moTaCtrl.dispose();
     _phuongAnCtrl.dispose();
+    _thoiGianCtrl.dispose();
     super.dispose();
   }
 
@@ -893,6 +896,137 @@ class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
                             ),
                           ],
                         ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // Thời gian dự kiến (giờ / phút)
+                      _sectionLabel('Thời gian dự kiến *',
+                          icon: Icons.schedule_rounded),
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment(value: false, label: Text('Giờ')),
+                          ButtonSegment(value: true, label: Text('Phút')),
+                        ],
+                        selected: {_ctrl.nhapPhut},
+                        onSelectionChanged: (s) {
+                          _ctrl.datDonViThoiGian(laPhut: s.first);
+                          _ctrl.datThoiGianTuChuoi(_thoiGianCtrl.text);
+                          setState(() {});
+                        },
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: _thoiGianCtrl,
+                        keyboardType: TextInputType.number,
+                        inputFormatters: [
+                          FilteringTextInputFormatter.digitsOnly,
+                        ],
+                        onChanged: (v) {
+                          _ctrl.datThoiGianTuChuoi(v);
+                          setState(() {});
+                        },
+                        decoration: _fieldDeco(
+                          hint: _ctrl.nhapPhut ? 'Ví dụ: 30' : 'Ví dụ: 2',
+                          prefixIcon: const Icon(Icons.timelapse_rounded,
+                              color: _scPrimary),
+                          errorText: _ctrl.loiThoiGian,
+                        ).copyWith(
+                          suffixText: _ctrl.nhapPhut ? 'phút' : 'giờ',
+                          helperText: _ctrl.nhapPhut
+                              ? 'Số phút nguyên dương — không tràn sang ngày sau'
+                              : 'Số giờ nguyên dương — trong cùng ngày',
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Opacity(
+                              opacity: _ctrl.thoiGianHopLe ? 1 : 0.45,
+                              child: InkWell(
+                                onTap: !_ctrl.thoiGianHopLe
+                                    ? () {
+                                  ScaffoldMessenger.of(context)
+                                      .showSnackBar(
+                                    SnackBar(
+                                      content: Text(_ctrl.nhapPhut
+                                          ? 'Nhập số phút hợp lệ trước'
+                                          : 'Nhập số giờ hợp lệ trước'),
+                                    ),
+                                  );
+                                }
+                                    : () async {
+                                  final t = await showTimePicker(
+                                    context: context,
+                                    initialTime: _ctrl.gioBatDau ??
+                                        const TimeOfDay(
+                                            hour: 8, minute: 0),
+                                    builder: (context, child) {
+                                      return MediaQuery(
+                                        data: MediaQuery.of(context)
+                                            .copyWith(
+                                            alwaysUse24HourFormat:
+                                            true),
+                                        child: child!,
+                                      );
+                                    },
+                                  );
+                                  if (t != null) {
+                                    _ctrl.datGioBatDau(t);
+                                    setState(() {});
+                                  }
+                                },
+                                borderRadius: BorderRadius.circular(14),
+                                child: InputDecorator(
+                                  decoration: _fieldDeco(
+                                    hint: _ctrl.thoiGianHopLe
+                                        ? 'Chọn giờ'
+                                        : 'Nhập thời lượng trước',
+                                    prefixIcon: const Icon(
+                                        Icons.play_circle_outline_rounded,
+                                        color: _scPrimary),
+                                  ).copyWith(labelText: 'Giờ bắt đầu *'),
+                                  child: Text(
+                                    _ctrl.fmtGio(_ctrl.gioBatDau) ??
+                                        (_ctrl.thoiGianHopLe
+                                            ? 'Chọn giờ'
+                                            : '—'),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: _ctrl.gioBatDau == null
+                                          ? Colors.grey
+                                          : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Opacity(
+                              opacity: _ctrl.thoiGianHopLe ? 1 : 0.45,
+                              child: InputDecorator(
+                                decoration: _fieldDeco(
+                                  hint: 'Tự tính',
+                                  prefixIcon: const Icon(
+                                      Icons.flag_outlined,
+                                      color: _scPrimary),
+                                ).copyWith(
+                                    labelText: 'Giờ kết thúc (tự tính)'),
+                                child: Text(
+                                  _ctrl.fmtGio(_ctrl.gioKetThuc) ?? '—',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    color: _ctrl.gioKetThuc == null
+                                        ? Colors.grey
+                                        : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 18),
 

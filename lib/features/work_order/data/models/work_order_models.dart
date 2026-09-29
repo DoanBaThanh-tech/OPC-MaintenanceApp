@@ -380,6 +380,9 @@ class HoSoSuaChua {
   final String? tenNhanVienTao;
   final String? moTaHuHong;
   final String? phuongAnSuaChua;
+  final String? thoiGianDuKien;
+  final String? gioBatDauDuKien;
+  final String? gioKetThucDuKien;
   final String trangThai;
   final String? lyDoTuChoi;
   final DateTime ngayTao;
@@ -399,6 +402,9 @@ class HoSoSuaChua {
     this.tenNhanVienTao,
     this.moTaHuHong,
     this.phuongAnSuaChua,
+    this.thoiGianDuKien,
+    this.gioBatDauDuKien,
+    this.gioKetThucDuKien,
     required this.trangThai,
     this.lyDoTuChoi,
     required this.ngayTao,
@@ -472,6 +478,12 @@ class HoSoSuaChua {
       tenNhanVienTao: (j['tenNhanVienTao'] ?? j['TenNhanVienTao'])?.toString(),
       moTaHuHong: (j['moTaHuHong'] ?? j['MoTaHuHong'])?.toString(),
       phuongAnSuaChua: (j['phuongAnSuaChua'] ?? j['PhuongAnSuaChua'])?.toString(),
+      thoiGianDuKien:
+      (j['thoiGianDuKien'] ?? j['ThoiGianDuKien'])?.toString(),
+      gioBatDauDuKien:
+      (j['gioBatDauDuKien'] ?? j['GioBatDauDuKien'])?.toString(),
+      gioKetThucDuKien:
+      (j['gioKetThucDuKien'] ?? j['GioKetThucDuKien'])?.toString(),
       trangThai: (j['trangThai'] ?? j['TrangThai'])?.toString() ?? '',
       lyDoTuChoi: (j['lyDoTuChoi'] ?? j['LyDoTuChoi'])?.toString(),
       ngayTao: asDate(j['ngayTao'] ?? j['NgayTao']) ?? DateTime.now(),

@@ -243,6 +243,9 @@ class WorkOrderService {
     required int maThietBi,
     required String moTaHuHong,
     String? phuongAnSuaChua,
+    String? thoiGianDuKien,
+    String? gioBatDauDuKien,
+    String? gioKetThucDuKien,
     bool guiDuyet = true,
   }) async {
     await ApiClient.instance.post<Map<String, dynamic>>(
@@ -251,6 +254,9 @@ class WorkOrderService {
         'maThietBi': maThietBi,
         'moTaHuHong': moTaHuHong,
         if (phuongAnSuaChua != null) 'phuongAnSuaChua': phuongAnSuaChua,
+        if (thoiGianDuKien != null) 'thoiGianDuKien': thoiGianDuKien,
+        if (gioBatDauDuKien != null) 'gioBatDauDuKien': gioBatDauDuKien,
+        if (gioKetThucDuKien != null) 'gioKetThucDuKien': gioKetThucDuKien,
         'guiDuyet': guiDuyet,
       },
     );
