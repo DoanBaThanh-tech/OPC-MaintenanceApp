@@ -489,7 +489,9 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   @override
   void initState() {
     super.initState();
-    if (widget.yeuCau.daGuiQuyTrinh || widget.yeuCau.biTuChoi) {
+    if (widget.yeuCau.daGuiQuyTrinh ||
+        widget.yeuCau.biTuChoi ||
+        widget.yeuCau.daHoanThanhPc) {
       _taiQuyTrinhVatTu();
     }
   }
@@ -564,7 +566,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   Widget build(BuildContext context) {
     final y = widget.yeuCau;
     final top = MediaQuery.paddingOf(context).top;
-    // Chỉ hiện "Tiến hành" khi còn cần làm — ẩn khi Chờ xác nhận / Hoàn thành
+    // Chỉ người ghi chép + còn cần làm mới hiện Tiến hành
     final showTienHanh = !y.daHuy &&
         !y.daHoanThanhPc &&
         !y.choXacNhanKetQua &&
@@ -576,10 +578,12 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
       trangThaiHienThi = 'Hoàn thành';
     } else if (y.choXacNhanKetQua) {
       trangThaiHienThi = 'Chờ xác nhận';
-    } else if (y.biTuChoi) {
-      trangThaiHienThi = 'Từ chối';
+    } else if (y.biTuChoi && y.laNguoiGhiChep) {
+      trangThaiHienThi = 'Từ chối — cập nhật quy trình';
     } else if (y.canThucHien) {
       trangThaiHienThi = 'Cần thực hiện';
+    } else if (y.chiXem) {
+      trangThaiHienThi = 'Chỉ xem (không ghi chép)';
     } else {
       trangThaiHienThi = y.trangThaiPhanCong;
     }
@@ -735,8 +739,39 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                   ]),
                 ],
 
-                // Quy trình + vật tư đã thực hiện (khi đã gửi / chờ xác nhận / hoàn thành)
-                if (y.daGuiQuyTrinh || y.biTuChoi) ...[
+                // NV không ghi chép: chỉ xem
+                if (y.chiXem && !y.daHoanThanhPc && !y.choXacNhanKetQua) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                          color: Colors.blueGrey.withValues(alpha: 0.25)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.visibility_outlined,
+                            color: Colors.blueGrey),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'Bạn được phân công hỗ trợ — chỉ xem chi tiết. '
+                                'Người ghi chép mới được Tiến hành / gửi quy trình.',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Mọi NV xem được bước/vật tư sau khi người ghi chép đã gửi
+                if (y.daGuiQuyTrinh || y.biTuChoi || y.daHoanThanhPc) ...[
                   const SizedBox(height: 14),
                   _buildQuyTrinhDaThucHien(),
                 ],
@@ -931,10 +966,12 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                       const SizedBox(width: 8),
                       Text(
                         y.biTuChoi
-                            ? 'Cập nhật quy trình thực hiện'
+                            ? (y.laSuaChua
+                            ? 'Cập nhật quy trình sửa chữa'
+                            : 'Cập nhật quy trình bảo trì')
                             : (y.laBaoTri
-                            ? 'Tiến hành bảo trì'
-                            : 'Tiến hành sửa chữa'),
+                            ? 'Tiến hành quy trình bảo trì'
+                            : 'Tiến hành quy trình sửa chữa'),
                         style: const TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 15.5),
                       ),

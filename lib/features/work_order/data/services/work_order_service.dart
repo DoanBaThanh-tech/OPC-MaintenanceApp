@@ -61,6 +61,7 @@ class WorkOrderService {
     required int maHoSoBaoTri,
     int? maNhanVienThucHien,
     List<int>? maNhanVienThucHiens,
+    int? maNhanVienGhiChep,
     required DateTime ngayBatDau,
     required DateTime ngayKetThuc,
   }) async {
@@ -72,6 +73,9 @@ class WorkOrderService {
       body['maNhanVienThucHiens'] = maNhanVienThucHiens;
     } else if (maNhanVienThucHien != null) {
       body['maNhanVienThucHien'] = maNhanVienThucHien;
+    }
+    if (maNhanVienGhiChep != null && maNhanVienGhiChep > 0) {
+      body['maNhanVienGhiChep'] = maNhanVienGhiChep;
     }
     await ApiClient.instance.post<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/phan-cong',
@@ -256,6 +260,7 @@ class WorkOrderService {
     required int maHoSoSuaChua,
     List<int>? maNhanVienThucHiens,
     int? maNhanVienThucHien,
+    int? maNhanVienGhiChep,
     required DateTime ngayBatDau,
     required DateTime ngayKetThuc,
   }) async {
@@ -267,6 +272,9 @@ class WorkOrderService {
       body['maNhanVienThucHiens'] = maNhanVienThucHiens;
     } else if (maNhanVienThucHien != null) {
       body['maNhanVienThucHien'] = maNhanVienThucHien;
+    }
+    if (maNhanVienGhiChep != null && maNhanVienGhiChep > 0) {
+      body['maNhanVienGhiChep'] = maNhanVienGhiChep;
     }
     await ApiClient.instance.post<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/sua-chua/$maHoSoSuaChua/phan-cong',

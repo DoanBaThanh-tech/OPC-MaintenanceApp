@@ -286,6 +286,8 @@ class YeuCauPhanCong {
   final String? trangThaiHoSo;
   final DateTime? ngayDuKienBaoTri;
   final DateTime? ngayTaoHoSo;
+  /// true = được gán ghi chép quy trình (Tiến hành / Xong).
+  final bool laNguoiGhiChep;
 
   YeuCauPhanCong({
     required this.maPhanCong,
@@ -304,6 +306,7 @@ class YeuCauPhanCong {
     this.trangThaiHoSo,
     this.ngayDuKienBaoTri,
     this.ngayTaoHoSo,
+    this.laNguoiGhiChep = true, // mặc định true cho dữ liệu cũ
   });
 
   /// Đã gửi quy trình chờ Xưởng (HS Đang thực hiện + PC Chờ xác nhận).
@@ -312,18 +315,22 @@ class YeuCauPhanCong {
           (trangThaiHoSo == 'Đang thực hiện' ||
               trangThaiHoSo == 'Chờ xác nhận');
 
-  /// Còn làm / cập nhật quy trình (chưa gửi Xưởng hoặc Xưởng từ chối PC).
+  /// Chỉ người ghi chép mới Tiến hành / cập nhật quy trình.
   bool get canThucHien =>
-      !choXacNhanKetQua &&
+      laNguoiGhiChep &&
+          !choXacNhanKetQua &&
           !daHoanThanhPc &&
           !daHuy &&
-          (trangThaiPhanCong == 'Chờ xác nhận' || // nhận việc khi HS Đã duyệt
+          (trangThaiPhanCong == 'Chờ xác nhận' ||
               trangThaiPhanCong == 'Đã phân công' ||
               trangThaiPhanCong == 'Xác nhận' ||
               trangThaiPhanCong == 'Đang thực hiện' ||
-              trangThaiPhanCong == 'Từ chối' || // Xưởng từ chối quy trình
+              trangThaiPhanCong == 'Từ chối' ||
               trangThaiHoSo == 'Đang thực hiện' ||
               trangThaiHoSo == 'Từ chối');
+
+  /// Được xem chi tiết / quy trình (mọi NV được phân công).
+  bool get chiXem => !laNguoiGhiChep && !daHuy;
 
   bool get choXacNhan => canThucHien;
   bool get daXacNhan => trangThaiPhanCong == 'Xác nhận';
@@ -341,6 +348,9 @@ class YeuCauPhanCong {
   factory YeuCauPhanCong.fromJson(Map<String, dynamic> j) {
     DateTime? asDate(dynamic v) =>
         v == null ? null : DateTime.tryParse(v.toString());
+    // Dữ liệu cũ không có field → coi như ghi chép (true)
+    final ghiChepRaw = j['laNguoiGhiChep'] ?? j['LaNguoiGhiChep'];
+    final laGhiChep = ghiChepRaw == null ? true : ghiChepRaw == true;
     return YeuCauPhanCong(
       maPhanCong: (j['maPhanCong'] as num?)?.toInt() ?? 0,
       trangThaiPhanCong: j['trangThaiPhanCong']?.toString() ?? '',
@@ -358,6 +368,7 @@ class YeuCauPhanCong {
       trangThaiHoSo: j['trangThaiHoSo']?.toString(),
       ngayDuKienBaoTri: asDate(j['ngayDuKienBaoTri']),
       ngayTaoHoSo: asDate(j['ngayTaoHoSo']),
+      laNguoiGhiChep: laGhiChep,
     );
   }
 }

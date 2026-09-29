@@ -12,6 +12,9 @@ class PhanCongBaoTriController extends ChangeNotifier {
   /// Chọn nhiều nhân viên (tích / bỏ tích).
   final Set<int> maNhanVienDaChon = {};
 
+  /// Người ghi chép quy trình (tối đa 1, phải nằm trong maNhanVienDaChon).
+  int? maNhanVienGhiChep;
+
   String? tenNguoiPhanCong;
   int? maNguoiPhanCong;
 
@@ -60,6 +63,7 @@ class PhanCongBaoTriController extends ChangeNotifier {
     dangTai = true;
     loi = null;
     maNhanVienDaChon.clear();
+    maNhanVienGhiChep = null;
     notifyListeners();
     try {
       if (isSuaChua) {
@@ -71,6 +75,9 @@ class PhanCongBaoTriController extends ChangeNotifier {
 
         if (isCapNhat && hoSoSc != null && hoSoSc!.maNhanVienThucHiens.isNotEmpty) {
           maNhanVienDaChon.addAll(hoSoSc!.maNhanVienThucHiens);
+          maNhanVienGhiChep = maNhanVienDaChon.isNotEmpty
+              ? maNhanVienDaChon.first
+              : null;
         }
       } else {
         hoSo = await WorkOrderService.layChiTietHoSoBaoTri(maHoSo);
@@ -89,6 +96,8 @@ class PhanCongBaoTriController extends ChangeNotifier {
           } else if (hoSo!.maNhanVienThucHien != null) {
             maNhanVienDaChon.add(hoSo!.maNhanVienThucHien!);
           }
+          maNhanVienGhiChep =
+          maNhanVienDaChon.isNotEmpty ? maNhanVienDaChon.first : null;
         }
       }
 
@@ -109,14 +118,32 @@ class PhanCongBaoTriController extends ChangeNotifier {
   void toggleNhanVien(NhanVienRutGon nv) {
     if (maNhanVienDaChon.contains(nv.maNhanVien)) {
       maNhanVienDaChon.remove(nv.maNhanVien);
+      if (maNhanVienGhiChep == nv.maNhanVien) {
+        maNhanVienGhiChep =
+        maNhanVienDaChon.isEmpty ? null : maNhanVienDaChon.first;
+      }
     } else {
       maNhanVienDaChon.add(nv.maNhanVien);
+      // 1 người → auto ghi chép
+      if (maNhanVienDaChon.length == 1) {
+        maNhanVienGhiChep = nv.maNhanVien;
+      }
     }
     loi = null;
     notifyListeners();
   }
 
   bool daChon(int maNhanVien) => maNhanVienDaChon.contains(maNhanVien);
+
+  /// Chọn người ghi chép (phải đã được tick phân công).
+  void chonNguoiGhiChep(int maNhanVien) {
+    if (!maNhanVienDaChon.contains(maNhanVien)) return;
+    maNhanVienGhiChep = maNhanVien;
+    loi = null;
+    notifyListeners();
+  }
+
+  bool laNguoiGhiChep(int maNhanVien) => maNhanVienGhiChep == maNhanVien;
 
   /// Cho phép chọn ngày khi phân công SC (BT lấy từ hồ sơ).
   void datNgayDuKien(DateTime d) {
@@ -155,6 +182,18 @@ class PhanCongBaoTriController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
+    // ≥2 NV → bắt buộc chọn đúng 1 người ghi chép
+    if (maNhanVienDaChon.length >= 2) {
+      if (maNhanVienGhiChep == null ||
+          !maNhanVienDaChon.contains(maNhanVienGhiChep)) {
+        loi =
+        'Vui lòng chọn đúng 1 người ghi chép quy trình (trong danh sách đã chọn)';
+        notifyListeners();
+        return false;
+      }
+    } else {
+      maNhanVienGhiChep = maNhanVienDaChon.first;
+    }
     if (gioBatDau == null || gioKetThuc == null) {
       loi = 'Thiếu giờ bắt đầu/kết thúc — không thể phân công';
       notifyListeners();
@@ -174,6 +213,7 @@ class PhanCongBaoTriController extends ChangeNotifier {
         await WorkOrderService.phanCongSuaChua(
           maHoSoSuaChua: maHoSo,
           maNhanVienThucHiens: maNhanVienDaChon.toList(),
+          maNhanVienGhiChep: maNhanVienGhiChep,
           ngayBatDau: thoiDiemBatDau,
           ngayKetThuc: thoiDiemKetThuc,
         );
@@ -181,6 +221,7 @@ class PhanCongBaoTriController extends ChangeNotifier {
         await WorkOrderService.phanCongBaoTri(
           maHoSoBaoTri: maHoSo,
           maNhanVienThucHiens: maNhanVienDaChon.toList(),
+          maNhanVienGhiChep: maNhanVienGhiChep,
           ngayBatDau: thoiDiemBatDau,
           ngayKetThuc: thoiDiemKetThuc,
         );

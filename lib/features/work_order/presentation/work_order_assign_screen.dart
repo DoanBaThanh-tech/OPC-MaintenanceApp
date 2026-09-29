@@ -352,7 +352,13 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
                               child: _NvCard(
                                 nv: nv,
                                 dangChon: dangChon,
+                                laGhiChep:
+                                _controller.laNguoiGhiChep(nv.maNhanVien),
                                 onTap: () => _controller.toggleNhanVien(nv),
+                                onChonGhiChep: dangChon
+                                    ? () => _controller
+                                    .chonNguoiGhiChep(nv.maNhanVien)
+                                    : null,
                               ),
                             ),
                           );
@@ -609,12 +615,16 @@ class _MiniStat extends StatelessWidget {
 class _NvCard extends StatelessWidget {
   final NhanVienRutGon nv;
   final bool dangChon;
+  final bool laGhiChep;
   final VoidCallback onTap;
+  final VoidCallback? onChonGhiChep;
 
   const _NvCard({
     required this.nv,
     required this.dangChon,
+    required this.laGhiChep,
     required this.onTap,
+    this.onChonGhiChep,
   });
 
   @override
@@ -680,12 +690,38 @@ class _NvCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      nv.hoTen,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14.5,
-                      ),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            nv.hoTen,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14.5,
+                            ),
+                          ),
+                        ),
+                        if (laGhiChep) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF0EA5E9)
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text(
+                              'Ghi chép',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF0369A1),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     if (sub.isNotEmpty) ...[
                       const SizedBox(height: 2),
@@ -697,9 +733,32 @@ class _NvCard extends StatelessWidget {
                         ),
                       ),
                     ],
+                    if (dangChon) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'Chạm icon bút để chọn người ghi chép',
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
+              if (dangChon && onChonGhiChep != null)
+                IconButton(
+                  tooltip: 'Chọn làm người ghi chép',
+                  onPressed: onChonGhiChep,
+                  icon: Icon(
+                    laGhiChep
+                        ? Icons.edit_note_rounded
+                        : Icons.edit_outlined,
+                    color: laGhiChep
+                        ? const Color(0xFF0284C7)
+                        : Colors.grey.shade400,
+                  ),
+                ),
             ],
           ),
         ),
