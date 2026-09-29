@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart' show TimeOfDay;
+
+/// Kết quả validate thời gian dự kiến (giờ hoặc phút).
 class KetQuaValidateThoiGian {
   final int? soGio;
   final int? soPhut;
@@ -44,15 +47,36 @@ KetQuaValidateSoGio validateSoGioDuKien(String raw) {
   return KetQuaValidateSoGio(soGio: kq.soGio);
 }
 
-/// Validate giờ (1–24) hoặc phút (1–1440). Chỉ số nguyên dương, không ký tự đặc biệt.
-KetQuaValidateThoiGian validateThoiGianDuKien(String raw, {required bool laPhut}) {
+/// Số phút còn lại trong ngày kể từ [gioBatDau] đến 24:00.
+/// Nếu chưa chọn giờ bắt đầu → tối đa cả ngày (1440 phút).
+int maxPhutConLaiTrongNgay(TimeOfDay? gioBatDau) {
+  if (gioBatDau == null) return 24 * 60;
+  final daQua = gioBatDau.hour * 60 + gioBatDau.minute;
+  final con = 24 * 60 - daQua;
+  return con > 0 ? con : 0;
+}
+
+/// Validate giờ (1–24) hoặc phút (1–max trong ngày).
+/// Chỉ số nguyên dương, không ký tự đặc biệt.
+/// [gioBatDau]: nếu có → không cho thời lượng tràn sang ngày hôm sau.
+KetQuaValidateThoiGian validateThoiGianDuKien(
+    String raw, {
+      required bool laPhut,
+      TimeOfDay? gioBatDau,
+    }) {
   final v = raw.trim();
-  // Chuỗi API cũ: "15p" / "15P"
   var text = v;
   var phut = laPhut;
-  if (v.toLowerCase().endsWith('p') || v.toLowerCase().endsWith('phút')) {
+  if (v.toLowerCase().endsWith('p') ||
+      v.toLowerCase().contains('phút') ||
+      v.toLowerCase().contains('phut')) {
     phut = true;
-    text = v.toLowerCase().replaceAll('phút', '').replaceAll('p', '').trim();
+    text = v
+        .toLowerCase()
+        .replaceAll('phút', '')
+        .replaceAll('phut', '')
+        .replaceAll('p', '')
+        .trim();
   }
 
   if (text.isEmpty) {
@@ -79,20 +103,31 @@ KetQuaValidateThoiGian validateThoiGianDuKien(String raw, {required bool laPhut}
       laPhut: phut,
     );
   }
-  if (phut) {
-    if (so > 24 * 60) {
-      return const KetQuaValidateThoiGian(
-        loi: 'Thời gian dự kiến tối đa 24 giờ (1440 phút)',
-        laPhut: true,
+
+  final maxPhut = maxPhutConLaiTrongNgay(gioBatDau);
+  final tongPhut = phut ? so : so * 60;
+
+  if (tongPhut > maxPhut) {
+    if (gioBatDau != null) {
+      final h = gioBatDau.hour.toString().padLeft(2, '0');
+      final m = gioBatDau.minute.toString().padLeft(2, '0');
+      return KetQuaValidateThoiGian(
+        loi: phut
+            ? 'Từ $h:$m chỉ còn tối đa $maxPhut phút trong ngày (không tràn sang ngày sau)'
+            : 'Từ $h:$m chỉ còn tối đa ${(maxPhut / 60).floor()} giờ ${maxPhut % 60} phút trong ngày',
+        laPhut: phut,
       );
     }
-    return KetQuaValidateThoiGian(soPhut: so, laPhut: true);
-  }
-  if (so > 24) {
-    return const KetQuaValidateThoiGian(
-      loi: 'Trong ngày — tối đa 24 giờ',
-      laPhut: false,
+    return KetQuaValidateThoiGian(
+      loi: phut
+          ? 'Thời gian dự kiến tối đa 1 ngày (1440 phút)'
+          : 'Trong ngày — tối đa 24 giờ',
+      laPhut: phut,
     );
+  }
+
+  if (phut) {
+    return KetQuaValidateThoiGian(soPhut: so, laPhut: true);
   }
   return KetQuaValidateThoiGian(soGio: so, laPhut: false);
 }
@@ -102,8 +137,16 @@ String? formValidateSoGioDuKien(String? v) {
   return kq.loi;
 }
 
-String? formValidateThoiGianDuKien(String? v, {required bool laPhut}) {
-  return validateThoiGianDuKien(v ?? '', laPhut: laPhut).loi;
+String? formValidateThoiGianDuKien(
+    String? v, {
+      required bool laPhut,
+      TimeOfDay? gioBatDau,
+    }) {
+  return validateThoiGianDuKien(
+    v ?? '',
+    laPhut: laPhut,
+    gioBatDau: gioBatDau,
+  ).loi;
 }
 
 /// Parse chuỗi đã lưu ("4" | "15p") → tổng phút.
@@ -112,4 +155,29 @@ int? parseThoiGianDuKienSangPhut(String? raw) {
   final kq = validateThoiGianDuKien(raw.trim(), laPhut: false);
   if (!kq.hopLe) return null;
   return kq.tongPhut;
+}
+
+/// Hiển thị đẹp: "4" → "4 giờ", "15p" → "15 phút"
+String formatThoiGianDuKienHienThi(String? raw) {
+  if (raw == null || raw.trim().isEmpty) return '—';
+  final kq = validateThoiGianDuKien(raw.trim(), laPhut: false);
+  if (!kq.hopLe) return raw.trim();
+  if (kq.laPhut) return '${kq.soPhut} phút';
+  return '${kq.soGio} giờ';
+}
+
+/// Tính giờ kết thúc; null nếu tràn sang ngày hôm sau.
+TimeOfDay? tinhGioKetThuc({
+  required TimeOfDay gioBatDau,
+  required int tongPhut,
+}) {
+  if (tongPhut <= 0) return null;
+  final start = gioBatDau.hour * 60 + gioBatDau.minute;
+  final end = start + tongPhut;
+  if (end > 24 * 60) return null; // tràn ngày
+  if (end == 24 * 60) {
+    // 24:00 hiển thị 23:59 cho TimeOfDay
+    return const TimeOfDay(hour: 23, minute: 59);
+  }
+  return TimeOfDay(hour: end ~/ 60, minute: end % 60);
 }

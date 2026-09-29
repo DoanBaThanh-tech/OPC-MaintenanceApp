@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/work_order_logic.dart';
+import '../data/work_order_validators.dart';
 import 'work_order_assign_screen.dart';
 
 // ============ MÀN 3: CHI TIẾT HỒ SƠ BẢO TRÌ + PHÂN CÔNG (khi đã duyệt) ============
@@ -353,11 +355,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                       const Divider(height: 18, color: Color(0xFFE8EEF4)),
                       _dong(
                         'Thời gian dự kiến',
-                        hs.thoiGianDuKien == null || hs.thoiGianDuKien!.isEmpty
-                            ? '—'
-                            : (hs.thoiGianDuKien!.contains('giờ')
-                            ? hs.thoiGianDuKien!
-                            : '${hs.thoiGianDuKien} giờ'),
+                        formatThoiGianDuKienHienThi(hs.thoiGianDuKien),
                       ),
                       const Divider(height: 18, color: Color(0xFFE8EEF4)),
                       _dong('Giờ bắt đầu', hs.gioBatDauDuKien ?? '—'),
@@ -936,25 +934,41 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                 ),
               ),
               const SizedBox(height: 14),
-              const Text('Số giờ dự kiến',
+              const Text('Thời gian dự kiến',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
               const SizedBox(height: 8),
+              SegmentedButton<bool>(
+                segments: const [
+                  ButtonSegment(value: false, label: Text('Giờ')),
+                  ButtonSegment(value: true, label: Text('Phút')),
+                ],
+                selected: {_xuongCtrl.nhapPhut},
+                onSelectionChanged: (s) {
+                  _xuongCtrl.datDonViThoiGian(laPhut: s.first);
+                  _onThoiGianXuongChanged(_thoiGianXuongCtrl.text);
+                  setState(() {});
+                },
+              ),
+              const SizedBox(height: 10),
               TextField(
                 controller: _thoiGianXuongCtrl,
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: false,
-                  signed: false,
-                ),
+                keyboardType: TextInputType.number,
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                ],
                 onChanged: _onThoiGianXuongChanged,
                 decoration: InputDecoration(
                   border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12)),
-                  suffixText: 'giờ',
-                  hintText: 'Ví dụ: 2',
+                  suffixText: _xuongCtrl.nhapPhut ? 'phút' : 'giờ',
+                  hintText: _xuongCtrl.nhapPhut ? 'Ví dụ: 15' : 'Ví dụ: 2',
                   filled: true,
                   fillColor: Colors.white,
                   errorText: _loiThoiGianXuong,
-                  errorMaxLines: 2,
+                  errorMaxLines: 3,
+                  helperText: _xuongCtrl.nhapPhut
+                      ? 'Số phút nguyên dương — không tràn sang ngày hôm sau'
+                      : 'Số giờ nguyên dương — trong cùng ngày bảo trì',
                 ),
               ),
               const SizedBox(height: 14),
@@ -1274,7 +1288,7 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
     final ok = await _controller.luu(
       maHoSoBaoTri: widget.hoSo.maHoSoBaoTri,
       noiDungCongViec: _noiDung.text,
-      thoiGianDuKien: _thoiGian.text.trim(),
+      thoiGianDuKien: _controller.chuoiThoiGianLuu ?? _thoiGian.text.trim(),
       gioBatDauDuKien: _fmtTime(_gioBatDau),
       gioKetThucDuKien: _fmtTime(_gioKetThuc),
       ngayDuKienBaoTri: _ngayDuKien,
@@ -1355,17 +1369,30 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
                       ),
                     ),
                     const SizedBox(height: 14),
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment(value: false, label: Text('Giờ')),
+                        ButtonSegment(value: true, label: Text('Phút')),
+                      ],
+                      selected: {_controller.nhapPhut},
+                      onSelectionChanged: (s) {
+                        _controller.datDonViThoiGian(laPhut: s.first);
+                        _onThoiGianChanged(_thoiGian.text);
+                        setState(() {});
+                      },
+                    ),
+                    const SizedBox(height: 10),
                     TextField(
                       controller: _thoiGian,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: false,
-                        signed: false,
-                      ),
+                      keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                       onChanged: _onThoiGianChanged,
                       decoration: _inputDeco(
-                        hint: 'Ví dụ: 2',
+                        hint: _controller.nhapPhut ? 'Ví dụ: 15' : 'Ví dụ: 2',
                         icon: Icons.timelapse_rounded,
-                        suffix: 'giờ',
+                        suffix: _controller.nhapPhut ? 'phút' : 'giờ',
                         label: 'Thời gian dự kiến',
                         errorText: _loiThoiGian,
                       ),

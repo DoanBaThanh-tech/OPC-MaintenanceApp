@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_exception.dart';
+import '../../work_order/data/work_order_validators.dart';
 
 // ============================================================
 // MODEL
@@ -580,79 +581,104 @@ class CreateMaintenancePlanController extends ChangeNotifier {
 
   final noiDungCongViecController = TextEditingController();
   final thoiGianTextController = TextEditingController();
+  /// Số giờ (khi !nhapPhut) — giữ int để tương thích API plan đang nhận int giờ.
   int? thoiGianDuKien;
+  int? thoiGianPhut;
+  bool nhapPhut = false;
   TimeOfDay? gioBatDau;
 
   TimeOfDay? get gioKetThucTuTinh {
-    if (gioBatDau == null || thoiGianDuKien == null) return null;
-    final tongPhut = gioBatDau!.hour * 60 + gioBatDau!.minute + thoiGianDuKien! * 60;
-    return TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
+    final phut = nhapPhut
+        ? (thoiGianPhut ?? 0)
+        : (thoiGianDuKien ?? 0) * 60;
+    if (gioBatDau == null || phut <= 0) return null;
+    return tinhGioKetThuc(gioBatDau: gioBatDau!, tongPhut: phut);
   }
 
-  /// Validate realtime: số nguyên dương 1–24, không ký tự đặc biệt, không thập phân
-  static const int maxGioTrongNgay = 24;
+  /// Giá trị số gửi API kế hoạch (hiện schema dùng giờ số nguyên).
+  /// Phút quy đổi: làm tròn lên tối thiểu 1 giờ nếu < 60, hoặc gửi phút dạng metadata qua nội dung — giữ int giờ ceil.
+  int get thoiGianDuKienGuiApi {
+    if (nhapPhut && thoiGianPhut != null) {
+      // API plan dùng int giờ — lưu ceil giờ tối thiểu 1, đồng thời có thể lưu "Xp" nếu API hỗ trợ string
+      final g = (thoiGianPhut! / 60).ceil();
+      return g < 1 ? 1 : g;
+    }
+    return thoiGianDuKien ?? 0;
+  }
+
+  void datDonViThoiGian({required bool laPhut}) {
+    nhapPhut = laPhut;
+    notifyListeners();
+  }
 
   void datThoiGianDuKienTuChuoi(String raw) {
-    final v = raw.trim();
-    if (v.isEmpty) {
+    final kq = validateThoiGianDuKien(
+      raw,
+      laPhut: nhapPhut,
+      gioBatDau: gioBatDau,
+    );
+    loiThoiGianDuKien = kq.loi;
+    if (!kq.hopLe) {
       thoiGianDuKien = null;
-      loiThoiGianDuKien = 'Vui lòng nhập số giờ dự kiến';
-      notifyListeners();
-      return;
-    }
-    if (!RegExp(r'^\d+$').hasMatch(v)) {
+      thoiGianPhut = null;
+    } else if (kq.laPhut) {
+      thoiGianPhut = kq.soPhut;
       thoiGianDuKien = null;
-      loiThoiGianDuKien =
-      'Chỉ được nhập số nguyên (không chữ, không ký tự đặc biệt, không số thập phân)';
-      notifyListeners();
-      return;
+      nhapPhut = true;
+    } else {
+      thoiGianDuKien = kq.soGio;
+      thoiGianPhut = null;
+      nhapPhut = false;
     }
-    final so = int.tryParse(v);
-    if (so == null || so <= 0) {
-      thoiGianDuKien = null;
-      loiThoiGianDuKien = 'Số giờ dự kiến phải là số nguyên dương lớn hơn 0';
-      notifyListeners();
-      return;
-    }
-    if (so > maxGioTrongNgay) {
-      thoiGianDuKien = null;
-      loiThoiGianDuKien = 'Bảo trì trong ngày — tối đa $maxGioTrongNgay giờ';
-      notifyListeners();
-      return;
-    }
-    thoiGianDuKien = so;
-    loiThoiGianDuKien = null;
     notifyListeners();
   }
 
   void datThoiGianDuKien(int? gio) {
+    nhapPhut = false;
     thoiGianDuKien = gio;
+    thoiGianPhut = null;
     if (gio == null || gio <= 0) {
       loiThoiGianDuKien = 'Vui lòng nhập giờ dự kiến bảo trì (số dương)';
-    } else if (gio > maxGioTrongNgay) {
-      loiThoiGianDuKien = 'Bảo trì trong ngày — tối đa $maxGioTrongNgay giờ';
-      thoiGianDuKien = null;
     } else {
-      loiThoiGianDuKien = null;
+      final kq = validateThoiGianDuKien(
+        '$gio',
+        laPhut: false,
+        gioBatDau: gioBatDau,
+      );
+      loiThoiGianDuKien = kq.loi;
+      if (!kq.hopLe) thoiGianDuKien = null;
     }
     notifyListeners();
   }
 
   void datGioBatDau(TimeOfDay t) {
     gioBatDau = t;
-    notifyListeners();
+    // Re-validate thời lượng với giờ bắt đầu mới
+    final raw = nhapPhut
+        ? (thoiGianPhut?.toString() ?? '')
+        : (thoiGianDuKien?.toString() ?? '');
+    if (raw.isNotEmpty) {
+      datThoiGianDuKienTuChuoi(raw);
+    } else {
+      notifyListeners();
+    }
   }
 
   String? kiemTraGio() {
     if (loiThoiGianDuKien != null) return loiThoiGianDuKien;
-    if (thoiGianDuKien == null || thoiGianDuKien! <= 0) {
-      return 'Vui lòng nhập giờ dự kiến bảo trì (số dương)';
-    }
-    if (thoiGianDuKien! > maxGioTrongNgay) {
-      return 'Bảo trì trong ngày — tối đa $maxGioTrongNgay giờ';
+    final phut = nhapPhut ? thoiGianPhut : (thoiGianDuKien != null ? thoiGianDuKien! * 60 : null);
+    if (phut == null || phut <= 0) {
+      return nhapPhut
+          ? 'Vui lòng nhập số phút dự kiến (số dương)'
+          : 'Vui lòng nhập giờ dự kiến bảo trì (số dương)';
     }
     if (gioBatDau == null) return 'Vui lòng chọn giờ bắt đầu';
-    if (gioKetThucTuTinh == gioBatDau) return 'Giờ bắt đầu và kết thúc không được trùng nhau';
+    if (gioKetThucTuTinh == null) {
+      return 'Thời lượng + giờ bắt đầu vượt quá 24:00 — không được lấn sang ngày khác';
+    }
+    if (gioKetThucTuTinh == gioBatDau) {
+      return 'Giờ bắt đầu và kết thúc không được trùng nhau';
+    }
     return null;
   }
 
@@ -717,7 +743,7 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         maThietBi: thietBiChon!.maThietBi,
         ngay: chiTietChon!.ngayDuKienBaoTri,
         noiDungCongViec: noiDungCongViecController.text.trim(),
-        thoiGianDuKien: thoiGianDuKien!,
+        thoiGianDuKien: thoiGianDuKienGuiApi,
         gioBatDau: gioBatDau!,
         gioKetThuc: gioKetThucTuTinh!,
       );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/maintenance_plan_logic.dart';
 
@@ -1174,13 +1175,32 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                             decoration: _fieldDeco(hint: 'Mô tả công việc cần bảo trì...'),
                           ),
                           const SizedBox(height: 16),
-                          _sectionLabel('Giờ dự kiến bảo trì *', hint: 'Số giờ trong ngày (1–24)'),
+                          _sectionLabel(
+                            'Thời gian dự kiến bảo trì *',
+                            hint: 'Giờ hoặc phút — không tràn sang ngày sau',
+                          ),
+                          SegmentedButton<bool>(
+                            segments: const [
+                              ButtonSegment(value: false, label: Text('Giờ')),
+                              ButtonSegment(value: true, label: Text('Phút')),
+                            ],
+                            selected: {_controller.nhapPhut},
+                            onSelectionChanged: (s) {
+                              _controller.datDonViThoiGian(laPhut: s.first);
+                              _controller.datThoiGianDuKienTuChuoi(
+                                  _controller.thoiGianTextController.text);
+                            },
+                          ),
+                          const SizedBox(height: 10),
                           TextField(
                             controller: _controller.thoiGianTextController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: false, signed: false),
+                            keyboardType: TextInputType.number,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.digitsOnly,
+                            ],
                             decoration: _fieldDeco(
-                              hint: 'Ví dụ: 4',
-                              suffixText: 'giờ',
+                              hint: _controller.nhapPhut ? 'Ví dụ: 15' : 'Ví dụ: 4',
+                              suffixText: _controller.nhapPhut ? 'phút' : 'giờ',
                               error: _controller.loiThoiGianDuKien,
                               prefix: const Icon(Icons.schedule_rounded, size: 22),
                             ),
@@ -1196,24 +1216,38 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                                     _sectionLabel('Giờ bắt đầu *'),
                                     _tapField(
                                       onTap: () async {
-                                        final hopLe = _controller.thoiGianDuKien != null &&
-                                            _controller.thoiGianDuKien! > 0 &&
-                                            _controller.thoiGianDuKien! <= 24 &&
-                                            _controller.loiThoiGianDuKien == null;
+                                        final hopLe =
+                                            _controller.loiThoiGianDuKien == null &&
+                                                ((_controller.nhapPhut &&
+                                                    (_controller.thoiGianPhut ??
+                                                        0) >
+                                                        0) ||
+                                                    (!_controller.nhapPhut &&
+                                                        (_controller.thoiGianDuKien ??
+                                                            0) >
+                                                            0));
                                         if (!hopLe) {
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(content: Text('Nhập số giờ dự kiến hợp lệ trước')),
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(_controller.nhapPhut
+                                                  ? 'Nhập số phút dự kiến hợp lệ trước'
+                                                  : 'Nhập số giờ dự kiến hợp lệ trước'),
+                                            ),
                                           );
                                           return;
                                         }
                                         final t = await showTimePicker(
                                           context: context,
-                                          initialTime: _controller.gioBatDau ?? TimeOfDay.now(),
+                                          initialTime: _controller.gioBatDau ??
+                                              TimeOfDay.now(),
                                           helpText: 'Giờ bắt đầu',
                                           cancelText: 'Hủy',
                                           confirmText: 'Chọn',
                                         );
-                                        if (t != null) _controller.datGioBatDau(t);
+                                        if (t != null) {
+                                          _controller.datGioBatDau(t);
+                                        }
                                       },
                                       icon: Icons.play_circle_outline_rounded,
                                       enabled: true,

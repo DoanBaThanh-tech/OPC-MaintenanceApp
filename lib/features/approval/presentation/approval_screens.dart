@@ -286,7 +286,19 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
     super.dispose();
   }
 
-  String _fmt(DateTime? d) => d == null ? '—' : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+  String _fmt(DateTime? d) => d == null
+      ? '—'
+      : '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  String _fmtThoiGianDuKien(String? raw) {
+    if (raw == null || raw.trim().isEmpty) return '—';
+    final v = raw.trim();
+    if (v.toLowerCase().endsWith('p')) {
+      return '${v.substring(0, v.length - 1)} phút';
+    }
+    if (v.contains('giờ') || v.contains('phút')) return v;
+    return '$v giờ';
+  }
 
   Future<void> _duyet() async {
     final xacNhan = await showDialog<bool>(
@@ -415,7 +427,7 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
                           const Divider(height: 20),
                           _dong(
                             'Thời gian dự kiến',
-                            '${hs.thoiGianDuKien ?? '—'} giờ',
+                            _fmtThoiGianDuKien(hs.thoiGianDuKien),
                           ),
                           const Divider(height: 20),
                           _dong(
