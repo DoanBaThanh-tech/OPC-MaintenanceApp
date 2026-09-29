@@ -164,10 +164,10 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
   }
 
   void datThoiGianTuChuoi(String raw) {
+    // Trần tuyệt đối giờ ≤24 / phút ≤1440 — không giảm theo giờ bắt đầu
     final kq = validateThoiGianDuKien(
       raw,
       laPhut: nhapPhut,
-      gioBatDau: gioBatDau,
     );
     loiThoiGian = kq.loi;
     if (!kq.hopLe) {
@@ -178,12 +178,22 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
       soPhutDuKien = kq.soPhut;
       soGioDuKien = null;
       nhapPhut = true;
-      _tinhGioKetThuc();
+      final phutThem = soPhutDuKien ?? 0;
+      if (gioBatDau != null && phutThem > 0) {
+        gioKetThuc = tinhGioKetThuc(gioBatDau: gioBatDau!, tongPhut: phutThem);
+      } else {
+        _tinhGioKetThuc();
+      }
     } else {
       soGioDuKien = kq.soGio;
       soPhutDuKien = null;
       nhapPhut = false;
-      _tinhGioKetThuc();
+      final phutThem = (soGioDuKien ?? 0) * 60;
+      if (gioBatDau != null && phutThem > 0) {
+        gioKetThuc = tinhGioKetThuc(gioBatDau: gioBatDau!, tongPhut: phutThem);
+      } else {
+        _tinhGioKetThuc();
+      }
     }
     notifyListeners();
   }

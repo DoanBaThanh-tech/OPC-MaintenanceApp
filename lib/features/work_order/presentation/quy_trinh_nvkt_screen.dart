@@ -143,7 +143,14 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
   }
 
   Future<void> _themVatTu(int buocIdx) async {
-    final vt = await _chonVatTu();
+    // Trong cùng bước: ẩn vật tư đã chọn — tăng số lượng thay vì chọn lại.
+    // Sang bước khác: danh sách hiện đủ lại (exclude chỉ theo bước hiện tại).
+    final daChon = _buoc[buocIdx]
+        .vatTu
+        .map((e) => e.maVatTu)
+        .whereType<int>()
+        .toSet();
+    final vt = await _chonVatTu(excludeMa: daChon);
     if (vt == null) return;
     setState(() {
       _buoc[buocIdx].vatTu.add(_VatTuDongState(
@@ -155,10 +162,22 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
     });
   }
 
-  Future<VatTuOption?> _chonVatTu() async {
+  Future<VatTuOption?> _chonVatTu({Set<int> excludeMa = const {}}) async {
     if (_dsVatTu.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Chưa có danh sách vật tư')),
+      );
+      return null;
+    }
+    final conLai = _dsVatTu.where((e) => !excludeMa.contains(e.maVatTu)).toList();
+    if (conLai.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Đã chọn hết vật tư trong bước này. '
+                'Tăng số lượng trên dòng đã có, hoặc chuyển bước khác để chọn lại.',
+          ),
+        ),
       );
       return null;
     }
@@ -168,7 +187,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
       backgroundColor: Colors.transparent,
       builder: (ctx) {
         final filter = TextEditingController();
-        var list = List<VatTuOption>.from(_dsVatTu);
+        var list = List<VatTuOption>.from(conLai);
         return StatefulBuilder(
           builder: (ctx, setModal) {
             return Container(
@@ -204,11 +223,25 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                               color: Colors.white, size: 22),
                         ),
                         const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            'Chọn vật tư',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w900, fontSize: 18),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Chọn vật tư',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w900, fontSize: 18),
+                              ),
+                              if (excludeMa.isNotEmpty)
+                                Text(
+                                  'Đã ẩn ${excludeMa.length} vật tư đã chọn trong bước này — chỉnh số lượng trên dòng có sẵn',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: Colors.grey.shade600,
+                                    height: 1.25,
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
                       ],
@@ -232,7 +265,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                       onChanged: (v) {
                         final q = v.trim().toLowerCase();
                         setModal(() {
-                          list = _dsVatTu
+                          list = conLai
                               .where((e) =>
                           e.tenVatTu.toLowerCase().contains(q) ||
                               e.maVatTu.toString().contains(q))
@@ -243,14 +276,28 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                   ),
                   const SizedBox(height: 8),
                   Expanded(
-                    child: ListView.builder(
+                    child: list.isEmpty
+                        ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Text(
+                          'Không còn vật tư phù hợp.\n'
+                              'Tăng số lượng trên dòng đã chọn trong bước này.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: Colors.grey.shade600, height: 1.35),
+                        ),
+                      ),
+                    )
+                        : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                       itemCount: list.length,
                       itemBuilder: (_, i) {
                         final e = list[i];
                         return TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0, end: 1),
-                          duration: Duration(milliseconds: 220 + (i % 8) * 30),
+                          duration:
+                          Duration(milliseconds: 220 + (i % 8) * 30),
                           curve: Curves.easeOutCubic,
                           builder: (context, t, child) => Opacity(
                             opacity: t,
@@ -264,13 +311,15 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                             margin: const EdgeInsets.only(bottom: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
-                              side: BorderSide(color: Colors.grey.shade200),
+                              side:
+                              BorderSide(color: Colors.grey.shade200),
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 4),
                               leading: CircleAvatar(
-                                backgroundColor: _blue.withValues(alpha: 0.12),
+                                backgroundColor:
+                                _blue.withValues(alpha: 0.12),
                                 child: Text(
                                   '${e.maVatTu}',
                                   style: const TextStyle(
@@ -286,9 +335,11 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                                 'Đơn giá: ${_fmtTien(e.donGia)}'
                                     '${e.donViTinh != null ? ' · ${e.donViTinh}' : ''}',
                                 style: TextStyle(
-                                    color: Colors.grey.shade600, fontSize: 12.5),
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12.5),
                               ),
-                              trailing: const Icon(Icons.add_circle_rounded,
+                              trailing: const Icon(
+                                  Icons.add_circle_rounded,
                                   color: _blue),
                               onTap: () => Navigator.pop(ctx, e),
                             ),

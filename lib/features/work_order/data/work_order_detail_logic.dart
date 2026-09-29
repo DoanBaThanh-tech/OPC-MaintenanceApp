@@ -157,11 +157,12 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     if (rawLower.endsWith('p') || rawLower.contains('phút')) {
       nhapPhut = true;
     }
-    // Có giờ bắt đầu → không cho thời lượng tràn sang ngày sau
+    // Ô thời gian dự kiến: chỉ trần tuyệt đối (giờ ≤24 / phút ≤1440).
+    // Không giảm trần theo giờ bắt đầu — tránh báo "tối đa 16 giờ" khi nhập 24.
     final kq = validateThoiGianDuKien(
       raw,
       laPhut: nhapPhut,
-      gioBatDau: gioBatDau,
+      // không truyền gioBatDau
     );
     loiThoiGian = kq.loi;
     if (kq.laPhut) {
@@ -176,7 +177,13 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     if (!thoiGianHopLe) {
       gioKetThuc = null;
     } else {
-      _tinhGioKetThuc();
+      // Tính lại giờ kết thúc; nếu tràn ngày → xóa kết thúc (báo khi chọn giờ bắt đầu)
+      final phutThem = nhapPhut ? (soPhutDuKien ?? 0) : (soGioDuKien ?? 0) * 60;
+      if (gioBatDau != null && phutThem > 0) {
+        gioKetThuc = tinhGioKetThuc(gioBatDau: gioBatDau!, tongPhut: phutThem);
+      } else {
+        _tinhGioKetThuc();
+      }
     }
     notifyListeners();
   }
@@ -363,7 +370,7 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Số nguyên dương — giờ hoặc phút; không tràn ngày khi đã có giờ bắt đầu.
+  /// Số nguyên dương — giờ ≤24 hoặc phút ≤1440 (trần tuyệt đối).
   void datThoiGianDuKienTuChuoi(String raw) {
     final rawLower = raw.trim().toLowerCase();
     if (rawLower.endsWith('p') || rawLower.contains('phút')) {
@@ -372,7 +379,7 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
     final kq = validateThoiGianDuKien(
       raw,
       laPhut: nhapPhut,
-      gioBatDau: gioBatDau,
+      // không truyền gioBatDau — tránh báo "tối đa 16 giờ" khi nhập 24
     );
     loiThoiGianDuKien = kq.loi;
     if (kq.loi != null) {
@@ -383,12 +390,22 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
       thoiGianPhut = kq.soPhut;
       thoiGianDuKien = null;
       nhapPhut = true;
-      _tinhGioKetThuc();
+      final phutThem = thoiGianPhut ?? 0;
+      if (gioBatDau != null && phutThem > 0) {
+        gioKetThuc = tinhGioKetThuc(gioBatDau: gioBatDau!, tongPhut: phutThem);
+      } else {
+        _tinhGioKetThuc();
+      }
     } else {
       thoiGianDuKien = kq.soGio;
       thoiGianPhut = null;
       nhapPhut = false;
-      _tinhGioKetThuc();
+      final phutThem = (thoiGianDuKien ?? 0) * 60;
+      if (gioBatDau != null && phutThem > 0) {
+        gioKetThuc = tinhGioKetThuc(gioBatDau: gioBatDau!, tongPhut: phutThem);
+      } else {
+        _tinhGioKetThuc();
+      }
     }
     notifyListeners();
   }

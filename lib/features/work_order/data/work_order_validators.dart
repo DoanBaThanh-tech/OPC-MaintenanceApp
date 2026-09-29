@@ -56,9 +56,11 @@ int maxPhutConLaiTrongNgay(TimeOfDay? gioBatDau) {
   return con > 0 ? con : 0;
 }
 
-/// Validate giờ (1–24) hoặc phút (1–max trong ngày).
+/// Validate giờ (1–24) hoặc phút (1–1440).
 /// Chỉ số nguyên dương, không ký tự đặc biệt.
-/// [gioBatDau]: nếu có → không cho thời lượng tràn sang ngày hôm sau.
+/// Trần tuyệt đối: giờ ≤ 24, phút ≤ 1440 — không bị giảm theo giờ bắt đầu.
+/// [gioBatDau]: nếu có và bắt đầu + thời lượng > 24:00 → báo lỗi tổ hợp
+/// (không đổi trần thuộc tính thời gian dự kiến).
 KetQuaValidateThoiGian validateThoiGianDuKien(
     String raw, {
       required bool laPhut,
@@ -104,26 +106,40 @@ KetQuaValidateThoiGian validateThoiGianDuKien(
     );
   }
 
-  final maxPhut = maxPhutConLaiTrongNgay(gioBatDau);
+  // Trần tuyệt đối thuộc tính: giờ ≤ 24, phút ≤ 1440
+  if (phut) {
+    if (so > 1440) {
+      return const KetQuaValidateThoiGian(
+        loi: 'Số phút không quá 1440 (tối đa 1 ngày). Chỉ nhập số nguyên dương.',
+        laPhut: true,
+      );
+    }
+  } else {
+    if (so > 24) {
+      return const KetQuaValidateThoiGian(
+        loi: 'Số giờ không quá 24. Chỉ nhập số nguyên dương.',
+        laPhut: false,
+      );
+    }
+  }
+
   final tongPhut = phut ? so : so * 60;
 
-  if (tongPhut > maxPhut) {
-    if (gioBatDau != null) {
+  // Tổ hợp với giờ bắt đầu: không được tràn sang ngày hôm sau
+  if (gioBatDau != null) {
+    final maxPhut = maxPhutConLaiTrongNgay(gioBatDau);
+    if (tongPhut > maxPhut) {
       final h = gioBatDau.hour.toString().padLeft(2, '0');
       final m = gioBatDau.minute.toString().padLeft(2, '0');
       return KetQuaValidateThoiGian(
         loi: phut
-            ? 'Từ $h:$m chỉ còn tối đa $maxPhut phút trong ngày (không tràn sang ngày sau)'
-            : 'Từ $h:$m chỉ còn tối đa ${(maxPhut / 60).floor()} giờ ${maxPhut % 60} phút trong ngày',
+            ? 'Giờ bắt đầu $h:$m + $so phút vượt quá 24:00. '
+            'Chọn giờ bắt đầu sớm hơn hoặc giảm số phút.'
+            : 'Giờ bắt đầu $h:$m + $so giờ vượt quá 24:00. '
+            'Chọn giờ bắt đầu sớm hơn hoặc giảm số giờ.',
         laPhut: phut,
       );
     }
-    return KetQuaValidateThoiGian(
-      loi: phut
-          ? 'Số phút không quá 1440 (tối đa 1 ngày). Chỉ nhập số nguyên dương.'
-          : 'Số giờ không quá 24 (tối đa 1 ngày). Chỉ nhập số nguyên dương.',
-      laPhut: phut,
-    );
   }
 
   if (phut) {

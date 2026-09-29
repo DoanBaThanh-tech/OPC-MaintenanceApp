@@ -612,10 +612,10 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   }
 
   void datThoiGianDuKienTuChuoi(String raw) {
+    // Trần tuyệt đối giờ ≤24 / phút ≤1440 — không giảm theo giờ bắt đầu
     final kq = validateThoiGianDuKien(
       raw,
       laPhut: nhapPhut,
-      gioBatDau: gioBatDau,
     );
     loiThoiGianDuKien = kq.loi;
     if (!kq.hopLe) {
@@ -643,7 +643,6 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       final kq = validateThoiGianDuKien(
         '$gio',
         laPhut: false,
-        gioBatDau: gioBatDau,
       );
       loiThoiGianDuKien = kq.loi;
       if (!kq.hopLe) thoiGianDuKien = null;
@@ -653,15 +652,21 @@ class CreateMaintenancePlanController extends ChangeNotifier {
 
   void datGioBatDau(TimeOfDay t) {
     gioBatDau = t;
-    // Re-validate thời lượng với giờ bắt đầu mới
+    // Kiểm tra tổ hợp: bắt đầu + thời lượng không tràn 24:00
     final raw = nhapPhut
         ? (thoiGianPhut?.toString() ?? '')
         : (thoiGianDuKien?.toString() ?? '');
     if (raw.isNotEmpty) {
-      datThoiGianDuKienTuChuoi(raw);
-    } else {
-      notifyListeners();
+      final kq = validateThoiGianDuKien(
+        raw,
+        laPhut: nhapPhut,
+        gioBatDau: t,
+      );
+      if (kq.loi != null && kq.loi!.contains('vượt quá 24:00')) {
+        loiThoiGianDuKien = kq.loi;
+      }
     }
+    notifyListeners();
   }
 
   String? kiemTraGio() {
