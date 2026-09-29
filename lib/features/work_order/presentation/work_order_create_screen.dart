@@ -191,12 +191,17 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                                   ],
                                   decoration: InputDecoration(
                                     hintText: _controller.nhapPhut
-                                        ? 'Ví dụ: 15'
+                                        ? 'Ví dụ: 90'
                                         : 'Ví dụ: 4',
                                     border: const OutlineInputBorder(),
                                     prefixIcon: const Icon(Icons.schedule),
                                     suffixText:
                                     _controller.nhapPhut ? 'phút' : 'giờ',
+                                    helperText: _controller.nhapPhut
+                                        ? 'Số phút nguyên dương 1–1440 (không thập phân)'
+                                        : 'Số giờ nguyên dương 1–24 (không thập phân)',
+                                    helperMaxLines: 2,
+                                    errorMaxLines: 3,
                                   ),
                                   validator: _controller.validateThoiGian,
                                   autovalidateMode:

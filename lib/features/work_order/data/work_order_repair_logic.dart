@@ -72,6 +72,8 @@ class ChiTietHoSoSuaChuaController extends ChangeNotifier {
           vaiTro == 'Tổ trưởng kỹ thuật' ||
           vaiTro == 'Tổ trưởng';
   bool get laNvkt => vaiTro == 'Nhân viên kỹ thuật';
+  bool get laXuong =>
+      vaiTro == 'Xưởng' || vaiTro == 'Tổ trưởng sản xuất';
 
   Future<void> tai() async {
     dangTai = true;

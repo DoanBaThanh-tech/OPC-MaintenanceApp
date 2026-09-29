@@ -4,6 +4,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/work_order_logic.dart';
 import '../data/work_order_validators.dart';
+import '../data/models/material_usage_models.dart';
+import '../data/services/material_usage_service.dart';
 import 'work_order_assign_screen.dart';
 
 // ============ MÀN 3: CHI TIẾT HỒ SƠ BẢO TRÌ + PHÂN CÔNG (khi đã duyệt) ============
@@ -21,6 +23,11 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
 
   final _noiDungXuongCtrl = TextEditingController();
   final _thoiGianXuongCtrl = TextEditingController();
+
+  /// Quy trình / vật tư NVKT đã gửi (hiển thị dưới thông tin hồ sơ khi Đang thực hiện).
+  HoSoVatTuItem? _hoSoVatTu;
+  bool _dangTaiQuyTrinh = false;
+  String? _loiQuyTrinh;
 
   bool get _laToTruong => _controller.laToTruong;
   bool get _laNvkt => _controller.laNvkt;
@@ -40,11 +47,40 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     super.initState();
     _controller = WorkOrderBaoTriDetailController(widget.maHoSoBaoTri);
     _controller.taiChiTiet().then((_) {
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      setState(() {});
+      final hs = _controller.hoSo;
+      if (hs != null &&
+          (hs.choXacNhanKetQua || hs.dangThucHien || hs.daHoanThanh)) {
+        _taiQuyTrinhVatTu();
+      }
     });
     _xuongCtrl.addListener(() {
       if (mounted) setState(() {});
     });
+  }
+
+  Future<void> _taiQuyTrinhVatTu() async {
+    setState(() {
+      _dangTaiQuyTrinh = true;
+      _loiQuyTrinh = null;
+    });
+    try {
+      final hs = await MaterialUsageService.layHoSoTheoCongViec(
+        maHoSoBaoTri: widget.maHoSoBaoTri,
+      );
+      if (!mounted) return;
+      setState(() {
+        _hoSoVatTu = hs;
+        _dangTaiQuyTrinh = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loiQuyTrinh = e is ApiException ? e.message : '$e';
+        _dangTaiQuyTrinh = false;
+      });
+    }
   }
 
   @override
@@ -64,9 +100,11 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
 
   void _batDauChinhSuaXuong(HoSoBaoTri hs) {
     _noiDungXuongCtrl.text = hs.noiDungCongViec ?? '';
-    _thoiGianXuongCtrl.text =
-        (hs.thoiGianDuKien ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-    _xuongCtrl.batDauChinhSua(hs, thoiGianText: _thoiGianXuongCtrl.text);
+    // Giữ chuỗi gốc ("15p" / "4") để nhận đúng đơn vị phút/giờ
+    final raw = (hs.thoiGianDuKien ?? '').trim();
+    final chiSo = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    _thoiGianXuongCtrl.text = chiSo;
+    _xuongCtrl.batDauChinhSua(hs, thoiGianText: raw.isEmpty ? chiSo : raw);
   }
 
   void _huyChinhSuaXuong() {
@@ -87,8 +125,13 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
       await _controller.taiChiTiet();
       setState(() {});
     } else if (_xuongCtrl.loi != null) {
+      // Thông báo đỏ — không cho lưu khi sai nghiệp vụ (đổi sang tháng khác, …)
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(_xuongCtrl.loi!)),
+        SnackBar(
+          content: Text(_xuongCtrl.loi!),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -763,7 +806,10 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
             style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
+        // Quy trình bảo trì ngay dưới thông tin hồ sơ (thay trang Quy trình riêng)
+        _buildQuyTrinhDuoiThongTin(),
+        const SizedBox(height: 14),
         Row(
           children: [
             Expanded(
@@ -856,6 +902,145 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     );
   }
 
+  /// Hiển thị quy trình bảo trì / vật tư ngay dưới thông tin hồ sơ.
+  Widget _buildQuyTrinhDuoiThongTin() {
+    if (_dangTaiQuyTrinh) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_loiQuyTrinh != null) {
+      return _cardBox(children: [
+        const Text('Quy trình bảo trì',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+        const SizedBox(height: 8),
+        Text(_loiQuyTrinh!, style: TextStyle(color: Colors.grey.shade700)),
+        TextButton(onPressed: _taiQuyTrinhVatTu, child: const Text('Thử lại')),
+      ]);
+    }
+    final hsVt = _hoSoVatTu;
+    if (hsVt == null || hsVt.chiTiet.isEmpty) {
+      return _cardBox(children: [
+        const Text('Quy trình bảo trì',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+        const SizedBox(height: 8),
+        Text(
+          'Chưa có dữ liệu bước/vật tư (có thể không dùng vật tư).',
+          style: TextStyle(
+              color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+        ),
+      ]);
+    }
+
+    final map = <int, List<ChiTietVatTuSuDung>>{};
+    for (final c in hsVt.chiTiet) {
+      map.putIfAbsent(c.soBuoc, () => []).add(c);
+    }
+    final keys = map.keys.toList()..sort();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _cardBox(children: [
+          Row(
+            children: [
+              Icon(Icons.account_tree_rounded,
+                  size: 18, color: AppColors.primary.withValues(alpha: 0.9)),
+              const SizedBox(width: 8),
+              const Text('Quy trình bảo trì',
+                  style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Color(0xFF0F172A))),
+              const Spacer(),
+              Text(
+                '${keys.length} bước',
+                style: TextStyle(
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12),
+              ),
+            ],
+          ),
+        ]),
+        const SizedBox(height: 8),
+        for (final k in keys)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFBAE6FD)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '$k',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('Bước $k',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 14)),
+                  ],
+                ),
+                if (map[k]!.any((e) => e.moTaBuoc.trim().isNotEmpty)) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    map[k]!
+                        .map((e) => e.moTaBuoc.trim())
+                        .where((s) => s.isNotEmpty)
+                        .toSet()
+                        .join(' · '),
+                    style: TextStyle(
+                        color: Colors.grey.shade800,
+                        height: 1.35,
+                        fontSize: 13),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                for (final c in map[k]!)
+                  if (c.tenVatTu.isNotEmpty && c.soLuong > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.inventory_2_outlined,
+                              size: 15, color: Color(0xFF0068A9)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              '${c.tenVatTu} × ${c.soLuong}',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _buildXuongActions(HoSoBaoTri hs) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -903,14 +1088,20 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
               const SizedBox(height: 8),
               InkWell(
                 onTap: () async {
-                  final now = DateTime.now();
-                  final initial = _ngayDuKienXuong ?? now;
+                  // Khóa đúng tháng kế hoạch gốc (ngayDuKienGoc).
+                  // VD: KH tháng 10, lập cuối tháng 9 → không được chọn ngày tháng 9.
+                  final goc = _xuongCtrl.ngayDuKienGoc ?? _ngayDuKienXuong ?? DateTime.now();
+                  final firstOfMonth = DateTime(goc.year, goc.month, 1);
+                  final lastOfMonth = DateTime(goc.year, goc.month + 1, 0);
+                  var initial = _ngayDuKienXuong ?? firstOfMonth;
+                  if (initial.isBefore(firstOfMonth)) initial = firstOfMonth;
+                  if (initial.isAfter(lastOfMonth)) initial = lastOfMonth;
                   final picked = await showDatePicker(
                     context: context,
-                    initialDate: initial.isBefore(now) ? now : initial,
-                    firstDate: now,
-                    lastDate: DateTime(now.year + 2),
-                    helpText: 'Chọn ngày dự kiến bảo trì',
+                    initialDate: initial,
+                    firstDate: firstOfMonth,
+                    lastDate: lastOfMonth,
+                    helpText: 'Chỉ chọn ngày trong tháng ${goc.month}/${goc.year}',
                     cancelText: 'Hủy',
                     confirmText: 'Chọn',
                   );
@@ -923,6 +1114,17 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                     prefixIcon: const Icon(Icons.event_available_rounded),
                     filled: true,
                     fillColor: Colors.white,
+                    errorText: (_xuongCtrl.loi != null &&
+                        (_xuongCtrl.loi!.contains('tháng') ||
+                            _xuongCtrl.loi!.contains('ngày dự kiến') ||
+                            _xuongCtrl.loi!.contains('Ngày dự kiến')))
+                        ? _xuongCtrl.loi
+                        : null,
+                    errorMaxLines: 4,
+                    helperText: _xuongCtrl.ngayDuKienGoc != null
+                        ? 'Chỉ được chọn ngày trong tháng ${_xuongCtrl.ngayDuKienGoc!.month}/${_xuongCtrl.ngayDuKienGoc!.year} (theo kế hoạch Tổ trưởng)'
+                        : 'Chỉ được chọn ngày trong đúng tháng kế hoạch',
+                    helperMaxLines: 2,
                   ),
                   child: Text(
                     _ngayDuKienXuong == null ? 'Chọn ngày' : _fmt(_ngayDuKienXuong),
@@ -933,6 +1135,16 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                   ),
                 ),
               ),
+              if (_xuongCtrl.loi != null &&
+                  !(_xuongCtrl.loi!.contains('tháng') ||
+                      _xuongCtrl.loi!.contains('ngày dự kiến') ||
+                      _xuongCtrl.loi!.contains('Ngày dự kiến'))) ...[
+                const SizedBox(height: 8),
+                Text(
+                  _xuongCtrl.loi!,
+                  style: TextStyle(color: Colors.red.shade700, fontSize: 12.5, height: 1.3),
+                ),
+              ],
               const SizedBox(height: 14),
               const Text('Thời gian dự kiến',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
@@ -967,8 +1179,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                   errorText: _loiThoiGianXuong,
                   errorMaxLines: 3,
                   helperText: _xuongCtrl.nhapPhut
-                      ? 'Số phút nguyên dương — không tràn sang ngày hôm sau'
-                      : 'Số giờ nguyên dương — trong cùng ngày bảo trì',
+                      ? 'Số phút nguyên dương 1–1440 (không thập phân, không tràn ngày)'
+                      : 'Số giờ nguyên dương 1–24 (không thập phân, trong cùng ngày)',
                 ),
               ),
               const SizedBox(height: 14),
@@ -1153,27 +1365,33 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
   DateTime? _ngayDuKien;
   TimeOfDay? _gioBatDau;
   TimeOfDay? _gioKetThuc;
-  String? _loiThoiGian; // lỗi đỏ dưới ô số giờ
 
-  bool get _choPhepChonGioBatDau {
-    if (_loiThoiGian != null) return false;
-    final so = int.tryParse(_thoiGian.text.trim());
-    return so != null && so > 0 && so <= 24;
-  }
+  /// Giờ: 1–24 · Phút: 1–1440 (số nguyên dương). Dùng controller chung.
+  bool get _choPhepChonGioBatDau => _controller.choPhepChonGioBatDau;
+  String? get _loiThoiGian => _controller.loiThoiGianDuKien;
 
   @override
   void initState() {
     super.initState();
     _noiDung = TextEditingController(text: widget.hoSo.noiDungCongViec ?? '');
-    _thoiGian = TextEditingController(text: widget.hoSo.thoiGianDuKien ?? '');
+    // Giữ chuỗi gốc ("15p" / "4") để nhận đúng đơn vị; ô nhập chỉ hiện số
+    final raw = (widget.hoSo.thoiGianDuKien ?? '').trim();
+    final chiSo = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    _thoiGian = TextEditingController(text: chiSo);
     _ngayDuKien = widget.hoSo.ngayDuKienBaoTri;
     _gioBatDau = _parseTime(widget.hoSo.gioBatDauDuKien);
     _gioKetThuc = _parseTime(widget.hoSo.gioKetThucDuKien);
-    // Validate sẵn nếu đã có số giờ cũ
-    if (_thoiGian.text.trim().isNotEmpty) {
-      _validateThoiGian(_thoiGian.text);
-      _tinhGioKetThuc();
+    _controller.khoiTaoTuHoSo(
+      thoiGianDuKienStr: raw.isEmpty ? chiSo : raw,
+      gioBatDauStr: widget.hoSo.gioBatDauDuKien,
+      gioKetThucStr: widget.hoSo.gioKetThucDuKien,
+      ngayDuKien: widget.hoSo.ngayDuKienBaoTri,
+    );
+    if (_gioBatDau != null) {
+      _controller.gioBatDau = _gioBatDau;
+      _controller.datThoiGianDuKienTuChuoi(raw.isEmpty ? chiSo : raw);
     }
+    _gioKetThuc = _controller.gioKetThuc ?? _gioKetThuc;
   }
 
   @override
@@ -1199,50 +1417,50 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
-  /// Ràng buộc số giờ — dùng validator chung trong logic.
-  void _validateThoiGian(String raw) {
-    final kq = validateSoGioDuKien(raw);
-    _loiThoiGian = kq.loi;
-  }
-
-  void _tinhGioKetThuc() {
-    if (!_choPhepChonGioBatDau || _gioBatDau == null) {
-      // Giữ null nếu chưa đủ dữ liệu hợp lệ
-      if (!_choPhepChonGioBatDau) _gioKetThuc = null;
-      return;
-    }
-    final soGio = int.parse(_thoiGian.text.trim());
-    final tongPhut = _gioBatDau!.hour * 60 + _gioBatDau!.minute + soGio * 60;
-    _gioKetThuc = TimeOfDay(hour: (tongPhut ~/ 60) % 24, minute: tongPhut % 60);
-  }
-
   void _onThoiGianChanged(String v) {
+    _controller.datThoiGianDuKienTuChuoi(v);
     setState(() {
-      _validateThoiGian(v);
-      if (_loiThoiGian != null) {
-        _gioKetThuc = null;
-      } else {
-        _tinhGioKetThuc();
-      }
+      _gioKetThuc = _controller.gioKetThuc;
     });
   }
 
   Future<void> _chonNgay() async {
-    final now = DateTime.now();
+    // Khóa đúng tháng kế hoạch gốc — không cho đổi sang tháng trước/sau
+    // (VD KH tháng 10, lập cuối T9 → không chọn ngày tháng 9).
+    final goc = widget.hoSo.ngayDuKienBaoTri ?? _ngayDuKien ?? DateTime.now();
+    final firstOfMonth = DateTime(goc.year, goc.month, 1);
+    final lastOfMonth = DateTime(goc.year, goc.month + 1, 0);
+    var initial = _ngayDuKien ?? firstOfMonth;
+    if (initial.isBefore(firstOfMonth)) initial = firstOfMonth;
+    if (initial.isAfter(lastOfMonth)) initial = lastOfMonth;
     final picked = await showDatePicker(
       context: context,
-      initialDate: _ngayDuKien ?? now,
-      firstDate: now,
-      lastDate: DateTime(now.year + 5),
+      initialDate: initial,
+      firstDate: firstOfMonth,
+      lastDate: lastOfMonth,
+      helpText: 'Chỉ chọn ngày trong tháng ${goc.month}/${goc.year}',
+      cancelText: 'Hủy',
+      confirmText: 'Chọn',
     );
-    if (picked != null) setState(() => _ngayDuKien = picked);
+    if (picked != null) {
+      setState(() {
+        _ngayDuKien = picked;
+        _controller.loi = null;
+      });
+    }
   }
 
   Future<void> _chonGioBatDau() async {
     if (!_choPhepChonGioBatDau) {
-      setState(() {
-        _loiThoiGian ??= 'Nhập đúng số giờ dự kiến trước khi chọn giờ bắt đầu';
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _loiThoiGian ??
+                'Nhập đúng thời gian dự kiến (giờ 1–24 hoặc phút 1–1440) trước khi chọn giờ bắt đầu',
+          ),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
       return;
     }
     final initial = _gioBatDau ?? const TimeOfDay(hour: 8, minute: 0);
@@ -1257,30 +1475,47 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
       },
     );
     if (picked == null) return;
+    _controller.datGioBatDau(picked);
     setState(() {
       _gioBatDau = picked;
-      _tinhGioKetThuc();
+      _gioKetThuc = _controller.gioKetThuc;
     });
   }
 
   Future<void> _luu() async {
-    _validateThoiGian(_thoiGian.text);
-    if (_loiThoiGian != null) {
+    // Validate lại theo đơn vị đang chọn (giờ ≤24 / phút ≤1440)
+    _controller.datThoiGianDuKienTuChuoi(_thoiGian.text);
+    if (_controller.loiThoiGianDuKien != null) {
       setState(() {});
-      return;
-    }
-    if (_gioBatDau == null) {
-      setState(() => _controller.loi = 'Vui lòng chọn giờ bắt đầu');
-      // loi is on controller - need set via method; show local message:
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng chọn giờ bắt đầu')),
+        SnackBar(
+          content: Text(_controller.loiThoiGianDuKien!),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
-    _tinhGioKetThuc();
+    if (_gioBatDau == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Vui lòng chọn giờ bắt đầu'),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+      return;
+    }
+    _controller.datGioBatDau(_gioBatDau!);
+    _gioKetThuc = _controller.gioKetThuc;
     if (_gioKetThuc == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chưa tính được giờ kết thúc')),
+        SnackBar(
+          content: Text(
+            _controller.loiThoiGianDuKien ??
+                'Chưa tính được giờ kết thúc (thời lượng có thể tràn sang ngày sau)',
+          ),
+          backgroundColor: Colors.red.shade700,
+        ),
       );
       return;
     }
@@ -1292,12 +1527,23 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
       gioBatDauDuKien: _fmtTime(_gioBatDau),
       gioKetThucDuKien: _fmtTime(_gioKetThuc),
       ngayDuKienBaoTri: _ngayDuKien,
+      ngayDuKienGoc: widget.hoSo.ngayDuKienBaoTri,
+      ngayTao: widget.hoSo.ngayTao,
     );
-    if (ok && mounted) {
+    if (!mounted) return;
+    if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã gửi lại hồ sơ để duyệt')),
       );
       Navigator.pop(context, true);
+    } else if (_controller.loi != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_controller.loi!),
+          backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -1390,11 +1636,14 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
                       ],
                       onChanged: _onThoiGianChanged,
                       decoration: _inputDeco(
-                        hint: _controller.nhapPhut ? 'Ví dụ: 15' : 'Ví dụ: 2',
+                        hint: _controller.nhapPhut ? 'Ví dụ: 90' : 'Ví dụ: 2',
                         icon: Icons.timelapse_rounded,
                         suffix: _controller.nhapPhut ? 'phút' : 'giờ',
                         label: 'Thời gian dự kiến',
                         errorText: _loiThoiGian,
+                        helperText: _controller.nhapPhut
+                            ? 'Số phút nguyên dương 1–1440 (không thập phân)'
+                            : 'Số giờ nguyên dương 1–24 (không thập phân)',
                       ),
                     ),
                   ],
@@ -1417,8 +1666,10 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Mỗi thiết bị chỉ 1 lần bảo trì trong 1 tháng. '
-                          'Nếu tháng đích đã có kế hoạch/hồ sơ thì không đổi được sang tháng đó.',
+                      widget.hoSo.ngayDuKienBaoTri != null
+                          ? 'Chỉ được chọn ngày trong tháng ${widget.hoSo.ngayDuKienBaoTri!.month}/${widget.hoSo.ngayDuKienBaoTri!.year} '
+                          '(theo kế hoạch Tổ trưởng). Không được đổi sang tháng trước/sau.'
+                          : 'Chỉ được chọn ngày trong đúng tháng kế hoạch. Không được đổi sang tháng khác.',
                       style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, height: 1.3),
                     ),
                     const Divider(height: 20),
@@ -1530,6 +1781,7 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
     String? suffix,
     String? label,
     String? errorText,
+    String? helperText,
   }) {
     return InputDecoration(
       labelText: label,
@@ -1537,6 +1789,9 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
       prefixIcon: Icon(icon, size: 20),
       suffixText: suffix,
       errorText: errorText,
+      errorMaxLines: 3,
+      helperText: helperText,
+      helperMaxLines: 2,
       filled: true,
       fillColor: Colors.grey.shade50,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),

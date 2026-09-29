@@ -216,7 +216,8 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Khóa đúng tháng kế hoạch; ngày dự kiến > ngày tạo.
+  /// Khóa đúng tháng kế hoạch Tổ trưởng; ngày dự kiến > ngày tạo.
+  /// VD: KH tháng 10, lập cuối tháng 9 → không được đổi ngày dự kiến sang tháng 9.
   String? _kiemTraNgayDuKien(DateTime? ngayMoi) {
     if (ngayMoi == null) return null;
     final goc = ngayDuKienGoc;
@@ -233,9 +234,9 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     }
     if (goc != null &&
         (ngayMoi.month != goc.month || ngayMoi.year != goc.year)) {
-      return 'Hồ sơ đang lập bảo trì cho tháng ${goc.month}/${goc.year}. '
-          'Không được chuyển sang tháng ${ngayMoi.month}/${ngayMoi.year} '
-          '(ví dụ không được sửa về ngày tạo thuộc tháng khác). '
+      return 'Hồ sơ đang lập bảo trì cho tháng ${goc.month}/${goc.year} '
+          '(theo kế hoạch Tổ trưởng). '
+          'Không được chuyển ngày dự kiến sang tháng ${ngayMoi.month}/${ngayMoi.year}. '
           'Chỉ được chọn ngày trong đúng tháng kế hoạch.';
     }
     return null;
@@ -320,9 +321,14 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
   DateTime? ngayDuKienBaoTri;
 
   /// true khi thời lượng hợp lệ → mới cho chọn giờ bắt đầu
+  /// Giờ: 1–24 · Phút: 1–1440
   bool get choPhepChonGioBatDau {
     if (loiThoiGianDuKien != null) return false;
-    if (nhapPhut) return thoiGianPhut != null && thoiGianPhut! > 0;
+    if (nhapPhut) {
+      return thoiGianPhut != null &&
+          thoiGianPhut! > 0 &&
+          thoiGianPhut! <= 1440;
+    }
     return thoiGianDuKien != null &&
         thoiGianDuKien! > 0 &&
         thoiGianDuKien! <= 24;
@@ -485,7 +491,10 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
         goc != null &&
         (ngay.month != goc.month || ngay.year != goc.year)) {
       loi =
-      'Hồ sơ lập cho tháng ${goc.month}/${goc.year} — không được chuyển sang tháng ${ngay.month}/${ngay.year}.';
+      'Hồ sơ đang lập bảo trì cho tháng ${goc.month}/${goc.year} '
+          '(theo kế hoạch Tổ trưởng). '
+          'Không được chuyển ngày dự kiến sang tháng ${ngay.month}/${ngay.year}. '
+          'Chỉ được chọn ngày trong đúng tháng kế hoạch.';
       notifyListeners();
       return false;
     }

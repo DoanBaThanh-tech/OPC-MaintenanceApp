@@ -6,6 +6,7 @@ import '../data/models/work_order_models.dart';
 import '../data/models/material_usage_models.dart';
 import '../data/services/work_order_service.dart';
 import '../data/services/material_usage_service.dart';
+import '../data/work_order_validators.dart';
 import 'quy_trinh_nvkt_screen.dart';
 
 // ============ QUẢN LÝ YÊU CẦU (NVKT) ============
@@ -155,6 +156,7 @@ class _QuanLyYeuCauScreenState extends State<QuanLyYeuCauScreen>
 
   Widget _buildList() {
     final canLam = _ctrl.canThucHien;
+    final hoTro = _ctrl.chiXemHoTro;
     final choXn = _ctrl.choXacNhanKetQua;
     final xong = _ctrl.daHoanThanh;
     final huy = _ctrl.danhSach
@@ -162,7 +164,11 @@ class _QuanLyYeuCauScreenState extends State<QuanLyYeuCauScreen>
     e.daHuy && !e.choXacNhanKetQua && !e.daHoanThanhPc && !e.canThucHien)
         .toList();
 
-    if (canLam.isEmpty && choXn.isEmpty && xong.isEmpty && huy.isEmpty) {
+    if (canLam.isEmpty &&
+        hoTro.isEmpty &&
+        choXn.isEmpty &&
+        xong.isEmpty &&
+        huy.isEmpty) {
       return ListView(
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
@@ -185,6 +191,18 @@ class _QuanLyYeuCauScreenState extends State<QuanLyYeuCauScreen>
           _sectionHeader('Cần thực hiện', canLam.length, const Color(0xFFD97706)),
           const SizedBox(height: 10),
           ...canLam.asMap().entries.map((e) => _YeuCauCard(
+            yeuCau: e.value,
+            index: e.key,
+            onTap: () => _moChiTiet(e.value),
+          )),
+          const SizedBox(height: 18),
+        ],
+        // NV hỗ trợ (không ghi chép): vẫn thấy yêu cầu, chỉ không có nút Tiến hành
+        if (hoTro.isNotEmpty) ...[
+          _sectionHeader(
+              'Được phân công (hỗ trợ)', hoTro.length, Colors.blueGrey),
+          const SizedBox(height: 10),
+          ...hoTro.asMap().entries.map((e) => _YeuCauCard(
             yeuCau: e.value,
             index: e.key,
             onTap: () => _moChiTiet(e.value),
@@ -715,7 +733,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                   if (y.ngayDuKienBaoTri != null)
                     _row('Ngày dự kiến BT', _fmtDt(y.ngayDuKienBaoTri!)),
                   if (y.thoiGianDuKien != null)
-                    _row('Thời gian dự kiến', '${y.thoiGianDuKien} giờ'),
+                    _row('Thời gian dự kiến',
+                        formatThoiGianDuKienHienThi(y.thoiGianDuKien)),
                   if (y.ngayBatDauDuKien != null)
                     _row('Giờ bắt đầu', _fmtGio(y.ngayBatDauDuKien!)),
                   if (y.ngayKetThucDuKien != null)

@@ -37,10 +37,18 @@ class QuanLyYeuCauController extends ChangeNotifier {
     tai();
   }
 
-  /// Việc cần làm (chưa gửi Xưởng).
+  /// Việc cần làm (chưa gửi Xưởng) — chỉ người ghi chép.
   List<YeuCauPhanCong> get canThucHien =>
       danhSach.where((e) => e.canThucHien && !e.daHuy && !e.daHoanThanhPc).toList();
-  /// Đã gửi quy trình — chờ Xưởng xác nhận.
+  /// NV được phân công hỗ trợ (không ghi chép) — vẫn xem yêu cầu, không nút Tiến hành.
+  List<YeuCauPhanCong> get chiXemHoTro => danhSach
+      .where((e) =>
+  e.chiXem &&
+      !e.choXacNhanKetQua &&
+      !e.daHoanThanhPc &&
+      !e.daHuy)
+      .toList();
+  /// Đã gửi quy trình — chờ Xưởng xác nhận (mọi NV được phân công đều thấy).
   List<YeuCauPhanCong> get choXacNhanKetQua =>
       danhSach.where((e) => e.choXacNhanKetQua).toList();
   List<YeuCauPhanCong> get choXacNhan => canThucHien; // alias cũ
@@ -49,6 +57,7 @@ class QuanLyYeuCauController extends ChangeNotifier {
   List<YeuCauPhanCong> get khac => danhSach
       .where((e) =>
   !e.canThucHien &&
+      !e.chiXem &&
       !e.choXacNhanKetQua &&
       (e.daHuy || e.biTuChoi || (!e.daHoanThanhPc)))
       .toList();

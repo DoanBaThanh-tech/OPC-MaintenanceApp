@@ -4,7 +4,6 @@ import '../../maintenance_plan/presentation/maintenance_plan_screens.dart';
 import '../../work_order/presentation/work_order_screens.dart';
 import '../../work_order/presentation/technician_screens.dart';
 import '../../work_order/presentation/work_order_repair_screens.dart';
-import '../../work_order/presentation/xuong_quy_trinh_screen.dart';
 import '../../approval/presentation/approval_screens.dart';
 import '../../equipment/presentation/equipment_screens.dart';
 import '../../work_order/presentation/work_order_assign_history_screen.dart';
@@ -76,14 +75,14 @@ class DashboardLogic {
           ]),
         ];
 
-    // Xưởng: lịch BT chờ duyệt + trang Quy trình (NVKT gửi sau Xong) + SC
+    // Xưởng: hồ sơ BT + SC. Quy trình xem ngay trong chi tiết hồ sơ (tab Đang thực hiện).
       case 'Xưởng':
       case 'Tổ trưởng sản xuất': // tương thích JWT/DB cũ
         return [
           MenuGroup(tieuDe: 'Hồ sơ', muc: [
             MenuItemData(
               icon: Icons.fact_check_rounded,
-              label: 'Hồ sơ bảo trì (chờ lịch)',
+              label: 'Hồ sơ bảo trì',
               screenBuilder: () =>
               const WorkOrderBaoTriListScreen(trangThaiMacDinh: 'Chờ duyệt'),
             ),
@@ -92,13 +91,6 @@ class DashboardLogic {
               label: 'Hồ sơ sửa chữa',
               screenBuilder: () =>
               const WorkOrderSuaChuaListScreen(hienFabTao: true),
-            ),
-          ]),
-          MenuGroup(tieuDe: 'Quy trình', muc: [
-            MenuItemData(
-              icon: Icons.account_tree_rounded,
-              label: 'Quy trình',
-              screenBuilder: () => const XuongQuyTrinhScreen(),
             ),
           ]),
         ];

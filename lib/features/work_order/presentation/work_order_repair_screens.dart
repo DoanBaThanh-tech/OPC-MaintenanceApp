@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/network/api_exception.dart';
 import '../../equipment/data/equipment_logic.dart' show ThietBiModel;
 import '../data/work_order_logic.dart';
+import '../data/models/material_usage_models.dart';
+import '../data/services/material_usage_service.dart';
+import '../data/services/work_order_service.dart';
 import 'work_order_assign_screen.dart';
 
 // Theme xanh dương (đồng bộ AppColors) — hiện đại, nhiều hiệu ứng
@@ -35,7 +39,7 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
   late final AnimationController _headerAnim;
   late final TabController _tab;
 
-  // Không hiện tab "Chờ xác nhận" trên Hồ sơ SC — Xưởng dùng trang Quy trình riêng.
+  // Không hiện tab "Chờ xác nhận" trên Hồ sơ SC — map sang Đang thực hiện; quy trình xem trong chi tiết.
   static const _tabs = [
     'Tất cả',
     'Chờ phân công',
@@ -1268,8 +1272,13 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
   late final ChiTietHoSoSuaChuaController _ctrl;
   late final AnimationController _anim;
 
+  HoSoVatTuItem? _hoSoVatTu;
+  bool _dangTaiQuyTrinh = false;
+  String? _loiQuyTrinh;
+
   bool get _laToTruong => _ctrl.laToTruong;
   bool get _laNvkt => _ctrl.laNvkt;
+  bool get _laXuong => _ctrl.laXuong;
 
   @override
   void initState() {
@@ -1279,7 +1288,36 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
       ..forward();
     _ctrl = ChiTietHoSoSuaChuaController(widget.maHoSo);
     _ctrl.addListener(_onCtrl);
-    _ctrl.tai();
+    _ctrl.tai().then((_) {
+      final hs = _ctrl.hoSo;
+      if (hs != null &&
+          (hs.choXacNhanKetQua || hs.dangThucHien || hs.daHoanThanh)) {
+        _taiQuyTrinhVatTu();
+      }
+    });
+  }
+
+  Future<void> _taiQuyTrinhVatTu() async {
+    setState(() {
+      _dangTaiQuyTrinh = true;
+      _loiQuyTrinh = null;
+    });
+    try {
+      final hs = await MaterialUsageService.layHoSoTheoCongViec(
+        maHoSoSuaChua: widget.maHoSo,
+      );
+      if (!mounted) return;
+      setState(() {
+        _hoSoVatTu = hs;
+        _dangTaiQuyTrinh = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loiQuyTrinh = e is ApiException ? e.message : '$e';
+        _dangTaiQuyTrinh = false;
+      });
+    }
   }
 
   void _onCtrl() {
@@ -1658,12 +1696,261 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                       ),
                     ),
                   ],
+                  // Xưởng: xem quy trình + xác nhận/từ chối khi NVKT đã gửi
+                  if (_laXuong && hs.choXacNhanKetQua) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.warning.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                            color: AppColors.warning.withValues(alpha: 0.35)),
+                      ),
+                      child: const Text(
+                        'NVKT đã gửi kết quả quy trình sửa chữa. Kiểm tra bước/vật tư rồi Xác nhận hoặc Từ chối.',
+                        style:
+                        TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildQuyTrinhSuaChua(),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.success),
+                            onPressed: () async {
+                              try {
+                                await WorkOrderService.xuongXacNhanKetQua(
+                                  maHoSoSuaChua: hs.maHoSoSuaChua,
+                                  xacNhan: true,
+                                );
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                    Text('Đã xác nhận — hồ sơ Hoàn thành'),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
+                                await _load();
+                              } on ApiException catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(e.message),
+                                      backgroundColor: AppColors.danger),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.check_circle_outline),
+                            label: const Text('Xác nhận'),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.danger),
+                            onPressed: () async {
+                              final lyDoCtrl = TextEditingController();
+                              final lyDo = await showDialog<String>(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  title: const Text('Từ chối kết quả'),
+                                  content: TextField(
+                                    controller: lyDoCtrl,
+                                    maxLines: 3,
+                                    decoration: const InputDecoration(
+                                      hintText: 'Lý do để NVKT chỉnh sửa…',
+                                      border: OutlineInputBorder(),
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () => Navigator.pop(ctx),
+                                        child: const Text('Hủy')),
+                                    FilledButton(
+                                      onPressed: () => Navigator.pop(
+                                          ctx, lyDoCtrl.text.trim()),
+                                      child: const Text('Từ chối'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (lyDo == null || lyDo.isEmpty) return;
+                              try {
+                                await WorkOrderService.xuongXacNhanKetQua(
+                                  maHoSoSuaChua: hs.maHoSoSuaChua,
+                                  xacNhan: false,
+                                  lyDo: lyDo,
+                                );
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content:
+                                    Text('Đã từ chối — NVKT chỉnh sửa lại'),
+                                    backgroundColor: AppColors.warning,
+                                  ),
+                                );
+                                await _load();
+                              } on ApiException catch (e) {
+                                if (!mounted) return;
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(e.message),
+                                      backgroundColor: AppColors.danger),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.cancel_outlined),
+                            label: const Text('Từ chối'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuyTrinhSuaChua() {
+    if (_dangTaiQuyTrinh) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (_loiQuyTrinh != null) {
+      return _ScCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Quy trình sửa chữa',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+            const SizedBox(height: 8),
+            Text(_loiQuyTrinh!,
+                style: TextStyle(color: Colors.grey.shade700)),
+            TextButton(
+                onPressed: _taiQuyTrinhVatTu, child: const Text('Thử lại')),
+          ],
+        ),
+      );
+    }
+    final hsVt = _hoSoVatTu;
+    if (hsVt == null || hsVt.chiTiet.isEmpty) {
+      return _ScCard(
+        child: Text(
+          'Chưa có dữ liệu bước/vật tư (có thể không dùng vật tư).',
+          style: TextStyle(
+              color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+        ),
+      );
+    }
+    final map = <int, List<ChiTietVatTuSuDung>>{};
+    for (final c in hsVt.chiTiet) {
+      map.putIfAbsent(c.soBuoc, () => []).add(c);
+    }
+    final keys = map.keys.toList()..sort();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _ScCard(
+          child: Row(
+            children: [
+              const Icon(Icons.account_tree_rounded,
+                  size: 18, color: _scPrimary),
+              const SizedBox(width: 8),
+              const Text('Quy trình sửa chữa',
+                  style:
+                  TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+              const Spacer(),
+              Text('${keys.length} bước',
+                  style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12)),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        for (final k in keys)
+          Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFBAE6FD)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: _scPrimary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text('$k',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12)),
+                    ),
+                    const SizedBox(width: 10),
+                    Text('Bước $k',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w800, fontSize: 14)),
+                  ],
+                ),
+                if (map[k]!.any((e) => e.moTaBuoc.trim().isNotEmpty)) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    map[k]!
+                        .map((e) => e.moTaBuoc.trim())
+                        .where((s) => s.isNotEmpty)
+                        .toSet()
+                        .join(' · '),
+                    style: TextStyle(
+                        color: Colors.grey.shade800,
+                        height: 1.35,
+                        fontSize: 13),
+                  ),
+                ],
+                const SizedBox(height: 6),
+                for (final c in map[k]!)
+                  if (c.tenVatTu.isNotEmpty && c.soLuong > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.inventory_2_outlined,
+                              size: 15, color: _scPrimary),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text('${c.tenVatTu} × ${c.soLuong}',
+                                style: const TextStyle(fontSize: 13)),
+                          ),
+                        ],
+                      ),
+                    ),
+              ],
+            ),
+          ),
+      ],
     );
   }
 

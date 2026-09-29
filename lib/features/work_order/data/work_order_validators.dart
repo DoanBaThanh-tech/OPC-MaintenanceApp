@@ -120,8 +120,8 @@ KetQuaValidateThoiGian validateThoiGianDuKien(
     }
     return KetQuaValidateThoiGian(
       loi: phut
-          ? 'Thời gian dự kiến tối đa 1 ngày (1440 phút)'
-          : 'Trong ngày — tối đa 24 giờ',
+          ? 'Số phút không quá 1440 (tối đa 1 ngày). Chỉ nhập số nguyên dương.'
+          : 'Số giờ không quá 24 (tối đa 1 ngày). Chỉ nhập số nguyên dương.',
       laPhut: phut,
     );
   }
