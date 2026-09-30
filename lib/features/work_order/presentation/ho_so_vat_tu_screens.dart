@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/modern_detail_ui.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/models/material_usage_models.dart';
 import '../data/services/material_usage_service.dart';
@@ -118,14 +119,20 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
         children: [
           Container(
             width: double.infinity,
-            padding: EdgeInsets.fromLTRB(20, top + 14, 20, 20),
+            padding: EdgeInsets.fromLTRB(
+                widget.chiXemDaGui ? 8 : 16, top + 10, 12, 20),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF0068A9), Color(0xFF0284C7), Color(0xFF0EA5E9)],
+                colors: [
+                  Color(0xFF004E80),
+                  Color(0xFF0068A9),
+                  Color(0xFF0EA5E9),
+                ],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(26)),
+              borderRadius:
+              const BorderRadius.vertical(bottom: Radius.circular(26)),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primary.withValues(alpha: 0.35),
@@ -136,6 +143,12 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
             ),
             child: Row(
               children: [
+                if (widget.chiXemDaGui)
+                  IconButton(
+                    onPressed: () => Navigator.maybePop(context),
+                    icon: const Icon(Icons.arrow_back_rounded,
+                        color: Colors.white),
+                  ),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -147,31 +160,38 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen> {
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
-                          fontSize: 20,
+                          fontSize: 19,
                           letterSpacing: -0.3,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         widget.chiXemDaGui
-                            ? 'Hồ sơ vật tư đã gửi từ Tổ trưởng cơ điện'
+                            ? 'Theo dõi vật tư từ chờ duyệt đến xác nhận'
                             : 'Kiểm tra và gửi thủ công cho Giám đốc',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.88),
-                          fontSize: 13,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
+                IconButton(
+                  onPressed: _tai,
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                ),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(11),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                    border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3)),
                   ),
-                  child: const Icon(Icons.inventory_2_rounded, color: Colors.white, size: 26),
+                  child: const Icon(Icons.inventory_2_rounded,
+                      color: Colors.white, size: 24),
                 ),
               ],
             ),
@@ -644,108 +664,24 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
         (item.trangThai == 'Chờ duyệt' || item.trangThai == 'Đã gửi GĐ');
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F6FB),
+      backgroundColor: ModernDetailUi.bg,
       body: Column(
         children: [
-          // ===== Header gradient =====
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.fromLTRB(8, top + 6, 16, 22),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF0068A9),
-                  Color(0xFF0284C7),
-                  Color(0xFF0EA5E9),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius:
-              const BorderRadius.vertical(bottom: Radius.circular(28)),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.35),
-                  blurRadius: 22,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.pop(context),
-                      icon: const Icon(Icons.arrow_back_rounded,
-                          color: Colors.white),
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Chi tiết hồ sơ vật tư',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 18,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                    if (item != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.22),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.35)),
-                        ),
-                        child: Text(
-                          _nhanHienThi(item.trangThai),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                if (item != null) ...[
-                  const SizedBox(height: 10),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: Text(
-                      item.tenThietBi,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 17,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 12),
-                    child: Text(
-                      '${item.loaiCongViec} · ${_fmtDt(item.ngayThucHien)}'
-                          '${item.tenNhanVien != null ? ' · ${item.tenNhanVien}' : ''}',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          ModernDetailUi.headerBar(
+            context: context,
+            topPadding: top,
+            title: item != null
+                ? 'Hồ sơ VT #${item.maHoSoVatTu}'
+                : 'Chi tiết hồ sơ vật tư',
+            subtitle: item != null ? _nhanHienThi(item.trangThai) : null,
           ),
 
           Expanded(
             child: _dangTai
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+              child: CircularProgressIndicator(
+                  color: ModernDetailUi.primary, strokeWidth: 3),
+            )
                 : _loi != null
                 ? Center(
               child: Padding(
@@ -774,8 +710,20 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                 position: _slide,
                 child: ListView(
                   padding: EdgeInsets.fromLTRB(
-                      16, 18, 16, showGui ? 12 : 24 + bottom),
+                      16, 16, 16, showGui ? 12 : 24 + bottom),
                   children: [
+                    ModernDetailUi.fadeSlide(
+                      delayMs: 0,
+                      child: ModernDetailUi.heroCard(
+                        icon: Icons.inventory_2_rounded,
+                        title: item.tenThietBi,
+                        subtitle:
+                        '${item.loaiCongViec} · ${_fmtDt(item.ngayThucHien)}'
+                            '${item.tenNhanVien != null ? ' · ${item.tenNhanVien}' : ''}',
+                        statusLabel: _nhanHienThi(item.trangThai),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
                     // ===== Info chips =====
                     Row(
                       children: [

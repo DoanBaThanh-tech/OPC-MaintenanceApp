@@ -210,13 +210,14 @@ class KetQuaValidateSoLuong {
   bool get hopLe => loi == null && soLuong != null && soLuong! > 0;
 }
 
-/// Regex cho phép khi nhập: rỗng hoặc số nguyên dương (không dẫn 0).
-final RegExp soLuongVatTuChoPhepNhap = RegExp(r'^[1-9]\d*$|^$');
+/// Regex cho phép khi nhập: rỗng hoặc toàn chữ số (để gõ được "0" rồi hiện lỗi đỏ).
+/// Thập phân / ký tự đặc biệt bị chặn ở inputFormatters (digitsOnly).
+final RegExp soLuongVatTuChoPhepNhap = RegExp(r'^\d*$');
 
 /// Số lượng vật tư: số nguyên dương (> 0), không 0, không thập phân, không ký tự đặc biệt.
 ///
 /// [tenVatTu]: tên để gắn vào thông báo (tuỳ chọn).
-/// [choPhepRong]: true → chuỗi rỗng không báo lỗi (dùng lúc đang gõ); false → bắt buộc nhập.
+/// [choPhepRong]: true → chuỗi rỗng không báo lỗi (đang gõ); false → bắt buộc khi gửi/cập nhật.
 KetQuaValidateSoLuong validateSoLuongVatTu(
     String raw, {
       String? tenVatTu,
@@ -235,18 +236,14 @@ KetQuaValidateSoLuong validateSoLuongVatTu(
   }
 
   // Chặn thập phân / dấu âm / ký tự đặc biệt
-  if (t.contains('.') || t.contains(',') || t.contains('-') || t.contains(' ')) {
+  if (t.contains('.') ||
+      t.contains(',') ||
+      t.contains('-') ||
+      t.contains(' ') ||
+      !RegExp(r'^\d+$').hasMatch(t)) {
     return KetQuaValidateSoLuong(
       loi:
-      'Số lượng${nhan.isEmpty ? '' : ' $nhan'} phải là số nguyên dương (không thập phân, không ký tự đặc biệt)',
-    );
-  }
-
-  // Chỉ chữ số và không dẫn đầu bằng 0 (loại "0", "01", …)
-  if (!RegExp(r'^[1-9]\d*$').hasMatch(t)) {
-    return KetQuaValidateSoLuong(
-      loi:
-      'Số lượng${nhan.isEmpty ? '' : ' $nhan'} phải là số nguyên dương (> 0), không 0, không ký tự đặc biệt',
+      'Số lượng${nhan.isEmpty ? '' : ' $nhan'} phải là số nguyên (không thập phân, không ký tự đặc biệt)',
     );
   }
 
@@ -256,6 +253,7 @@ KetQuaValidateSoLuong validateSoLuongVatTu(
       loi: 'Số lượng${nhan.isEmpty ? '' : ' $nhan'} không hợp lệ',
     );
   }
+  // 0 hoặc số âm (không xảy ra với digitsOnly) → lỗi đỏ
   if (n <= 0) {
     return KetQuaValidateSoLuong(
       loi: 'Số lượng${nhan.isEmpty ? '' : ' $nhan'} phải lớn hơn 0',

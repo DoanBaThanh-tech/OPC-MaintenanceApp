@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/modern_detail_ui.dart';
 import '../../../core/network/api_exception.dart';
 import '../../equipment/data/equipment_logic.dart' show ThietBiModel;
 import '../data/work_order_logic.dart';
@@ -1406,66 +1407,14 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
     }
     final hs = _ctrl.hoSo!;
     return Scaffold(
-      backgroundColor: _scBg,
+      backgroundColor: ModernDetailUi.bg,
       body: Column(
         children: [
-          Container(
-            width: double.infinity,
-            padding: EdgeInsets.fromLTRB(8, top + 4, 16, 20),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF004E80),
-                  Color(0xFF0068A9),
-                  Color(0xFF0EA5E9),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius:
-              const BorderRadius.vertical(bottom: Radius.circular(26)),
-              boxShadow: [
-                BoxShadow(
-                  color: _scPrimary.withValues(alpha: 0.3),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.arrow_back_rounded,
-                      color: Colors.white),
-                ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Hồ sơ SC #${hs.maHoSoSuaChua}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w900,
-                          fontSize: 17,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        hs.trangThai,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.88),
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+          ModernDetailUi.headerBar(
+            context: context,
+            topPadding: top,
+            title: 'Hồ sơ SC #${hs.maHoSoSuaChua}',
+            subtitle: hs.trangThai,
           ),
           Expanded(
             child: FadeTransition(
@@ -1474,167 +1423,116 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
                 children: [
-                  // Hero card
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: 1),
-                    duration: const Duration(milliseconds: 480),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, t, child) => Opacity(
-                      opacity: t,
-                      child: Transform.translate(
-                        offset: Offset(0, 18 * (1 - t)),
-                        child: child,
-                      ),
-                    ),
-                    child: Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF0068A9),
-                            Color(0xFF0284C7),
-                            Color(0xFF0EA5E9),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: _scPrimary.withValues(alpha: 0.32),
-                            blurRadius: 18,
-                            offset: const Offset(0, 8),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(Icons.handyman_rounded,
-                                color: Colors.white, size: 28),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  hs.tenThietBi,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 16.5,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  hs.trangThai,
-                                  style: TextStyle(
-                                    color: Colors.white
-                                        .withValues(alpha: 0.9),
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                  // Hero card — đồng bộ ModernDetailUi
+                  ModernDetailUi.fadeSlide(
+                    delayMs: 0,
+                    child: ModernDetailUi.heroCard(
+                      icon: Icons.handyman_rounded,
+                      title: hs.tenThietBi,
+                      statusLabel: hs.trangThai,
                     ),
                   ),
                   const SizedBox(height: 14),
-                  _ScCard(
-                    child: Column(
-                      children: [
-                        _row('Người tạo', hs.tenNhanVienTao ?? '—'),
-                        _row('Ngày tạo', _fmt(hs.ngayTao)),
-                        if (hs.tenNhanVienThucHiens != null &&
-                            hs.tenNhanVienThucHiens!.isNotEmpty)
-                          _row('NV thực hiện', hs.tenNhanVienThucHiens!),
-                      ],
+                  ModernDetailUi.fadeSlide(
+                    delayMs: 40,
+                    child: ModernDetailUi.softCard(
+                      child: Column(
+                        children: [
+                          ModernDetailUi.infoRow(
+                              'Người tạo', hs.tenNhanVienTao ?? '—'),
+                          Divider(height: 1, color: Colors.grey.shade200),
+                          ModernDetailUi.infoRow(
+                              'Ngày tạo', _fmt(hs.ngayTao)),
+                          if (hs.tenNhanVienThucHiens != null &&
+                              hs.tenNhanVienThucHiens!.isNotEmpty) ...[
+                            Divider(height: 1, color: Colors.grey.shade200),
+                            ModernDetailUi.infoRow(
+                                'NV thực hiện', hs.tenNhanVienThucHiens!),
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _ScCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.report_problem_outlined,
-                                size: 18, color: _scPrimary),
-                            SizedBox(width: 8),
-                            Text('Mô tả hư hỏng',
-                                style: TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 13.5)),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Text(hs.moTaHuHong ?? '—',
-                            style: TextStyle(
-                                height: 1.45,
-                                color: Colors.grey.shade800,
-                                fontSize: 14)),
-                        if (hs.phuongAnSuaChua != null &&
-                            hs.phuongAnSuaChua!.isNotEmpty) ...[
-                          const SizedBox(height: 14),
+                  ModernDetailUi.fadeSlide(
+                    delayMs: 80,
+                    child: ModernDetailUi.softCard(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
                           const Row(
                             children: [
-                              Icon(Icons.lightbulb_outline_rounded,
+                              Icon(Icons.report_problem_outlined,
                                   size: 18, color: _scPrimary),
                               SizedBox(width: 8),
-                              Text('Phương án SC',
+                              Text('Mô tả hư hỏng',
                                   style: TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 13.5)),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Text(hs.phuongAnSuaChua!,
+                          const SizedBox(height: 10),
+                          Text(hs.moTaHuHong ?? '—',
                               style: TextStyle(
                                   height: 1.45,
                                   color: Colors.grey.shade800,
                                   fontSize: 14)),
+                          if (hs.phuongAnSuaChua != null &&
+                              hs.phuongAnSuaChua!.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            const Row(
+                              children: [
+                                Icon(Icons.lightbulb_outline_rounded,
+                                    size: 18, color: _scPrimary),
+                                SizedBox(width: 8),
+                                Text('Phương án SC',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13.5)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(hs.phuongAnSuaChua!,
+                                style: TextStyle(
+                                    height: 1.45,
+                                    color: Colors.grey.shade800,
+                                    fontSize: 14)),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
                   if (hs.daCoPhanCong &&
                       hs.tenNhanVienThucHiens != null &&
                       hs.tenNhanVienThucHiens!.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    _ScCard(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.groups_rounded,
-                                  color: _scPrimary, size: 20),
-                              const SizedBox(width: 8),
-                              Text(
-                                  hs.daHoanThanh
-                                      ? 'Nhân viên đã đảm nhận'
-                                      : 'Nhân viên đang được phân công',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 13.5)),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          Text(hs.tenNhanVienThucHiens!,
-                              style: TextStyle(
-                                  height: 1.45,
-                                  color: Colors.grey.shade800)),
-                        ],
+                    ModernDetailUi.fadeSlide(
+                      delayMs: 120,
+                      child: ModernDetailUi.softCard(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.groups_rounded,
+                                    color: ModernDetailUi.primary, size: 20),
+                                const SizedBox(width: 8),
+                                Text(
+                                    hs.daHoanThanh
+                                        ? 'Nhân viên đã đảm nhận'
+                                        : 'Nhân viên đang được phân công',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13.5)),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(hs.tenNhanVienThucHiens!,
+                                style: TextStyle(
+                                    height: 1.45,
+                                    color: Colors.grey.shade800)),
+                          ],
+                        ),
                       ),
                     ),
                   ],

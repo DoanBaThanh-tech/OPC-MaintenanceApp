@@ -3,6 +3,7 @@ import 'package:flutter/material.dart' show TimeOfDay;
 
 import '../../../core/network/api_exception.dart';
 import 'models/work_order_models.dart';
+import 'services/material_usage_service.dart';
 import 'services/work_order_service.dart';
 
 // Logic cho work_order_assign_screen.dart — hỗ trợ cả Bảo trì và Sửa chữa
@@ -14,6 +15,12 @@ class PhanCongBaoTriController extends ChangeNotifier {
 
   /// Người ghi chép quy trình (tối đa 1, phải nằm trong maNhanVienDaChon).
   int? maNhanVienGhiChep;
+
+  /// Người ghi chép hiện tại khi mở chế độ cập nhật (để khóa).
+  int? maNhanVienGhiChepGoc;
+
+  /// true = người ghi chép đã tiến hành quy trình → không đổi / không bỏ.
+  bool khoaNguoiGhiChep = false;
 
   String? tenNguoiPhanCong;
   int? maNguoiPhanCong;
@@ -32,6 +39,9 @@ class PhanCongBaoTriController extends ChangeNotifier {
   String? loi;
   bool isCapNhat = false;
   bool isSuaChua = false;
+
+  static const _msgKhoaGhiChep =
+      'Người ghi chép đã tiến hành quy trình — không được đổi / bỏ người ghi chép. Chỉ được cập nhật trước khi tiến hành quy trình.';
 
   String get tenThietBiHienThi {
     if (isSuaChua) return hoSoSc?.tenThietBi ?? '—';
@@ -64,6 +74,8 @@ class PhanCongBaoTriController extends ChangeNotifier {
     loi = null;
     maNhanVienDaChon.clear();
     maNhanVienGhiChep = null;
+    maNhanVienGhiChepGoc = null;
+    khoaNguoiGhiChep = false;
     notifyListeners();
     try {
       if (isSuaChua) {
@@ -103,6 +115,31 @@ class PhanCongBaoTriController extends ChangeNotifier {
 
       dsNhanVien = await WorkOrderService.layDanhSachNhanVienKyThuat();
       tenNguoiPhanCong = 'Tổ trưởng đang đăng nhập';
+
+      // Cập nhật: khóa người ghi chép nếu đã có hồ sơ vật tư (đã tiến hành quy trình)
+      if (isCapNhat) {
+        maNhanVienGhiChepGoc = maNhanVienGhiChep;
+        try {
+          final hsVt = await MaterialUsageService.layHoSoTheoCongViec(
+            maHoSoBaoTri: isSuaChua ? null : maHoSo,
+            maHoSoSuaChua: isSuaChua ? maHoSo : null,
+          );
+          if (hsVt != null) {
+            khoaNguoiGhiChep = true;
+          }
+        } catch (_) {
+          // Không chặn nếu API lỗi — server vẫn validate
+        }
+        // Hồ sơ SC/BT đang chờ Xưởng cũng khóa
+        final ttPc = isSuaChua
+            ? (hoSoSc?.trangThaiPhanCong ?? hoSoSc?.trangThai)
+            : (hoSo?.trangThaiPhanCong ?? hoSo?.trangThai);
+        if (ttPc == 'Chờ xác nhận' || ttPc == 'Đang thực hiện') {
+          // Đang thực hiện + đã có phân công: chỉ khóa khi đã có HS vật tư
+          // hoặc chờ xác nhận (đã gửi quy trình)
+          if (ttPc == 'Chờ xác nhận') khoaNguoiGhiChep = true;
+        }
+      }
     } catch (e) {
       loi = 'Không tải được dữ liệu: $e';
     } finally {
@@ -116,6 +153,15 @@ class PhanCongBaoTriController extends ChangeNotifier {
   }
 
   void toggleNhanVien(NhanVienRutGon nv) {
+    // Không cho bỏ người ghi chép đã khóa khỏi danh sách phân công
+    if (khoaNguoiGhiChep &&
+        maNhanVienGhiChepGoc != null &&
+        nv.maNhanVien == maNhanVienGhiChepGoc &&
+        maNhanVienDaChon.contains(nv.maNhanVien)) {
+      loi = _msgKhoaGhiChep;
+      notifyListeners();
+      return;
+    }
     if (maNhanVienDaChon.contains(nv.maNhanVien)) {
       maNhanVienDaChon.remove(nv.maNhanVien);
       if (maNhanVienGhiChep == nv.maNhanVien) {
@@ -138,6 +184,13 @@ class PhanCongBaoTriController extends ChangeNotifier {
   /// Chọn người ghi chép (phải đã được tick phân công).
   void chonNguoiGhiChep(int maNhanVien) {
     if (!maNhanVienDaChon.contains(maNhanVien)) return;
+    if (khoaNguoiGhiChep &&
+        maNhanVienGhiChepGoc != null &&
+        maNhanVien != maNhanVienGhiChepGoc) {
+      loi = _msgKhoaGhiChep;
+      notifyListeners();
+      return;
+    }
     maNhanVienGhiChep = maNhanVien;
     loi = null;
     notifyListeners();
@@ -193,6 +246,16 @@ class PhanCongBaoTriController extends ChangeNotifier {
       }
     } else {
       maNhanVienGhiChep = maNhanVienDaChon.first;
+    }
+
+    // Khóa người ghi chép đã tiến hành quy trình
+    if (khoaNguoiGhiChep && maNhanVienGhiChepGoc != null) {
+      if (!maNhanVienDaChon.contains(maNhanVienGhiChepGoc) ||
+          maNhanVienGhiChep != maNhanVienGhiChepGoc) {
+        loi = _msgKhoaGhiChep;
+        notifyListeners();
+        return false;
+      }
     }
     if (gioBatDau == null || gioKetThuc == null) {
       loi = 'Thiếu giờ bắt đầu/kết thúc — không thể phân công';

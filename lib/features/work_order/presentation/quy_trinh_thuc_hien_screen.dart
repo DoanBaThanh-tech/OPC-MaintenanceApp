@@ -335,18 +335,23 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
       for (var i = 0; i < b.vatTuList.length; i++) {
         final d = b.vatTuList[i];
         final k = _keyDong(b.soBuoc, i);
-        final rawSl = _slCtrls[k]?.text ?? '0';
-        final err = _validateSoLuong(rawSl);
-        if (err != null) {
+        final rawSl = _slCtrls[k]?.text ?? '';
+        final kq = validateSoLuongVatTu(
+          rawSl,
+          tenVatTu: d.tenVatTu,
+          choPhepRong: false,
+        );
+        if (!kq.hopLe) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Bước ${b.soBuoc} — ${d.tenVatTu}: $err'),
+              content: Text(
+                  'Bước ${b.soBuoc}: ${kq.loi ?? 'Số lượng không hợp lệ'}'),
               backgroundColor: AppColors.danger,
             ),
           );
           return false;
         }
-        d.soLuong = int.parse(rawSl.trim());
+        d.soLuong = kq.soLuong!;
         d.donGia = int.tryParse(_giaCtrls[k]?.text ?? '0') ?? d.donGia;
         if (d.donGia < 0) {
           ScaffoldMessenger.of(context).showSnackBar(
