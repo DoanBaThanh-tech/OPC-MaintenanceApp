@@ -6,6 +6,7 @@ import '../data/models/work_order_models.dart';
 import '../data/models/material_usage_models.dart';
 import '../data/services/material_usage_service.dart';
 import '../data/services/work_order_service.dart';
+import '../data/work_order_validators.dart';
 
 /// Trang quy trình BT/SC — NVKT tự tạo bước + vật tư (đơn giá chỉ đọc) + nội dung CV.
 /// Xong → Chờ xác nhận Xưởng. Có thể cập nhật lại khi Xưởng từ chối.
@@ -383,15 +384,21 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
 
     for (final b in _buoc) {
       for (final d in b.vatTu) {
-        if (d.soLuong < 0) {
+        final kq = validateSoLuongVatTu(
+          d.slCtrl.text,
+          tenVatTu: d.tenVatTu,
+          choPhepRong: false,
+        );
+        if (!kq.hopLe) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Số lượng vật tư không được âm'),
+            SnackBar(
+              content: Text(kq.loi ?? 'Số lượng không hợp lệ'),
               backgroundColor: AppColors.danger,
             ),
           );
           return;
         }
+        d.soLuong = kq.soLuong!;
       }
     }
 
@@ -1135,9 +1142,18 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                                   keyboardType: TextInputType.number,
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
+                                    FilteringTextInputFormatter.allow(
+                                      soLuongVatTuChoPhepNhap,
+                                    ),
                                   ],
                                   decoration: InputDecoration(
                                     labelText: 'Số lượng',
+                                    hintText: 'Số nguyên > 0',
+                                    errorText: formValidateSoLuongVatTu(
+                                      d.slCtrl.text,
+                                      tenVatTu: d.tenVatTu,
+                                      choPhepRong: true,
+                                    ),
                                     isDense: true,
                                     filled: true,
                                     fillColor: Colors.white,
@@ -1148,7 +1164,13 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                                         horizontal: 10, vertical: 10),
                                   ),
                                   onChanged: (v) {
-                                    d.soLuong = int.tryParse(v) ?? 0;
+                                    final kq = validateSoLuongVatTu(
+                                      v,
+                                      tenVatTu: d.tenVatTu,
+                                      choPhepRong: true,
+                                    );
+                                    d.soLuong = kq.soLuong ?? 0;
+                                    setState(() {});
                                   },
                                 ),
                               ),

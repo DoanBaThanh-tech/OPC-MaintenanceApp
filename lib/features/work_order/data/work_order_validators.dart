@@ -197,3 +197,82 @@ TimeOfDay? tinhGioKetThuc({
   }
   return TimeOfDay(hour: end ~/ 60, minute: end % 60);
 }
+
+// ─── Số lượng vật tư (NVKT quy trình) ───────────────────────────────
+
+/// Kết quả validate số lượng vật tư.
+class KetQuaValidateSoLuong {
+  final int? soLuong;
+  final String? loi;
+
+  const KetQuaValidateSoLuong({this.soLuong, this.loi});
+
+  bool get hopLe => loi == null && soLuong != null && soLuong! > 0;
+}
+
+/// Regex cho phép khi nhập: rỗng hoặc số nguyên dương (không dẫn 0).
+final RegExp soLuongVatTuChoPhepNhap = RegExp(r'^[1-9]\d*$|^$');
+
+/// Số lượng vật tư: số nguyên dương (> 0), không 0, không thập phân, không ký tự đặc biệt.
+///
+/// [tenVatTu]: tên để gắn vào thông báo (tuỳ chọn).
+/// [choPhepRong]: true → chuỗi rỗng không báo lỗi (dùng lúc đang gõ); false → bắt buộc nhập.
+KetQuaValidateSoLuong validateSoLuongVatTu(
+    String raw, {
+      String? tenVatTu,
+      bool choPhepRong = false,
+    }) {
+  final t = raw.trim();
+  final nhan = (tenVatTu != null && tenVatTu.trim().isNotEmpty)
+      ? '«${tenVatTu.trim()}»'
+      : '';
+
+  if (t.isEmpty) {
+    if (choPhepRong) return const KetQuaValidateSoLuong();
+    return KetQuaValidateSoLuong(
+      loi: 'Vui lòng nhập số lượng vật tư${nhan.isEmpty ? '' : ' $nhan'}',
+    );
+  }
+
+  // Chặn thập phân / dấu âm / ký tự đặc biệt
+  if (t.contains('.') || t.contains(',') || t.contains('-') || t.contains(' ')) {
+    return KetQuaValidateSoLuong(
+      loi:
+      'Số lượng${nhan.isEmpty ? '' : ' $nhan'} phải là số nguyên dương (không thập phân, không ký tự đặc biệt)',
+    );
+  }
+
+  // Chỉ chữ số và không dẫn đầu bằng 0 (loại "0", "01", …)
+  if (!RegExp(r'^[1-9]\d*$').hasMatch(t)) {
+    return KetQuaValidateSoLuong(
+      loi:
+      'Số lượng${nhan.isEmpty ? '' : ' $nhan'} phải là số nguyên dương (> 0), không 0, không ký tự đặc biệt',
+    );
+  }
+
+  final n = int.tryParse(t);
+  if (n == null) {
+    return KetQuaValidateSoLuong(
+      loi: 'Số lượng${nhan.isEmpty ? '' : ' $nhan'} không hợp lệ',
+    );
+  }
+  if (n <= 0) {
+    return KetQuaValidateSoLuong(
+      loi: 'Số lượng${nhan.isEmpty ? '' : ' $nhan'} phải lớn hơn 0',
+    );
+  }
+  return KetQuaValidateSoLuong(soLuong: n);
+}
+
+/// Form field helper — trả về chuỗi lỗi hoặc null (hợp lệ / đang để trống khi [choPhepRong]).
+String? formValidateSoLuongVatTu(
+    String? value, {
+      String? tenVatTu,
+      bool choPhepRong = true,
+    }) {
+  return validateSoLuongVatTu(
+    value ?? '',
+    tenVatTu: tenVatTu,
+    choPhepRong: choPhepRong,
+  ).loi;
+}

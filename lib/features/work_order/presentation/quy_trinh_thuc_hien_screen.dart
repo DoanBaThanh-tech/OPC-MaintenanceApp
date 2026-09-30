@@ -5,11 +5,12 @@ import '../../../core/network/api_exception.dart';
 import '../data/models/work_order_models.dart';
 import '../data/models/material_usage_models.dart';
 import '../data/services/material_usage_service.dart';
+import '../data/work_order_validators.dart';
 import 'quy_trinh_cong_viec_screen.dart';
 
 /// Trang 1: Quy trình chọn vật tư bảo trì / sửa chữa.
 /// - Mỗi bước có thể chọn **nhiều vật tư**.
-/// - Số lượng: số nguyên ≥ 0, không âm, không thập phân, không ký tự đặc biệt.
+/// - Số lượng: số nguyên dương (> 0), không thập phân, không ký tự đặc biệt.
 /// - Mode cập nhật: load hồ sơ đã lưu, Lưu → PUT cập nhật.
 class QuyTrinhThucHienScreen extends StatefulWidget {
   final YeuCauPhanCong yeuCau;
@@ -161,20 +162,13 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
     return '$buf ₫';
   }
 
-  /// Validate số lượng: số nguyên ≥ 0, không thập phân / ký tự đặc biệt.
-  String? _validateSoLuong(String raw) {
-    final t = raw.trim();
-    if (t.isEmpty) return 'Vui lòng nhập số lượng';
-    if (t.contains('.') || t.contains(',') || t.contains('-')) {
-      return 'Số lượng phải là số nguyên không âm';
-    }
-    if (!RegExp(r'^\d+$').hasMatch(t)) {
-      return 'Số lượng không được chứa ký tự đặc biệt';
-    }
-    final n = int.tryParse(t);
-    if (n == null) return 'Số lượng không hợp lệ';
-    if (n < 0) return 'Số lượng không được âm';
-    return null;
+  /// Ủy quyền validate cho [validateSoLuongVatTu] trong work_order_validators.
+  String? _validateSoLuong(String raw, {String? tenVatTu, bool choPhepRong = false}) {
+    return validateSoLuongVatTu(
+      raw,
+      tenVatTu: tenVatTu,
+      choPhepRong: choPhepRong,
+    ).loi;
   }
 
   Future<void> _themVatTuVaoBuoc(BuocQuyTrinh b) async {
@@ -830,21 +824,32 @@ class _QuyTrinhThucHienScreenState extends State<QuyTrinhThucHienScreen>
                   controller: _slCtrls[k],
                   keyboardType: TextInputType.number,
                   inputFormatters: [
-                    FilteringTextInputFormatter.digitsOnly, // chỉ số nguyên
+                    FilteringTextInputFormatter.digitsOnly,
+                    FilteringTextInputFormatter.allow(soLuongVatTuChoPhepNhap),
                   ],
                   decoration: InputDecoration(
                     labelText: 'Số lượng',
-                    hintText: '≥ 0',
+                    hintText: 'Số nguyên > 0',
                     isDense: true,
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(10)),
-                    helperText: 'Số nguyên, không âm',
+                    helperText: 'Số nguyên dương, không thập phân',
                     helperStyle: TextStyle(
                         fontSize: 10, color: Colors.grey.shade600),
+                    errorText: formValidateSoLuongVatTu(
+                      _slCtrls[k]?.text,
+                      tenVatTu: d.tenVatTu,
+                      choPhepRong: true,
+                    ),
                   ),
                   onChanged: (v) {
                     setState(() {
-                      d.soLuong = int.tryParse(v) ?? 0;
+                      final kq = validateSoLuongVatTu(
+                        v,
+                        tenVatTu: d.tenVatTu,
+                        choPhepRong: true,
+                      );
+                      d.soLuong = kq.soLuong ?? 0;
                     });
                   },
                 ),
