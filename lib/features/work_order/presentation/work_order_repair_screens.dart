@@ -1290,8 +1290,12 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
     _ctrl.addListener(_onCtrl);
     _ctrl.tai().then((_) {
       final hs = _ctrl.hoSo;
+      // Xưởng: xem quy trình khi Đang thực hiện / chờ duyệt / đã xong
+      // Tổ trưởng & vai trò khác: chỉ khi Đã hoàn thành
       if (hs != null &&
-          (hs.choXacNhanKetQua || hs.dangThucHien || hs.daHoanThanh)) {
+          (hs.daHoanThanh ||
+              (_laXuong &&
+                  (hs.choXacNhanKetQua || hs.dangThucHien)))) {
         _taiQuyTrinhVatTu();
       }
     });
@@ -1696,122 +1700,18 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                       ),
                     ),
                   ],
-                  // Xưởng: xem quy trình + xác nhận/từ chối khi NVKT đã gửi
-                  if (_laXuong && hs.choXacNhanKetQua) ...[
+                  // Xưởng: quy trình ở Đang thực hiện + Đã hoàn thành
+                  if (_laXuong &&
+                      (hs.choXacNhanKetQua ||
+                          hs.dangThucHien ||
+                          hs.daHoanThanh)) ...[
                     const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                            color: AppColors.warning.withValues(alpha: 0.35)),
-                      ),
-                      child: const Text(
-                        'NVKT đã gửi kết quả quy trình sửa chữa. Kiểm tra bước/vật tư rồi Xác nhận hoặc Từ chối.',
-                        style:
-                        TextStyle(fontWeight: FontWeight.w600, height: 1.35),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildQuyTrinhSuaChua(),
-                    const SizedBox(height: 12),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: FilledButton.icon(
-                            style: FilledButton.styleFrom(
-                                backgroundColor: AppColors.success),
-                            onPressed: () async {
-                              try {
-                                await WorkOrderService.xuongXacNhanKetQua(
-                                  maHoSoSuaChua: hs.maHoSoSuaChua,
-                                  xacNhan: true,
-                                );
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content:
-                                    Text('Đã xác nhận — hồ sơ Hoàn thành'),
-                                    backgroundColor: AppColors.success,
-                                  ),
-                                );
-                                await _load();
-                              } on ApiException catch (e) {
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(e.message),
-                                      backgroundColor: AppColors.danger),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.check_circle_outline),
-                            label: const Text('Xác nhận'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.danger),
-                            onPressed: () async {
-                              final lyDoCtrl = TextEditingController();
-                              final lyDo = await showDialog<String>(
-                                context: context,
-                                builder: (ctx) => AlertDialog(
-                                  title: const Text('Từ chối kết quả'),
-                                  content: TextField(
-                                    controller: lyDoCtrl,
-                                    maxLines: 3,
-                                    decoration: const InputDecoration(
-                                      hintText: 'Lý do để NVKT chỉnh sửa…',
-                                      border: OutlineInputBorder(),
-                                    ),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                        onPressed: () => Navigator.pop(ctx),
-                                        child: const Text('Hủy')),
-                                    FilledButton(
-                                      onPressed: () => Navigator.pop(
-                                          ctx, lyDoCtrl.text.trim()),
-                                      child: const Text('Từ chối'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                              if (lyDo == null || lyDo.isEmpty) return;
-                              try {
-                                await WorkOrderService.xuongXacNhanKetQua(
-                                  maHoSoSuaChua: hs.maHoSoSuaChua,
-                                  xacNhan: false,
-                                  lyDo: lyDo,
-                                );
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content:
-                                    Text('Đã từ chối — NVKT chỉnh sửa lại'),
-                                    backgroundColor: AppColors.warning,
-                                  ),
-                                );
-                                await _load();
-                              } on ApiException catch (e) {
-                                if (!mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                      content: Text(e.message),
-                                      backgroundColor: AppColors.danger),
-                                );
-                              }
-                            },
-                            icon: const Icon(Icons.cancel_outlined),
-                            label: const Text('Từ chối'),
-                          ),
-                        ),
-                      ],
-                    ),
+                    _buildXuongQuyTrinhVaDuyetSc(hs),
+                  ]
+                  // Tổ trưởng / vai trò khác: chỉ xem quy trình khi Đã hoàn thành
+                  else if (!_laXuong && hs.daHoanThanh) ...[
+                    const SizedBox(height: 16),
+                    _buildQuyTrinhChiXemKhiHoanThanhSc(hs),
                   ],
                 ],
               ),
@@ -1819,6 +1719,266 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildQuyTrinhChiXemKhiHoanThanhSc(HoSoSuaChua hs) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: AppColors.success.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(14),
+            border:
+            Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+          ),
+          child: const Text(
+            'Xưởng đã xác nhận — hồ sơ Đã hoàn thành. Quy trình / vật tư bên dưới (chỉ xem).',
+            style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const Text(
+              'Quy trình',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: AppColors.success.withValues(alpha: 0.45)),
+              ),
+              child: const Text(
+                'Xác nhận',
+                style: TextStyle(
+                  color: AppColors.success,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _buildQuyTrinhSuaChua(),
+      ],
+    );
+  }
+
+  String _nhanTtQuyTrinhSc(HoSoSuaChua hs) {
+    if (hs.daHoanThanh || hs.trangThaiPhanCong == 'Hoàn thành') {
+      return 'Xác nhận';
+    }
+    if (hs.trangThaiPhanCong == 'Từ chối') return 'Từ chối';
+    if (hs.choXacNhanKetQua) return 'Chờ xác nhận';
+    if (hs.dangThucHien) return 'Đang thực hiện';
+    return hs.trangThaiPhanCong ?? hs.trangThai;
+  }
+
+  Color _mauTtQuyTrinhSc(String nhan) {
+    switch (nhan) {
+      case 'Xác nhận':
+        return AppColors.success;
+      case 'Từ chối':
+        return AppColors.danger;
+      case 'Chờ xác nhận':
+        return AppColors.warning;
+      default:
+        return AppColors.primary;
+    }
+  }
+
+  Widget _buildXuongQuyTrinhVaDuyetSc(HoSoSuaChua hs) {
+    final nhanTt = _nhanTtQuyTrinhSc(hs);
+    final mauTt = _mauTtQuyTrinhSc(nhanTt);
+    final choDuyet = hs.choXacNhanKetQua;
+    final biTuChoiPc = hs.trangThaiPhanCong == 'Từ chối' && hs.dangThucHien;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (choDuyet)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.warning.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(14),
+              border:
+              Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+            ),
+            child: const Text(
+              'NVKT đã gửi kết quả quy trình sửa chữa. Kiểm tra bước/vật tư rồi Xác nhận (→ Đã hoàn thành) hoặc Từ chối (quy trình giữ nguyên, vẫn Đang thực hiện).',
+              style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+            ),
+          )
+        else if (biTuChoiPc)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.danger.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border:
+              Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+            ),
+            child: Text(
+              (hs.lyDoTuChoiPhanCong != null &&
+                  hs.lyDoTuChoiPhanCong!.isNotEmpty)
+                  ? 'Đã từ chối quy trình — hồ sơ vẫn Đang thực hiện. Lý do: ${hs.lyDoTuChoiPhanCong}'
+                  : 'Đã từ chối quy trình — hồ sơ vẫn Đang thực hiện. Chờ NVKT chỉnh sửa và gửi lại.',
+              style: const TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+            ),
+          )
+        else if (hs.daHoanThanh)
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: AppColors.success.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+                border:
+                Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+              ),
+              child: const Text(
+                'Đã xác nhận quy trình — hồ sơ Đã hoàn thành.',
+                style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+              ),
+            ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            const Text(
+              'Quy trình',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            ),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: mauTt.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: mauTt.withValues(alpha: 0.45)),
+              ),
+              child: Text(
+                nhanTt,
+                style: TextStyle(
+                  color: mauTt,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        _buildQuyTrinhSuaChua(),
+        if (choDuyet) ...[
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.success),
+                  onPressed: () async {
+                    try {
+                      await WorkOrderService.xuongXacNhanKetQua(
+                        maHoSoSuaChua: hs.maHoSoSuaChua,
+                        xacNhan: true,
+                      );
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Đã xác nhận — hồ sơ chuyển Đã hoàn thành'),
+                          backgroundColor: AppColors.success,
+                        ),
+                      );
+                      await _load();
+                      await _taiQuyTrinhVatTu();
+                    } on ApiException catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(e.message),
+                            backgroundColor: AppColors.danger),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text('Xác nhận'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger),
+                  onPressed: () async {
+                    final lyDoCtrl = TextEditingController();
+                    final lyDo = await showDialog<String>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Từ chối kết quả'),
+                        content: TextField(
+                          controller: lyDoCtrl,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            hintText: 'Lý do để NVKT chỉnh sửa…',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(ctx),
+                              child: const Text('Hủy')),
+                          FilledButton(
+                            onPressed: () =>
+                                Navigator.pop(ctx, lyDoCtrl.text.trim()),
+                            child: const Text('Từ chối'),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (lyDo == null || lyDo.isEmpty) return;
+                    try {
+                      await WorkOrderService.xuongXacNhanKetQua(
+                        maHoSoSuaChua: hs.maHoSoSuaChua,
+                        xacNhan: false,
+                        lyDo: lyDo,
+                      );
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Đã từ chối — quy trình giữ nguyên, hồ sơ vẫn Đang thực hiện'),
+                          backgroundColor: AppColors.warning,
+                        ),
+                      );
+                      await _load();
+                      await _taiQuyTrinhVatTu();
+                    } on ApiException catch (e) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(e.message),
+                            backgroundColor: AppColors.danger),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.cancel_outlined),
+                  label: const Text('Từ chối'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ],
     );
   }
 

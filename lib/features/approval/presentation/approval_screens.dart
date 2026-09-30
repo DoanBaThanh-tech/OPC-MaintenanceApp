@@ -168,94 +168,182 @@ class _ApprovalBaoTriListScreenState extends State<ApprovalBaoTriListScreen> {
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
-          if (_controller.dangTai) return const Center(child: CircularProgressIndicator());
-          if (_controller.loi != null) return Center(child: Text(_controller.loi!));
+          if (_controller.dangTai) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (_controller.loi != null) {
+            return Center(child: Text(_controller.loi!));
+          }
           final list = _controller.danhSach;
           if (list.isEmpty) {
             return Center(
               child: Text(
                 _controller.namLoc == null
-                    ? 'Không có hồ sơ nào đang chờ duyệt'
-                    : 'Không có hồ sơ nào đang chờ duyệt trong năm ${_controller.namLoc}',
+                    ? 'Chưa có hồ sơ bảo trì để theo dõi'
+                    : 'Không có hồ sơ trong năm ${_controller.namLoc}',
               ),
             );
           }
           return RefreshIndicator(
             onRefresh: _controller.taiDanhSachChoDuyet,
-            child: Responsive(
-              builder: (context, info) {
-                final soCot = info.isDesktop ? 2 : 1;
-                return GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: soCot,
-                    mainAxisExtent: 130,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  itemCount: list.length,
-                  itemBuilder: (context, i) {
-                    final hs = list[i];
-                    return Material(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      elevation: 1,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(14),
-                        onTap: () async {
-                          final changed = await Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (_) => ApprovalBaoTriDetailScreen(maHoSoBaoTri: hs.maHoSoBaoTri)),
-                          );
-                          if (changed == true) _controller.taiDanhSachChoDuyet();
-                        },
-                        child: Container(
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(14),
-                            border: const Border(left: BorderSide(color: AppColors.warning, width: 4)),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(children: [
-                                Expanded(
-                                  child: Text(hs.tenThietBi,
-                                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                                      overflow: TextOverflow.ellipsis),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: Colors.blueGrey.shade50,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    'KH ${hs.nam}${hs.namTuKeHoach ? '' : ' (đột xuất)'}',
-                                    style: TextStyle(fontSize: 10, color: Colors.blueGrey.shade700, fontWeight: FontWeight.w600),
-                                  ),
-                                ),
-                              ]),
-                              Text('Người lập: ${hs.tenNguoiLap ?? '—'}',
-                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5)),
-                              Row(children: [
-                                Icon(Icons.event_note, size: 13, color: Colors.grey.shade500),
-                                const SizedBox(width: 4),
-                                Text('Tạo ngày ${_fmt(hs.ngayTao)}',
-                                    style: TextStyle(color: Colors.grey.shade500, fontSize: 11)),
-                              ]),
-                            ],
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+              children: [
+                if (_controller.choDuyet.isNotEmpty) ...[
+                  _sectionLabelGd(
+                      'Chờ duyệt', _controller.choDuyet.length, AppColors.warning),
+                  const SizedBox(height: 8),
+                  ..._controller.choDuyet.map((hs) => _cardHoSoGd(hs)),
+                  const SizedBox(height: 16),
+                ],
+                if (_controller.dangTheoDoi.isNotEmpty) ...[
+                  _sectionLabelGd('Đã duyệt · theo dõi tiến độ',
+                      _controller.dangTheoDoi.length, AppColors.primary),
+                  const SizedBox(height: 8),
+                  ..._controller.dangTheoDoi.map((hs) => _cardHoSoGd(hs)),
+                ],
+              ],
             ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _sectionLabelGd(String title, int count, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 16,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w800,
+            fontSize: 14,
+            color: color,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '($count)',
+          style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+        ),
+      ],
+    );
+  }
+
+  Color _mauTrangThaiBt(String tt) {
+    switch (tt) {
+      case 'Chờ duyệt':
+      case 'Chờ GĐ duyệt':
+        return AppColors.warning;
+      case 'Đã duyệt':
+        return const Color(0xFF0284C7);
+      case 'Đang thực hiện':
+      case 'Chờ xác nhận':
+        return AppColors.primary;
+      case 'Đã hoàn thành':
+        return AppColors.success;
+      case 'Từ chối':
+        return AppColors.danger;
+      default:
+        return Colors.blueGrey;
+    }
+  }
+
+  Widget _cardHoSoGd(HoSoBaoTriDuyet hs) {
+    final mau = _mauTrangThaiBt(hs.trangThai);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        elevation: 1,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () async {
+            final changed = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) =>
+                    ApprovalBaoTriDetailScreen(maHoSoBaoTri: hs.maHoSoBaoTri),
+              ),
+            );
+            if (changed == true) _controller.taiDanhSachChoDuyet();
+          },
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border(left: BorderSide(color: mau, width: 4)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        hs.tenThietBi,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 14),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: mau.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        hs.trangThai,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: mau,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Người lập: ${hs.tenNguoiLap ?? '—'}',
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 11.5),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.event_note, size: 13, color: Colors.grey.shade500),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Tạo ngày ${_fmt(hs.ngayTao)}',
+                      style:
+                      TextStyle(color: Colors.grey.shade500, fontSize: 11),
+                    ),
+                    const Spacer(),
+                    Text(
+                      'KH ${hs.nam}${hs.namTuKeHoach ? '' : ' (đột xuất)'}',
+                      style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.blueGrey.shade700,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -381,24 +469,34 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
                           ),
                         ),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Text(
-                          'Chờ duyệt',
-                          style: TextStyle(
-                            color: AppColors.warning,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w700,
+                      Builder(builder: (_) {
+                        final mau = switch (hs.trangThai) {
+                          'Chờ duyệt' || 'Chờ GĐ duyệt' => AppColors.warning,
+                          'Đã duyệt' => const Color(0xFF0284C7),
+                          'Đang thực hiện' || 'Chờ xác nhận' => AppColors.primary,
+                          'Đã hoàn thành' => AppColors.success,
+                          'Từ chối' => AppColors.danger,
+                          _ => Colors.blueGrey,
+                        };
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
                           ),
-                        ),
-                      ),
+                          decoration: BoxDecoration(
+                            color: mau.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            hs.trangThai,
+                            style: TextStyle(
+                              color: mau,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        );
+                      }),
                     ],
                   ),
 
@@ -479,44 +577,64 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
 
                   const SizedBox(height: 24),
 
-                  if (_controller.dangXuLy)
-                    const Center(
-                      child: CircularProgressIndicator(),
-                    )
+                  // Chỉ hiện nút duyệt khi còn chờ GĐ; hồ sơ đã duyệt/đang làm/hoàn thành chỉ theo dõi
+                  if (hs.choDuyet)
+                    if (_controller.dangXuLy)
+                      const Center(child: CircularProgressIndicator())
+                    else
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.danger,
+                                side: const BorderSide(
+                                  color: AppColors.danger,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              icon: const Icon(Icons.close_rounded),
+                              label: const Text('Từ chối'),
+                              onPressed: _tuChoi,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                              icon: const Icon(Icons.check_rounded),
+                              label: const Text('Phê duyệt'),
+                              onPressed: _duyet,
+                            ),
+                          ),
+                        ],
+                      )
                   else
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppColors.danger,
-                              side: const BorderSide(
-                                color: AppColors.danger,
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
-                            ),
-                            icon: const Icon(Icons.close_rounded),
-                            label: const Text('Từ chối'),
-                            onPressed: _tuChoi,
-                          ),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.blueGrey.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        hs.daHoanThanh
+                            ? 'Hồ sơ đã hoàn thành — chỉ theo dõi, không cần duyệt lại.'
+                            : hs.biTuChoi
+                            ? 'Hồ sơ đã từ chối — chỉ xem lại.'
+                            : 'Hồ sơ đang ở trạng thái «${hs.trangThai}» — theo dõi tiến độ, không cần duyệt lại.',
+                        style: TextStyle(
+                          color: Colors.blueGrey.shade800,
+                          fontWeight: FontWeight.w600,
+                          height: 1.35,
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.success,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
-                            ),
-                            icon: const Icon(Icons.check_rounded),
-                            label: const Text('Phê duyệt'),
-                            onPressed: _duyet,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                 ],
               ),
@@ -933,18 +1051,40 @@ class _ApprovalSuaChuaListScreenState extends State<ApprovalSuaChuaListScreen> {
       _loi = null;
     });
     try {
-      // Hồ sơ SC đã hoàn thành → tự "gửi" GĐ xem (không cần Tổ trưởng gửi thủ công)
-      final done =
-      await WorkOrderService.layDanhSachHoSoSuaChua(trangThai: 'Đã hoàn thành');
-      // Kèm hồ sơ đang thực hiện để GĐ theo dõi
-      final dang =
-      await WorkOrderService.layDanhSachHoSoSuaChua(trangThai: 'Đang thực hiện');
-      final map = <int, HoSoSuaChua>{};
-      for (final h in [...dang, ...done]) {
-        map[h.maHoSoSuaChua] = h;
-      }
-      final list = map.values.toList()
-        ..sort((a, b) => b.ngayTao.compareTo(a.ngayTao));
+      // Toàn bộ hồ sơ SC — GĐ theo dõi từ chờ duyệt → hoàn thành (không mất sau khi duyệt)
+      final all = await WorkOrderService.layDanhSachHoSoSuaChua();
+      final list = all
+          .where((h) =>
+      h.trangThai == 'Chờ duyệt' ||
+          h.trangThai == 'Đã duyệt' ||
+          h.trangThai == 'Đang thực hiện' ||
+          h.trangThai == 'Chờ xác nhận' ||
+          h.trangThai == 'Đã hoàn thành' ||
+          h.trangThai == 'Từ chối')
+          .toList()
+        ..sort((a, b) {
+          int rank(String tt) {
+            switch (tt) {
+              case 'Chờ duyệt':
+                return 0;
+              case 'Đang thực hiện':
+              case 'Chờ xác nhận':
+                return 1;
+              case 'Đã duyệt':
+                return 2;
+              case 'Đã hoàn thành':
+                return 3;
+              case 'Từ chối':
+                return 4;
+              default:
+                return 5;
+            }
+          }
+
+          final r = rank(a.trangThai).compareTo(rank(b.trangThai));
+          if (r != 0) return r;
+          return b.ngayTao.compareTo(a.ngayTao);
+        });
       if (!mounted) return;
       setState(() {
         _list = list;
@@ -965,10 +1105,17 @@ class _ApprovalSuaChuaListScreenState extends State<ApprovalSuaChuaListScreen> {
 
   Color _mau(String tt) {
     switch (tt) {
+      case 'Chờ duyệt':
+        return AppColors.warning;
+      case 'Đã duyệt':
+        return const Color(0xFF0284C7);
+      case 'Đang thực hiện':
+      case 'Chờ xác nhận':
+        return AppColors.primary;
       case 'Đã hoàn thành':
         return AppColors.success;
-      case 'Đang thực hiện':
-        return AppColors.primary;
+      case 'Từ chối':
+        return AppColors.danger;
       default:
         return Colors.blueGrey;
     }
@@ -1023,7 +1170,7 @@ class _ApprovalSuaChuaListScreenState extends State<ApprovalSuaChuaListScreen> {
                 size: 64, color: Colors.grey.shade400),
             const SizedBox(height: 12),
             Text(
-              'Chưa có hồ sơ sửa chữa để xem',
+              'Chưa có hồ sơ sửa chữa để theo dõi',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade600),
             ),

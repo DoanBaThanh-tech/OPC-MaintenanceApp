@@ -42,6 +42,11 @@ class HoSoBaoTriDuyet {
   });
 
   bool get choDuyet => trangThai == 'Chờ duyệt' || trangThai == 'Chờ GĐ duyệt';
+  bool get daDuyet => trangThai == 'Đã duyệt';
+  bool get dangThucHien =>
+      trangThai == 'Đang thực hiện' || trangThai == 'Chờ xác nhận';
+  bool get daHoanThanh => trangThai == 'Đã hoàn thành';
+  bool get biTuChoi => trangThai == 'Từ chối';
 
   factory HoSoBaoTriDuyet.fromJson(Map<String, dynamic> j) => HoSoBaoTriDuyet(
     maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
@@ -189,8 +194,34 @@ class ApprovalBaoTriListController extends ChangeNotifier {
   String? loi;
   int? namLoc;
 
-  List<HoSoBaoTriDuyet> get danhSach =>
-      namLoc == null ? _tatCa : _tatCa.where((h) => h.nam == namLoc).toList();
+  /// Toàn bộ hồ sơ GĐ theo dõi (từ chờ duyệt → hoàn thành), có thể lọc năm.
+  List<HoSoBaoTriDuyet> get danhSach {
+    final base =
+    namLoc == null ? _tatCa : _tatCa.where((h) => h.nam == namLoc).toList();
+    // Ưu tiên: chờ duyệt → đang làm → đã duyệt → hoàn thành → từ chối
+    int rank(HoSoBaoTriDuyet h) {
+      if (h.choDuyet) return 0;
+      if (h.dangThucHien) return 1;
+      if (h.daDuyet) return 2;
+      if (h.daHoanThanh) return 3;
+      if (h.biTuChoi) return 4;
+      return 5;
+    }
+
+    final list = List<HoSoBaoTriDuyet>.from(base);
+    list.sort((a, b) {
+      final r = rank(a).compareTo(rank(b));
+      if (r != 0) return r;
+      return b.ngayTao.compareTo(a.ngayTao);
+    });
+    return list;
+  }
+
+  List<HoSoBaoTriDuyet> get choDuyet =>
+      danhSach.where((h) => h.choDuyet).toList();
+  List<HoSoBaoTriDuyet> get dangTheoDoi => danhSach
+      .where((h) => h.daDuyet || h.dangThucHien || h.daHoanThanh || h.biTuChoi)
+      .toList();
 
   List<int> get cacNamCoDuLieu {
     final nams = _tatCa.map((h) => h.nam).toSet().toList();
@@ -203,9 +234,16 @@ class ApprovalBaoTriListController extends ChangeNotifier {
     loi = null;
     notifyListeners();
     try {
-      // Gồm cả "Chờ duyệt" (mới tạo) và "Chờ GĐ duyệt" (Xưởng đã gửi)
+      // Không lọc mất hồ sơ đã duyệt — GĐ theo dõi đến khi hoàn thành
       final all = await ApprovalService.layDanhSachBaoTri();
-      _tatCa = all.where((h) => h.choDuyet).toList();
+      _tatCa = all
+          .where((h) =>
+      h.choDuyet ||
+          h.daDuyet ||
+          h.dangThucHien ||
+          h.daHoanThanh ||
+          h.biTuChoi)
+          .toList();
     } catch (e) {
       loi = 'Lỗi tải dữ liệu: $e';
     } finally {

@@ -220,7 +220,7 @@ class _QuanLyYeuCauScreenState extends State<QuanLyYeuCauScreen>
           const SizedBox(height: 18),
         ],
         if (xong.isNotEmpty) ...[
-          _sectionHeader('Đã hoàn thành', xong.length, AppColors.success),
+          _sectionHeader('Xác nhận', xong.length, AppColors.success),
           const SizedBox(height: 10),
           ...xong.asMap().entries.map((e) => _YeuCauCard(
             yeuCau: e.value,
@@ -299,7 +299,8 @@ class _YeuCauCard extends StatelessWidget {
   }
 
   String _statusLabel(YeuCauPhanCong y) {
-    if (y.daHoanThanhPc) return 'Hoàn thành';
+    // Xưởng đã xác nhận → yêu cầu công việc của NVKT coi như đã xong
+    if (y.daHoanThanhPc) return 'Xác nhận';
     if (y.daHuy) return 'Đã hủy';
     if (y.choXacNhanKetQua) return 'Chờ xác nhận';
     if (y.biTuChoi) return 'Từ chối';
@@ -593,7 +594,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
 
     String trangThaiHienThi;
     if (y.daHoanThanhPc) {
-      trangThaiHienThi = 'Hoàn thành';
+      // Xưởng đã xác nhận → yêu cầu công việc của NVKT đã xong
+      trangThaiHienThi = 'Xác nhận';
     } else if (y.choXacNhanKetQua) {
       trangThaiHienThi = 'Chờ xác nhận';
     } else if (y.biTuChoi && y.laNguoiGhiChep) {
