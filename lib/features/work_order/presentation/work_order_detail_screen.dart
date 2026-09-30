@@ -6,6 +6,7 @@ import '../data/work_order_logic.dart';
 import '../data/work_order_validators.dart';
 import '../data/models/material_usage_models.dart';
 import '../data/services/material_usage_service.dart';
+import '../data/services/work_order_service.dart';
 import 'work_order_assign_screen.dart';
 
 // ============ MÀN 3: CHI TIẾT HỒ SƠ BẢO TRÌ + PHÂN CÔNG (khi đã duyệt) ============
@@ -1353,24 +1354,51 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
               const SizedBox(height: 8),
               InkWell(
                 onTap: () async {
-                  // Khóa đúng tháng kế hoạch gốc (ngayDuKienGoc).
-                  // VD: KH tháng 10, lập cuối tháng 9 → không được chọn ngày tháng 9.
-                  final goc = _xuongCtrl.ngayDuKienGoc ?? _ngayDuKienXuong ?? DateTime.now();
-                  final firstOfMonth = DateTime(goc.year, goc.month, 1);
-                  final lastOfMonth = DateTime(goc.year, goc.month + 1, 0);
-                  var initial = _ngayDuKienXuong ?? firstOfMonth;
-                  if (initial.isBefore(firstOfMonth)) initial = firstOfMonth;
-                  if (initial.isAfter(lastOfMonth)) initial = lastOfMonth;
+                  // Từ tháng kế hoạch gốc → hết năm (T10 → T10–T12 cùng năm)
+                  final goc = _xuongCtrl.ngayDuKienGoc ??
+                      _ngayDuKienXuong ??
+                      DateTime.now();
+                  final firstOfRange = DateTime(goc.year, goc.month, 1);
+                  final lastOfRange = DateTime(goc.year, 12, 31);
+                  var initial = _ngayDuKienXuong ?? firstOfRange;
+                  if (initial.isBefore(firstOfRange)) initial = firstOfRange;
+                  if (initial.isAfter(lastOfRange)) initial = lastOfRange;
                   final picked = await showDatePicker(
                     context: context,
                     initialDate: initial,
-                    firstDate: firstOfMonth,
-                    lastDate: lastOfMonth,
-                    helpText: 'Chỉ chọn ngày trong tháng ${goc.month}/${goc.year}',
+                    firstDate: firstOfRange,
+                    lastDate: lastOfRange,
+                    helpText:
+                    'Từ tháng ${goc.month}/${goc.year} đến hết năm ${goc.year}',
                     cancelText: 'Hủy',
                     confirmText: 'Chọn',
                   );
-                  if (picked != null) _xuongCtrl.datNgayDuKien(picked);
+                  if (picked != null) {
+                    _xuongCtrl.datNgayDuKien(picked);
+                    // Cảnh báo nếu tháng đã có lịch BT
+                    final hs = _controller.hoSo;
+                    if (hs != null) {
+                      try {
+                        final thangCo =
+                        await WorkOrderService.layThangCoBaoTri(
+                          hs.maThietBi,
+                          nam: goc.year,
+                        );
+                        if (thangCo.contains(picked.month) &&
+                            picked.month != goc.month &&
+                            mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Lưu ý: tháng ${picked.month}/${goc.year} thiết bị này đã có lịch bảo trì.',
+                              ),
+                              backgroundColor: AppColors.warning,
+                            ),
+                          );
+                        }
+                      } catch (_) {}
+                    }
+                  }
                 },
                 borderRadius: BorderRadius.circular(12),
                 child: InputDecorator(
@@ -1387,8 +1415,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         : null,
                     errorMaxLines: 4,
                     helperText: _xuongCtrl.ngayDuKienGoc != null
-                        ? 'Chỉ được chọn ngày trong tháng ${_xuongCtrl.ngayDuKienGoc!.month}/${_xuongCtrl.ngayDuKienGoc!.year} (theo kế hoạch Tổ trưởng)'
-                        : 'Chỉ được chọn ngày trong đúng tháng kế hoạch',
+                        ? 'Từ tháng ${_xuongCtrl.ngayDuKienGoc!.month}/${_xuongCtrl.ngayDuKienGoc!.year} trở đi trong năm ${_xuongCtrl.ngayDuKienGoc!.year}'
+                        : 'Chọn từ tháng kế hoạch trở đi trong cùng năm',
                     helperMaxLines: 2,
                   ),
                   child: Text(
@@ -1690,20 +1718,19 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
   }
 
   Future<void> _chonNgay() async {
-    // Khóa đúng tháng kế hoạch gốc — không cho đổi sang tháng trước/sau
-    // (VD KH tháng 10, lập cuối T9 → không chọn ngày tháng 9).
+    // Từ tháng kế hoạch gốc → hết năm
     final goc = widget.hoSo.ngayDuKienBaoTri ?? _ngayDuKien ?? DateTime.now();
-    final firstOfMonth = DateTime(goc.year, goc.month, 1);
-    final lastOfMonth = DateTime(goc.year, goc.month + 1, 0);
-    var initial = _ngayDuKien ?? firstOfMonth;
-    if (initial.isBefore(firstOfMonth)) initial = firstOfMonth;
-    if (initial.isAfter(lastOfMonth)) initial = lastOfMonth;
+    final firstOfRange = DateTime(goc.year, goc.month, 1);
+    final lastOfRange = DateTime(goc.year, 12, 31);
+    var initial = _ngayDuKien ?? firstOfRange;
+    if (initial.isBefore(firstOfRange)) initial = firstOfRange;
+    if (initial.isAfter(lastOfRange)) initial = lastOfRange;
     final picked = await showDatePicker(
       context: context,
       initialDate: initial,
-      firstDate: firstOfMonth,
-      lastDate: lastOfMonth,
-      helpText: 'Chỉ chọn ngày trong tháng ${goc.month}/${goc.year}',
+      firstDate: firstOfRange,
+      lastDate: lastOfRange,
+      helpText: 'Từ tháng ${goc.month}/${goc.year} đến hết năm ${goc.year}',
       cancelText: 'Hủy',
       confirmText: 'Chọn',
     );
@@ -1712,6 +1739,24 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
         _ngayDuKien = picked;
         _controller.loi = null;
       });
+      try {
+        final thangCo = await WorkOrderService.layThangCoBaoTri(
+          widget.hoSo.maThietBi,
+          nam: goc.year,
+        );
+        if (thangCo.contains(picked.month) &&
+            picked.month != goc.month &&
+            mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Lưu ý: tháng ${picked.month}/${goc.year} thiết bị này đã có lịch bảo trì.',
+              ),
+              backgroundColor: AppColors.warning,
+            ),
+          );
+        }
+      } catch (_) {}
     }
   }
 

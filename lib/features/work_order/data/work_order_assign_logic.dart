@@ -235,28 +235,9 @@ class PhanCongBaoTriController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    // ≥2 NV → bắt buộc chọn đúng 1 người ghi chép
-    if (maNhanVienDaChon.length >= 2) {
-      if (maNhanVienGhiChep == null ||
-          !maNhanVienDaChon.contains(maNhanVienGhiChep)) {
-        loi =
-        'Vui lòng chọn đúng 1 người ghi chép quy trình (trong danh sách đã chọn)';
-        notifyListeners();
-        return false;
-      }
-    } else {
-      maNhanVienGhiChep = maNhanVienDaChon.first;
-    }
-
-    // Khóa người ghi chép đã tiến hành quy trình
-    if (khoaNguoiGhiChep && maNhanVienGhiChepGoc != null) {
-      if (!maNhanVienDaChon.contains(maNhanVienGhiChepGoc) ||
-          maNhanVienGhiChep != maNhanVienGhiChepGoc) {
-        loi = _msgKhoaGhiChep;
-        notifyListeners();
-        return false;
-      }
-    }
+    // Không còn chọn người ghi chép — mọi NV phân công đều làm quy trình
+    maNhanVienGhiChep =
+    maNhanVienDaChon.isNotEmpty ? maNhanVienDaChon.first : null;
     if (gioBatDau == null || gioKetThuc == null) {
       loi = 'Thiếu giờ bắt đầu/kết thúc — không thể phân công';
       notifyListeners();

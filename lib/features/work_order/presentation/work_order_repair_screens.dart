@@ -5,6 +5,7 @@ import '../../../core/theme/modern_detail_ui.dart';
 import '../../../core/network/api_exception.dart';
 import '../../equipment/data/equipment_logic.dart' show ThietBiModel;
 import '../data/work_order_logic.dart';
+import '../data/work_order_validators.dart';
 import '../data/models/material_usage_models.dart';
 import '../data/services/material_usage_service.dart';
 import '../data/services/work_order_service.dart';
@@ -1438,17 +1439,43 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                     child: ModernDetailUi.softCard(
                       child: Column(
                         children: [
+                          ModernDetailUi.sectionTitle(
+                            icon: Icons.info_outline_rounded,
+                            title: 'Thông tin hồ sơ',
+                            trailing: ModernDetailUi.statusChip(hs.trangThai),
+                          ),
+                          const SizedBox(height: 8),
                           ModernDetailUi.infoRow(
                               'Người tạo', hs.tenNhanVienTao ?? '—'),
                           Divider(height: 1, color: Colors.grey.shade200),
                           ModernDetailUi.infoRow(
                               'Ngày tạo', _fmt(hs.ngayTao)),
-                          if (hs.tenNhanVienThucHiens != null &&
-                              hs.tenNhanVienThucHiens!.isNotEmpty) ...[
+                          if (hs.ngayDuyet != null) ...[
                             Divider(height: 1, color: Colors.grey.shade200),
                             ModernDetailUi.infoRow(
-                                'NV thực hiện', hs.tenNhanVienThucHiens!),
+                                'Ngày duyệt', _fmt(hs.ngayDuyet)),
                           ],
+                          Divider(height: 1, color: Colors.grey.shade200),
+                          ModernDetailUi.infoRow(
+                            'Thời gian dự kiến',
+                            formatThoiGianDuKienHienThi(hs.thoiGianDuKien),
+                          ),
+                          Divider(height: 1, color: Colors.grey.shade200),
+                          ModernDetailUi.infoRow(
+                            'Giờ bắt đầu',
+                            (hs.gioBatDauDuKien != null &&
+                                hs.gioBatDauDuKien!.trim().isNotEmpty)
+                                ? hs.gioBatDauDuKien!
+                                : '—',
+                          ),
+                          Divider(height: 1, color: Colors.grey.shade200),
+                          ModernDetailUi.infoRow(
+                            'Giờ kết thúc',
+                            (hs.gioKetThucDuKien != null &&
+                                hs.gioKetThucDuKien!.trim().isNotEmpty)
+                                ? hs.gioKetThucDuKien!
+                                : '—',
+                          ),
                         ],
                       ),
                     ),

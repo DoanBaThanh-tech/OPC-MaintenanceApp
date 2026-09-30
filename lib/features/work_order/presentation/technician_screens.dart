@@ -543,11 +543,15 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
 
   Future<void> _tienHanh() async {
     final y = widget.yeuCau;
-    // SC: bấm Tiến hành → đồng bộ HS = Đang thực hiện cho mọi vai trò
-    if (!y.laBaoTri && y.maHoSo != null) {
+    // Ghi nhận thời điểm bắt đầu thực tế (BT + SC)
+    if (y.maHoSo != null) {
       setState(() => _dangXuLy = true);
       try {
-        await WorkOrderService.nhanVienTienHanhSuaChua(y.maHoSo!);
+        if (y.laBaoTri) {
+          await WorkOrderService.nhanVienTienHanhBaoTri(y.maHoSo!);
+        } else {
+          await WorkOrderService.nhanVienTienHanhSuaChua(y.maHoSo!);
+        }
       } on ApiException catch (e) {
         if (!mounted) return;
         setState(() => _dangXuLy = false);
@@ -585,7 +589,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   Widget build(BuildContext context) {
     final y = widget.yeuCau;
     final top = MediaQuery.paddingOf(context).top;
-    // Chỉ người ghi chép + còn cần làm mới hiện Tiến hành
+    // Mọi NV được phân công + còn cần làm đều hiện Tiến hành
     final showTienHanh = !y.daHuy &&
         !y.daHoanThanhPc &&
         !y.choXacNhanKetQua &&

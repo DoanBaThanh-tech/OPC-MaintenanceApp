@@ -223,8 +223,8 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Khóa đúng tháng kế hoạch Tổ trưởng; ngày dự kiến > ngày tạo.
-  /// VD: KH tháng 10, lập cuối tháng 9 → không được đổi ngày dự kiến sang tháng 9.
+  /// Tháng ≥ tháng kế hoạch gốc, cùng năm; ngày dự kiến > ngày tạo.
+  /// VD: KH T10/2026 → được chọn T10–T12/2026, không được T9/2026.
   String? _kiemTraNgayDuKien(DateTime? ngayMoi) {
     if (ngayMoi == null) return null;
     final goc = ngayDuKienGoc;
@@ -239,12 +239,15 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
             'Không được đặt trùng hoặc trước ngày tạo.';
       }
     }
-    if (goc != null &&
-        (ngayMoi.month != goc.month || ngayMoi.year != goc.year)) {
-      return 'Hồ sơ đang lập bảo trì cho tháng ${goc.month}/${goc.year} '
-          '(theo kế hoạch Tổ trưởng). '
-          'Không được chuyển ngày dự kiến sang tháng ${ngayMoi.month}/${ngayMoi.year}. '
-          'Chỉ được chọn ngày trong đúng tháng kế hoạch.';
+    if (goc != null) {
+      if (ngayMoi.year != goc.year) {
+        return 'Chỉ được chọn ngày trong năm kế hoạch ${goc.year}.';
+      }
+      if (ngayMoi.month < goc.month) {
+        return 'Kế hoạch gốc tháng ${goc.month}/${goc.year}. '
+            'Chỉ được chọn từ tháng ${goc.month} trở đi '
+            '(không được chọn tháng ${ngayMoi.month}).';
+      }
     }
     return null;
   }

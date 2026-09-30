@@ -296,6 +296,35 @@ class WorkOrderService {
     );
   }
 
+  /// NVKT bấm Tiến hành quy trình bảo trì — ghi nhận thời điểm bắt đầu thực tế.
+  static Future<void> nhanVienTienHanhBaoTri(int maHoSoBaoTri) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/tien-hanh',
+      {},
+    );
+  }
+
+  /// Tháng trong năm đã có hồ sơ BT của thiết bị.
+  static Future<List<int>> layThangCoBaoTri(int maThietBi, {int? nam}) async {
+    final y = nam ?? DateTime.now().year;
+    final data = await ApiClient.instance.get<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/thiet-bi/$maThietBi/thang-co-bao-tri',
+      query: {'nam': y},
+    );
+    final list = data['danhSachThang'] ?? data['DanhSachThang'];
+    if (list is! List) return const [];
+    return list
+        .map((e) {
+      if (e is Map) {
+        final t = e['thang'] ?? e['Thang'];
+        return (t as num?)?.toInt();
+      }
+      return int.tryParse(e.toString());
+    })
+        .whereType<int>()
+        .toList();
+  }
+
   /// Xưởng xác nhận / từ chối kết quả sau khi NVKT bấm Xong.
   static Future<void> xuongXacNhanKetQua({
     int? maHoSoBaoTri,

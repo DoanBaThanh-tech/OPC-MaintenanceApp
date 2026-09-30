@@ -315,10 +315,9 @@ class YeuCauPhanCong {
           (trangThaiHoSo == 'Đang thực hiện' ||
               trangThaiHoSo == 'Chờ xác nhận');
 
-  /// Chỉ người ghi chép mới Tiến hành / cập nhật quy trình.
+  /// Mọi NV được phân công đều Tiến hành / cập nhật quy trình.
   bool get canThucHien =>
-      laNguoiGhiChep &&
-          !choXacNhanKetQua &&
+      !choXacNhanKetQua &&
           !daHoanThanhPc &&
           !daHuy &&
           (trangThaiPhanCong == 'Chờ xác nhận' ||
@@ -329,8 +328,8 @@ class YeuCauPhanCong {
               trangThaiHoSo == 'Đang thực hiện' ||
               trangThaiHoSo == 'Từ chối');
 
-  /// Được xem chi tiết / quy trình (mọi NV được phân công).
-  bool get chiXem => !laNguoiGhiChep && !daHuy;
+  /// Không còn chế độ chỉ xem theo người ghi chép.
+  bool get chiXem => false;
 
   bool get choXacNhan => canThucHien;
   bool get daXacNhan => trangThaiPhanCong == 'Xác nhận';
