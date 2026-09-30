@@ -269,7 +269,7 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
   Future<bool> luu({
     required int maHoSoBaoTri,
     required String noiDungCongViec,
-    required String thoiGianText,
+    String? thoiGianText,
   }) async {
     final noiDung = noiDungCongViec.trim();
     if (noiDung.isEmpty) {
@@ -283,17 +283,8 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    datThoiGianTuChuoi(thoiGianText);
-    if (loiThoiGian != null) {
-      notifyListeners();
-      return false;
-    }
-    if (gioBatDau == null) {
-      loi = 'Vui lòng chọn giờ bắt đầu';
-      notifyListeners();
-      return false;
-    }
-    _tinhGioKetThuc();
+    // Không bắt buộc / không cập nhật thời gian khi chỉnh sửa xưởng —
+    // thời gian do NVKT Tiến hành / hoàn thành ghi nhận.
     dangLuu = true;
     loi = null;
     notifyListeners();
@@ -301,9 +292,6 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
       await WorkOrderService.xuongLuuHoSo(
         maHoSoBaoTri: maHoSoBaoTri,
         noiDungCongViec: noiDung,
-        thoiGianDuKien: chuoiThoiGianLuu,
-        gioBatDauDuKien: fmtGio(gioBatDau),
-        gioKetThucDuKien: fmtGio(gioKetThuc),
         ngayDuKienBaoTri: ngayDuKien,
       );
       dangChinhSua = false;
@@ -489,12 +477,6 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
       return false;
     }
 
-    if (thoiGianDuKien != null && thoiGianDuKien!.trim().isNotEmpty) {
-      datThoiGianDuKienTuChuoi(thoiGianDuKien!);
-    }
-    final chuoiTg = chuoiThoiGianLuu;
-    final gbd = gioBatDauDuKien ?? _fmtGio(gioBatDau);
-    final gkt = gioKetThucDuKien ?? _fmtGio(gioKetThuc);
     final ngay = ngayDuKienBaoTri ?? this.ngayDuKienBaoTri;
     final goc = ngayDuKienGoc ?? this.ngayDuKienBaoTri;
     if (ngay != null && ngayTao != null) {
@@ -507,35 +489,23 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
         return false;
       }
     }
-    if (ngay != null &&
-        goc != null &&
-        (ngay.month != goc.month || ngay.year != goc.year)) {
-      loi =
-      'Hồ sơ đang lập bảo trì cho tháng ${goc.month}/${goc.year} '
-          '(theo kế hoạch Tổ trưởng). '
-          'Không được chuyển ngày dự kiến sang tháng ${ngay.month}/${ngay.year}. '
-          'Chỉ được chọn ngày trong đúng tháng kế hoạch.';
-      notifyListeners();
-      return false;
+    if (ngay != null && goc != null) {
+      if (ngay.year != goc.year) {
+        loi = 'Chỉ được chọn ngày trong năm kế hoạch ${goc.year}.';
+        notifyListeners();
+        return false;
+      }
+      if (ngay.month < goc.month) {
+        loi =
+        'Kế hoạch gốc tháng ${goc.month}/${goc.year}. '
+            'Chỉ được chọn từ tháng ${goc.month} trở đi '
+            '(không được chọn tháng ${ngay.month}).';
+        notifyListeners();
+        return false;
+      }
     }
 
-    if (chuoiTg == null || chuoiTg.isEmpty || loiThoiGianDuKien != null) {
-      loi = loiThoiGianDuKien ?? 'Vui lòng nhập thời gian dự kiến hợp lệ (giờ hoặc phút)';
-      notifyListeners();
-      return false;
-    }
-    if (gbd == null) {
-      loi = 'Vui lòng chọn giờ bắt đầu';
-      notifyListeners();
-      return false;
-    }
-    if (gkt == null) {
-      loi =
-      'Chưa tính được giờ kết thúc (có thể thời lượng tràn sang ngày sau)';
-      notifyListeners();
-      return false;
-    }
-
+    // Không bắt buộc thời gian — ghi nhận khi NVKT Tiến hành / hoàn thành
     dangLuu = true;
     loi = null;
     notifyListeners();
@@ -543,9 +513,6 @@ class SuaHoSoBiTuChoiController extends ChangeNotifier {
       await WorkOrderService.suaHoSoBiTuChoi(
         maHoSoBaoTri: maHoSoBaoTri,
         noiDungCongViec: noiDungCongViec.trim(),
-        thoiGianDuKien: chuoiTg,
-        gioBatDauDuKien: gbd,
-        gioKetThucDuKien: gkt,
         ngayDuKienBaoTri: ngay,
       );
       return true;

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_exception.dart';
+import '../../work_order/data/services/work_order_service.dart';
 import '../../work_order/data/work_order_validators.dart';
 
 // ============================================================
@@ -215,9 +216,9 @@ class MaintenancePlanService {
     required int maThietBi,
     required DateTime ngay,
     required String noiDungCongViec,
-    required int thoiGianDuKien,
-    required TimeOfDay gioBatDau,
-    required TimeOfDay gioKetThuc,
+    int? thoiGianDuKien,
+    TimeOfDay? gioBatDau,
+    TimeOfDay? gioKetThuc,
   }) async {
     String fmtGio(TimeOfDay t) =>
         '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
@@ -227,9 +228,10 @@ class MaintenancePlanService {
       'maThietBi': maThietBi,
       'ngayDuKienBaoTri': _dateOnly(ngay),
       'noiDungCongViec': noiDungCongViec,
-      'thoiGianDuKien': thoiGianDuKien,
-      'gioBatDauDuKien': fmtGio(gioBatDau),
-      'gioKetThucDuKien': fmtGio(gioKetThuc),
+      if (thoiGianDuKien != null && thoiGianDuKien > 0)
+        'thoiGianDuKien': thoiGianDuKien,
+      if (gioBatDau != null) 'gioBatDauDuKien': fmtGio(gioBatDau),
+      if (gioKetThuc != null) 'gioKetThucDuKien': fmtGio(gioKetThuc),
     });
   }
 }
@@ -506,23 +508,45 @@ class CreateMaintenancePlanController extends ChangeNotifier {
     }
   }
 
-  void chonThietBi(ThietBiRutGon? tb) {
+  Future<void> chonThietBi(ThietBiRutGon? tb) async {
     if (tb == null) return;
     thietBiChon = tb;
 
-    // Cảnh báo nếu thiết bị đã có bảo trì trong tháng đang chọn (vẫn cho chọn để user đổi tháng)
-    if (daLapKeHoachThang(tb.maThietBi, thang, nam)) {
-      loi =
-      'Thiết bị "${tb.tenThietBi}" đã được lập bảo trì trong tháng $thang/$nam. '
-          'Mỗi thiết bị chỉ được lập bảo trì 1 lần trong một tháng. Vui lòng chọn tháng khác.';
-    } else {
-      loi = null;
+    // Đồng bộ tháng đã có hồ sơ BT (kể cả Từ chối) từ API — báo đỏ ngay khi trùng
+    try {
+      final dsThang = await WorkOrderService.layThangCoBaoTri(tb.maThietBi, nam: nam);
+      for (final t in dsThang) {
+        _daLapKeHoachKeys.add(_keyTbThang(tb.maThietBi, t, nam));
+      }
+    } catch (_) {
+      // Không chặn UI nếu API lỗi — API create vẫn chặn trùng
     }
+
+    loi = _loiThangThietBi(tb.maThietBi, tb.tenThietBi, thang, nam);
 
     var macDinh = ngayDuKienToiThieu;
     if (macDinh.isAfter(ngayKetThuc)) macDinh = ngayKetThuc;
     chiTietChon = ChiTietKeHoachInput(thietBi: tb, ngayDuKienBaoTri: macDinh);
     notifyListeners();
+  }
+
+  /// Tháng đã qua (so với hiện tại) — vẫn chọn được nhưng báo lỗi đỏ.
+  bool thangDaQua(int thangChon, int namChon) {
+    final now = DateTime.now();
+    return namChon < now.year ||
+        (namChon == now.year && thangChon < now.month);
+  }
+
+  String? _loiThangThietBi(int maThietBi, String tenThietBi, int t, int n) {
+    if (thangDaQua(t, n)) {
+      return 'Tháng $t/$n đã qua — không được lập bảo trì cho tháng trước. '
+          'Chỉ được lập từ tháng ${DateTime.now().month}/${DateTime.now().year} trở đi.';
+    }
+    if (daLapKeHoachThang(maThietBi, t, n)) {
+      return 'Thiết bị "$tenThietBi" đã được lập bảo trì trong tháng $t/$n. '
+          'Không được lập trùng tháng này — vui lòng chọn tháng lớn hơn $t.';
+    }
+    return null;
   }
 
   void doiThang(int t) {
@@ -531,16 +555,15 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       var macDinh = ngayDuKienToiThieu;
       if (macDinh.isAfter(ngayKetThuc)) macDinh = ngayKetThuc;
       chiTietChon!.ngayDuKienBaoTri = macDinh;
-
-      if (daLapKeHoachThang(thietBiChon!.maThietBi, thang, nam)) {
-        loi =
-        'Thiết bị "${thietBiChon!.tenThietBi}" đã được lập bảo trì trong tháng $thang/$nam. '
-            'Mỗi thiết bị chỉ được lập bảo trì 1 lần trong một tháng.';
-      } else {
-        loi = null;
-      }
+      loi = _loiThangThietBi(
+          thietBiChon!.maThietBi, thietBiChon!.tenThietBi, thang, nam);
     } else {
-      loi = null;
+      // Chưa chọn TB — vẫn báo tháng quá khứ
+      final now = DateTime.now();
+      loi = thangDaQua(thang, nam)
+          ? 'Tháng $thang/$nam đã qua — không được lập bảo trì cho tháng trước. '
+          'Chỉ được lập từ tháng ${now.month}/${now.year} trở đi.'
+          : null;
     }
     notifyListeners();
   }
@@ -694,11 +717,10 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       return false;
     }
 
-    // Ràng buộc: mỗi thiết bị chỉ lập bảo trì 1 lần trong tháng
-    if (daLapKeHoachThang(thietBiChon!.maThietBi, thang, nam)) {
-      loi =
-      'Thiết bị "${thietBiChon!.tenThietBi}" đã được lập bảo trì trong tháng $thang/$nam. '
-          'Không thể tạo thêm. Mỗi thiết bị chỉ được lập bảo trì 1 lần trong một tháng.';
+    final loiThang = _loiThangThietBi(
+        thietBiChon!.maThietBi, thietBiChon!.tenThietBi, thang, nam);
+    if (loiThang != null) {
+      loi = loiThang;
       notifyListeners();
       return false;
     }
@@ -724,12 +746,7 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    final loiGio = kiemTraGio();
-    if (loiGio != null) {
-      loi = loiGio;
-      notifyListeners();
-      return false;
-    }
+    // Không bắt buộc thời gian khi tạo — ghi nhận khi NVKT Tiến hành / hoàn thành
     if (ngayLapKeHoach != null) {
       final lap = DateTime(ngayLapKeHoach!.year, ngayLapKeHoach!.month, ngayLapKeHoach!.day);
       if (!ngay.isAfter(lap)) {
@@ -748,9 +765,6 @@ class CreateMaintenancePlanController extends ChangeNotifier {
         maThietBi: thietBiChon!.maThietBi,
         ngay: chiTietChon!.ngayDuKienBaoTri,
         noiDungCongViec: noiDungCongViecController.text.trim(),
-        thoiGianDuKien: thoiGianDuKienGuiApi,
-        gioBatDau: gioBatDau!,
-        gioKetThuc: gioKetThucTuTinh!,
       );
       // Đánh dấu đã lập để chặn tạo trùng ngay trên client
       _daLapKeHoachKeys.add(_keyTbThang(thietBiChon!.maThietBi, thang, nam));

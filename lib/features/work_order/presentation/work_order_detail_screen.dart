@@ -120,7 +120,6 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     final ok = await _xuongCtrl.luu(
       maHoSoBaoTri: hs.maHoSoBaoTri,
       noiDungCongViec: _noiDungXuongCtrl.text,
-      thoiGianText: _thoiGianXuongCtrl.text,
     );
     if (!mounted) return;
     if (ok) {
@@ -483,12 +482,27 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                           const Divider(height: 18, color: Color(0xFFE8EEF4)),
                           _dong(
                             'Thời gian dự kiến',
-                            formatThoiGianDuKienHienThi(hs.thoiGianDuKien),
+                            (hs.thoiGianDuKien == null ||
+                                hs.thoiGianDuKien!.trim().isEmpty)
+                                ? '?'
+                                : formatThoiGianDuKienHienThi(hs.thoiGianDuKien),
                           ),
                           const Divider(height: 18, color: Color(0xFFE8EEF4)),
-                          _dong('Giờ bắt đầu', hs.gioBatDauDuKien ?? '—'),
+                          _dong(
+                            'Giờ bắt đầu',
+                            (hs.gioBatDauDuKien == null ||
+                                hs.gioBatDauDuKien!.trim().isEmpty)
+                                ? '?'
+                                : hs.gioBatDauDuKien!,
+                          ),
                           const Divider(height: 18, color: Color(0xFFE8EEF4)),
-                          _dong('Giờ kết thúc', hs.gioKetThucDuKien ?? '—'),
+                          _dong(
+                            'Giờ kết thúc',
+                            (hs.gioKetThucDuKien == null ||
+                                hs.gioKetThucDuKien!.trim().isEmpty)
+                                ? '?'
+                                : hs.gioKetThucDuKien!,
+                          ),
                         ],
                       ),
 
@@ -1438,122 +1452,35 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                   style: TextStyle(color: Colors.red.shade700, fontSize: 12.5, height: 1.3),
                 ),
               ],
-              const SizedBox(height: 14),
-              const Text('Thời gian dự kiến',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              const SizedBox(height: 8),
-              SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(value: false, label: Text('Giờ')),
-                  ButtonSegment(value: true, label: Text('Phút')),
-                ],
-                selected: {_xuongCtrl.nhapPhut},
-                onSelectionChanged: (s) {
-                  _xuongCtrl.datDonViThoiGian(laPhut: s.first);
-                  _onThoiGianXuongChanged(_thoiGianXuongCtrl.text);
-                  setState(() {});
-                },
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _thoiGianXuongCtrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                ],
-                onChanged: _onThoiGianXuongChanged,
-                decoration: InputDecoration(
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  suffixText: _xuongCtrl.nhapPhut ? 'phút' : 'giờ',
-                  hintText: _xuongCtrl.nhapPhut ? 'Ví dụ: 15' : 'Ví dụ: 2',
-                  filled: true,
-                  fillColor: Colors.white,
-                  errorText: _loiThoiGianXuong,
-                  errorMaxLines: 3,
-                  helperText: _xuongCtrl.nhapPhut
-                      ? 'Số phút nguyên dương 1–1440 (không thập phân, không tràn ngày)'
-                      : 'Số giờ nguyên dương 1–24 (không thập phân, trong cùng ngày)',
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE8F4FC),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.primary.withValues(alpha: 0.25)),
                 ),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: Opacity(
-                      opacity: _thoiGianXuongHopLe ? 1 : 0.45,
-                      child: InkWell(
-                        onTap: !_thoiGianXuongHopLe
-                            ? () {
-                          _xuongCtrl.datThoiGianTuChuoi(
-                              _thoiGianXuongCtrl.text);
-                        }
-                            : () async {
-                          final t = await showTimePicker(
-                            context: context,
-                            initialTime: _gioBatDauXuong ??
-                                const TimeOfDay(hour: 8, minute: 0),
-                            builder: (context, child) {
-                              return MediaQuery(
-                                data: MediaQuery.of(context).copyWith(
-                                    alwaysUse24HourFormat: true),
-                                child: child!,
-                              );
-                            },
-                          );
-                          if (t == null) return;
-                          _xuongCtrl.datGioBatDau(t);
-                        },
-                        borderRadius: BorderRadius.circular(12),
-                        child: InputDecorator(
-                          decoration: InputDecoration(
-                            labelText: 'Giờ bắt đầu',
-                            border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          child: Text(
-                            _fmtGio(_gioBatDauXuong) ??
-                                (_thoiGianXuongHopLe
-                                    ? 'Chọn giờ'
-                                    : 'Nhập số giờ hợp lệ trước'),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: _gioBatDauXuong == null
-                                  ? Colors.grey
-                                  : const Color(0xFF0F172A),
-                            ),
-                          ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded,
+                        size: 18,
+                        color: AppColors.primary.withValues(alpha: 0.9)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Thời gian dự kiến / bắt đầu / kết thúc không chỉnh tại đây. '
+                            'Hệ thống ghi nhận khi NVKT bấm Tiến hành quy trình và khi hoàn thành.',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Colors.grey.shade700,
+                          height: 1.35,
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Opacity(
-                      opacity: _thoiGianXuongHopLe ? 1 : 0.45,
-                      child: InputDecorator(
-                        decoration: InputDecoration(
-                          labelText: 'Giờ kết thúc (tự tính)',
-                          border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                          filled: true,
-                          fillColor: Colors.grey.shade50,
-                        ),
-                        child: Text(
-                          _fmtGio(_gioKetThucXuong) ?? '—',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w600,
-                            color: _gioKetThucXuong == null
-                                ? Colors.grey
-                                : const Color(0xFF0F172A),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
           ),
@@ -1924,37 +1851,10 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
                         icon: Icons.description_outlined,
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    SegmentedButton<bool>(
-                      segments: const [
-                        ButtonSegment(value: false, label: Text('Giờ')),
-                        ButtonSegment(value: true, label: Text('Phút')),
-                      ],
-                      selected: {_controller.nhapPhut},
-                      onSelectionChanged: (s) {
-                        _controller.datDonViThoiGian(laPhut: s.first);
-                        _onThoiGianChanged(_thoiGian.text);
-                        setState(() {});
-                      },
-                    ),
                     const SizedBox(height: 10),
-                    TextField(
-                      controller: _thoiGian,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
-                      onChanged: _onThoiGianChanged,
-                      decoration: _inputDeco(
-                        hint: _controller.nhapPhut ? 'Ví dụ: 90' : 'Ví dụ: 2',
-                        icon: Icons.timelapse_rounded,
-                        suffix: _controller.nhapPhut ? 'phút' : 'giờ',
-                        label: 'Thời gian dự kiến',
-                        errorText: _loiThoiGian,
-                        helperText: _controller.nhapPhut
-                            ? 'Số phút nguyên dương 1–1440 (không thập phân)'
-                            : 'Số giờ nguyên dương 1–24 (không thập phân)',
-                      ),
+                    Text(
+                      'Thời gian dự kiến / bắt đầu / kết thúc không nhập tại đây — hệ thống ghi nhận khi NVKT Tiến hành và khi hoàn thành.',
+                      style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, height: 1.35),
                     ),
                   ],
                 ),
@@ -1963,6 +1863,7 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
 
               _sectionCard(
                 title: 'Lịch bảo trì dự kiến',
+
                 child: Column(
                   children: [
                     _pickerTile(
@@ -1981,30 +1882,6 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
                           '(theo kế hoạch Tổ trưởng). Không được đổi sang tháng trước/sau.'
                           : 'Chỉ được chọn ngày trong đúng tháng kế hoạch. Không được đổi sang tháng khác.',
                       style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, height: 1.3),
-                    ),
-                    const Divider(height: 20),
-                    Opacity(
-                      opacity: _choPhepChonGioBatDau ? 1 : 0.45,
-                      child: _pickerTile(
-                        icon: Icons.play_circle_outline_rounded,
-                        iconColor: const Color(0xFF059669),
-                        label: 'Thời gian bắt đầu',
-                        value: _fmtTime(_gioBatDau) ??
-                            (_choPhepChonGioBatDau
-                                ? 'Chạm để chọn giờ'
-                                : 'Nhập số giờ hợp lệ trước'),
-                        onTap: _chonGioBatDau,
-                      ),
-                    ),
-                    const Divider(height: 20),
-                    // Chỉ hiển thị — không cho chọn tay
-                    _pickerTile(
-                      icon: Icons.stop_circle_outlined,
-                      iconColor: const Color(0xFFDC2626),
-                      label: 'Thời gian kết thúc (tự tính)',
-                      value: _fmtTime(_gioKetThuc) ?? '—',
-                      onTap: () {}, // không làm gì
-                      showChevron: false,
                     ),
                   ],
                 ),

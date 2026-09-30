@@ -26,13 +26,11 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
   final _controller = CreateWorkOrderBaoTriController();
   final _formKey = GlobalKey<FormState>();
   final _noiDungController = TextEditingController();
-  final _thoiGianController = TextEditingController(text: '4');
 
   @override
   void dispose() {
     _controller.dispose();
     _noiDungController.dispose();
-    _thoiGianController.dispose();
     super.dispose();
   }
 
@@ -42,7 +40,6 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
       maChiTietKeHoach: widget.maChiTietKeHoach,
       maThietBi: widget.maThietBi,
       noiDungCongViec: _noiDungController.text.trim(),
-      thoiGianDuKien: _thoiGianController.text.trim(),
       guiDuyet: guiDuyet,
     );
     if (ok && mounted) Navigator.pop(context, true);
@@ -158,58 +155,15 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                           validator: (v) =>
                           (v == null || v.trim().isEmpty) ? 'Vui lòng nhập nội dung công việc' : null,
                         ),
-                        const SizedBox(height: 16),
-                        const Text('Thời gian dự kiến',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w800, fontSize: 14)),
                         const SizedBox(height: 8),
-                        AnimatedBuilder(
-                          animation: _controller,
-                          builder: (context, _) {
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                SegmentedButton<bool>(
-                                  segments: const [
-                                    ButtonSegment(
-                                        value: false, label: Text('Giờ')),
-                                    ButtonSegment(
-                                        value: true, label: Text('Phút')),
-                                  ],
-                                  selected: {_controller.nhapPhut},
-                                  onSelectionChanged: (s) {
-                                    _controller.datDonViThoiGian(
-                                        laPhut: s.first);
-                                  },
-                                ),
-                                const SizedBox(height: 10),
-                                TextFormField(
-                                  controller: _thoiGianController,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                  ],
-                                  decoration: InputDecoration(
-                                    hintText: _controller.nhapPhut
-                                        ? 'Ví dụ: 90'
-                                        : 'Ví dụ: 4',
-                                    border: const OutlineInputBorder(),
-                                    prefixIcon: const Icon(Icons.schedule),
-                                    suffixText:
-                                    _controller.nhapPhut ? 'phút' : 'giờ',
-                                    helperText: _controller.nhapPhut
-                                        ? 'Số phút nguyên dương 1–1440 (không thập phân)'
-                                        : 'Số giờ nguyên dương 1–24 (không thập phân)',
-                                    helperMaxLines: 2,
-                                    errorMaxLines: 3,
-                                  ),
-                                  validator: _controller.validateThoiGian,
-                                  autovalidateMode:
-                                  AutovalidateMode.onUserInteraction,
-                                ),
-                              ],
-                            );
-                          },
+                        Text(
+                          'Thời gian dự kiến / bắt đầu / kết thúc sẽ được ghi nhận '
+                              'khi NVKT bấm Tiến hành quy trình và khi hoàn thành.',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            color: Colors.grey.shade600,
+                            height: 1.35,
+                          ),
                         ),
                         AnimatedBuilder(
                           animation: _controller,

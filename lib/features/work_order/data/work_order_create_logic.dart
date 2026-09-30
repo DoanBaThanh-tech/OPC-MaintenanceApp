@@ -12,31 +12,14 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
   bool dangLuu = false;
   String? loi;
 
-  /// true = nhập phút; false = nhập giờ.
-  bool nhapPhut = false;
-
-  void datDonViThoiGian({required bool laPhut}) {
-    nhapPhut = laPhut;
-    notifyListeners();
-  }
-
-  String? validateThoiGian(String? v) =>
-      formValidateThoiGianDuKien(v, laPhut: nhapPhut);
-
-  /// Trả về true nếu tạo thành công — presentation chỉ cần pop(context, true) khi true.
+  /// Thời gian dự kiến / bắt đầu / kết thúc không nhập khi tạo —
+  /// hệ thống ghi nhận khi NVKT Tiến hành và khi hoàn thành.
   Future<bool> luu({
     required int maChiTietKeHoach,
     required int maThietBi,
     required String noiDungCongViec,
-    required String thoiGianDuKien,
     required bool guiDuyet,
   }) async {
-    final kq = validateThoiGianDuKien(thoiGianDuKien, laPhut: nhapPhut);
-    if (!kq.hopLe) {
-      loi = kq.loi;
-      notifyListeners();
-      return false;
-    }
     dangLuu = true;
     loi = null;
     notifyListeners();
@@ -45,7 +28,7 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
         maChiTietKeHoach: maChiTietKeHoach,
         maThietBi: maThietBi,
         noiDungCongViec: noiDungCongViec,
-        thoiGianDuKien: kq.chuoiLuu,
+        thoiGianDuKien: null,
         guiDuyet: guiDuyet,
       );
       return true;
@@ -258,22 +241,7 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    if (!thoiGianHopLe || chuoiThoiGianLuu == null) {
-      loi = loiThoiGian ?? 'Vui lòng nhập thời gian dự kiến (giờ hoặc phút)';
-      notifyListeners();
-      return false;
-    }
-    if (gioBatDau == null) {
-      loi = 'Vui lòng chọn giờ bắt đầu';
-      notifyListeners();
-      return false;
-    }
-    if (gioKetThuc == null) {
-      loi =
-      'Chưa tính được giờ kết thúc (thời lượng có thể tràn sang ngày sau)';
-      notifyListeners();
-      return false;
-    }
+    // Không nhập thời gian khi tạo — ghi nhận khi NVKT Tiến hành / hoàn thành
     dangGui = true;
     notifyListeners();
     try {
@@ -283,9 +251,9 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
         phuongAnSuaChua: phuongAnSuaChua?.trim().isEmpty == true
             ? null
             : phuongAnSuaChua?.trim(),
-        thoiGianDuKien: chuoiThoiGianLuu,
-        gioBatDauDuKien: fmtGio(gioBatDau),
-        gioKetThucDuKien: fmtGio(gioKetThuc),
+        thoiGianDuKien: null,
+        gioBatDauDuKien: null,
+        gioKetThucDuKien: null,
         guiDuyet: true,
       );
       return true;

@@ -1174,125 +1174,35 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                             maxLines: 3,
                             decoration: _fieldDeco(hint: 'Mô tả công việc cần bảo trì...'),
                           ),
-                          const SizedBox(height: 16),
-                          _sectionLabel(
-                            'Thời gian dự kiến bảo trì *',
-                            hint: 'Giờ hoặc phút — không tràn sang ngày sau',
-                          ),
-                          SegmentedButton<bool>(
-                            segments: const [
-                              ButtonSegment(value: false, label: Text('Giờ')),
-                              ButtonSegment(value: true, label: Text('Phút')),
-                            ],
-                            selected: {_controller.nhapPhut},
-                            onSelectionChanged: (s) {
-                              _controller.datDonViThoiGian(laPhut: s.first);
-                              _controller.datThoiGianDuKienTuChuoi(
-                                  _controller.thoiGianTextController.text);
-                            },
-                          ),
-                          const SizedBox(height: 10),
-                          TextField(
-                            controller: _controller.thoiGianTextController,
-                            keyboardType: TextInputType.number,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.digitsOnly,
-                            ],
-                            decoration: _fieldDeco(
-                              hint: _controller.nhapPhut ? 'Ví dụ: 15' : 'Ví dụ: 4',
-                              suffixText: _controller.nhapPhut ? 'phút' : 'giờ',
-                              error: _controller.loiThoiGianDuKien,
-                              prefix: const Icon(Icons.schedule_rounded, size: 22),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F4FC),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.25)),
                             ),
-                            onChanged: _controller.datThoiGianDuKienTuChuoi,
-                          ),
-                          const SizedBox(height: 16),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _sectionLabel('Giờ bắt đầu *'),
-                                    _tapField(
-                                      onTap: () async {
-                                        final hopLe =
-                                            _controller.loiThoiGianDuKien == null &&
-                                                ((_controller.nhapPhut &&
-                                                    (_controller.thoiGianPhut ??
-                                                        0) >
-                                                        0) ||
-                                                    (!_controller.nhapPhut &&
-                                                        (_controller.thoiGianDuKien ??
-                                                            0) >
-                                                            0));
-                                        if (!hopLe) {
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(_controller.nhapPhut
-                                                  ? 'Nhập số phút dự kiến hợp lệ trước'
-                                                  : 'Nhập số giờ dự kiến hợp lệ trước'),
-                                            ),
-                                          );
-                                          return;
-                                        }
-                                        final t = await showTimePicker(
-                                          context: context,
-                                          initialTime: _controller.gioBatDau ??
-                                              TimeOfDay.now(),
-                                          helpText: 'Giờ bắt đầu',
-                                          cancelText: 'Hủy',
-                                          confirmText: 'Chọn',
-                                        );
-                                        if (t != null) {
-                                          _controller.datGioBatDau(t);
-                                        }
-                                      },
-                                      icon: Icons.play_circle_outline_rounded,
-                                      enabled: true,
-                                      value: _controller.gioBatDau?.format(context) ?? '',
-                                      placeholder: 'Chọn giờ',
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.info_outline_rounded,
+                                    size: 18,
+                                    color: AppColors.primary.withValues(alpha: 0.9)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Thời gian dự kiến / bắt đầu / kết thúc không nhập khi tạo. '
+                                        'Hệ thống ghi nhận khi NVKT bấm Tiến hành quy trình và khi hoàn thành.',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: Colors.grey.shade700,
+                                      height: 1.35,
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _sectionLabel('Giờ kết thúc'),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-                                      decoration: BoxDecoration(
-                                        color: Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(color: Colors.grey.shade300),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Icon(Icons.flag_outlined, size: 20, color: Colors.grey.shade500),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Text(
-                                              _controller.gioKetThucTuTinh?.format(context) ?? 'Tự tính',
-                                              style: TextStyle(
-                                                fontSize: 15,
-                                                fontWeight: FontWeight.w600,
-                                                color: _controller.gioKetThucTuTinh != null
-                                                    ? const Color(0xFF0F172A)
-                                                    : Colors.grey.shade500,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
                         ],
                       ),
