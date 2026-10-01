@@ -75,15 +75,22 @@ class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen> {
     if (action == null || !mounted) return;
 
     if (action == 'namMoi') {
-      final ok = await Navigator.push(
+      final namMoi = await Navigator.push<int>(
         context,
-        MaterialPageRoute(builder: (_) => CreateYearPlanScreen(namDaCo: _controller.danhSachNam)),
+        MaterialPageRoute(
+          builder: (_) => CreateYearPlanScreen(namDaCo: _controller.danhSachNam),
+        ),
       );
-      if (ok == true) await _controller.taiDanhSach();
+      // Năm vừa lập → hiện ngay trong dropdown và chọn năm đó
+      if (namMoi != null && mounted) {
+        await _controller.sauKhiTaoNam(namMoi);
+      }
     } else if (action == 'hangCho') {
       await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => const HangChoBaoTriScreen()),
+        MaterialPageRoute(
+          builder: (_) => HangChoBaoTriScreen(namBanDau: _controller.namDangChon),
+        ),
       );
       if (mounted) await _controller.taiDanhSach();
     }
@@ -400,7 +407,8 @@ class _CreateYearPlanScreenState extends State<CreateYearPlanScreen> {
 
   Future<void> _luu() async {
     final ok = await _controller.luu();
-    if (ok && mounted) Navigator.pop(context, true);
+    // Trả về năm vừa tạo để màn danh sách cập nhật dropdown ngay
+    if (ok && mounted) Navigator.pop(context, _controller.nam);
   }
 
   @override

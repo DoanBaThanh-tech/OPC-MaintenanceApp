@@ -32,6 +32,8 @@ class ApiConstants {
   static const String yeuCauNgayBaoTri = '$maintenancePlan/yeu-cau-ngay';
   static const String hangChoDenHan = '$maintenancePlan/hang-cho-den-han';
   static const String taoHangLoatBaoTri = '$maintenancePlan/tao-hang-loat';
+  /// GET — danh sách năm đã có khung kế hoạch
+  static const String namDaLap = '$maintenancePlan/nam-da-lap';
 
   static const String workOrder = "/WorkOrder";
   static const String inventory = "/Inventory";

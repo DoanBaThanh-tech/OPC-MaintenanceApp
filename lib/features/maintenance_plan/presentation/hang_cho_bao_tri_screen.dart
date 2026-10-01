@@ -4,7 +4,9 @@ import '../data/maintenance_plan_logic.dart';
 
 /// Lập kế hoạch — thiết bị đến hạn / trễ hạn, tạo HS hàng loạt gửi xưởng.
 class HangChoBaoTriScreen extends StatefulWidget {
-  const HangChoBaoTriScreen({super.key});
+  /// Năm đang xem trên màn kế hoạch (đồng bộ dropdown).
+  final int? namBanDau;
+  const HangChoBaoTriScreen({super.key, this.namBanDau});
 
   @override
   State<HangChoBaoTriScreen> createState() => _HangChoBaoTriScreenState();
@@ -38,6 +40,9 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
   @override
   void initState() {
     super.initState();
+    if (widget.namBanDau != null) {
+      _controller.nam = widget.namBanDau!;
+    }
     _fadeCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 480),

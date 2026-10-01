@@ -252,6 +252,18 @@ class MaintenancePlanService {
     await ApiClient.instance.post<dynamic>(ApiConstants.namMoi, {'nam': nam});
   }
 
+  /// Các năm đã có khung kế hoạch (sau khi lập kế hoạch năm).
+  static Future<List<int>> layDanhSachNamDaLap() async {
+    final data = await ApiClient.instance.get<List<dynamic>>(ApiConstants.namDaLap);
+    final nams = data
+        .map((e) => (e as num).toInt())
+        .where((n) => n >= 2000 && n <= 9999)
+        .toSet()
+        .toList()
+      ..sort();
+    return nams;
+  }
+
   static Future<void> themThietBiVaoNam({
     required int nam,
     required int maThietBi,
@@ -330,10 +342,16 @@ class HangChoDenHanController extends ChangeNotifier {
     thongBao = null;
     notifyListeners();
     try {
-      // Đồng bộ năm đã lập KH
-      final keHoach = await MaintenancePlanService.layDanhSachKeHoach();
-      final nams = keHoach.map((k) => k.nam).toSet().toList()..sort();
-      if (nams.isEmpty) nams.add(DateTime.now().year);
+      // Ưu tiên API nam-da-lap (cập nhật ngay khi vừa lập KH năm)
+      List<int> nams = [];
+      try {
+        nams = await MaintenancePlanService.layDanhSachNamDaLap();
+      } catch (_) {
+        // fallback: suy ra từ danh sách kế hoạch
+        final keHoach = await MaintenancePlanService.layDanhSachKeHoach();
+        nams = keHoach.map((k) => k.nam).toSet().toList()..sort();
+      }
+      if (nams.isEmpty) nams = [DateTime.now().year];
       danhSachNam = nams;
       if (!danhSachNam.contains(nam)) {
         nam = danhSachNam.contains(DateTime.now().year)
@@ -433,16 +451,20 @@ class HangChoDenHanController extends ChangeNotifier {
 class MaintenancePlanListController extends ChangeNotifier {
   List<KeHoachBaoTri> _tatCa = [];
   final Map<int, List<ChiTietKeHoach>> _chiTietTheoKeHoach = {};
+  /// Năm đã lập KH (API nam-da-lap) — dropdown Năm dùng nguồn này.
+  List<int> _namsDaLap = [];
 
   int namDangChon = DateTime.now().year;
   bool dangTai = true;
   String? loi;
 
   List<int> get danhSachNam {
-    final set = <int>{DateTime.now().year, DateTime.now().year + 1};
+    final set = <int>{..._namsDaLap};
     for (final k in _tatCa) {
       set.add(k.nam);
     }
+    // Luôn có ít nhất năm hiện tại nếu chưa lập gì
+    if (set.isEmpty) set.add(DateTime.now().year);
     final list = set.toList()..sort();
     return list;
   }
@@ -471,16 +493,22 @@ class MaintenancePlanListController extends ChangeNotifier {
     loi = null;
     notifyListeners();
     try {
-      _tatCa = await MaintenancePlanService.layDanhSachKeHoach();
+      // Song song: danh sách KH + năm đã lập
+      final results = await Future.wait([
+        MaintenancePlanService.layDanhSachKeHoach(),
+        MaintenancePlanService.layDanhSachNamDaLap(),
+      ]);
+      _tatCa = results[0] as List<KeHoachBaoTri>;
+      _namsDaLap = List<int>.from(results[1] as List<int>);
       _chiTietTheoKeHoach.clear();
 
       final theoNam = _tatCa.where((k) => k.nam == namDangChon).toList();
       if (theoNam.isNotEmpty) {
-        final results = await Future.wait(
+        final chiTiets = await Future.wait(
           theoNam.map((k) => MaintenancePlanService.layChiTietKeHoach(k.maKeHoach)),
         );
         for (var i = 0; i < theoNam.length; i++) {
-          _chiTietTheoKeHoach[theoNam[i].maKeHoach] = results[i];
+          _chiTietTheoKeHoach[theoNam[i].maKeHoach] = chiTiets[i];
         }
       }
 
@@ -498,6 +526,12 @@ class MaintenancePlanListController extends ChangeNotifier {
   Future<void> doiNam(int nam) async {
     if (nam == namDangChon) return;
     namDangChon = nam;
+    await taiDanhSach();
+  }
+
+  /// Sau khi lập KH năm mới: tải lại và chọn đúng năm vừa tạo.
+  Future<void> sauKhiTaoNam(int namMoi) async {
+    namDangChon = namMoi;
     await taiDanhSach();
   }
 }
