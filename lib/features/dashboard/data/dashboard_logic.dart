@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../maintenance_plan/presentation/maintenance_plan_screens.dart';
-import '../../maintenance_plan/presentation/hang_cho_bao_tri_screen.dart';
 import '../../work_order/presentation/work_order_screens.dart';
 import '../../work_order/presentation/technician_screens.dart';
 import '../../work_order/presentation/work_order_repair_screens.dart';
@@ -103,7 +102,6 @@ class DashboardLogic {
           MenuGroup(tieuDe: 'Thiết bị', muc: [
             MenuItemData(icon: Icons.precision_manufacturing_rounded, label: 'Danh sách thiết bị', screenBuilder: () => const EquipmentListScreen()),
             MenuItemData(icon: Icons.event_note_rounded, label: 'Kế hoạch bảo trì', screenBuilder: () => const MaintenancePlanListScreen()),
-            MenuItemData(icon: Icons.pending_actions_rounded, label: 'Hàng chờ bảo trì', screenBuilder: () => const HangChoBaoTriScreen()),
           ]),
           MenuGroup(tieuDe: 'Công việc', muc: [
             MenuItemData(icon: Icons.build_rounded, label: 'Hồ sơ bảo trì', screenBuilder: () => const WorkOrderBaoTriListScreen()),

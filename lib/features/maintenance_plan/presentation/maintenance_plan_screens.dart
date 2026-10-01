@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/maintenance_plan_logic.dart';
+import 'hang_cho_bao_tri_screen.dart';
 
 const _tenThangNgan = [
   '', 'T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12',
@@ -49,14 +50,14 @@ class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen> {
             children: [
               Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)))),
               const SizedBox(height: 16),
-              const Text('Lập kế hoạch bảo trì', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+              const Text('Kế hoạch bảo trì', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
               const SizedBox(height: 16),
               _MenuOption(
-                icon: Icons.build_circle_outlined,
+                icon: Icons.pending_actions_rounded,
                 color: AppColors.primary,
-                title: 'Lập bảo trì cho thiết bị',
-                subtitle: 'Thêm thiết bị vào 1 tháng cụ thể của năm ${_controller.namDangChon}',
-                onTap: () => Navigator.pop(ctx, 'thietBi'),
+                title: 'Hàng chờ bảo trì',
+                subtitle: 'Thiết bị đến hạn / trễ hạn — tạo hồ sơ gửi xưởng',
+                onTap: () => Navigator.pop(ctx, 'hangCho'),
               ),
               const SizedBox(height: 10),
               _MenuOption(
@@ -79,12 +80,12 @@ class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen> {
         MaterialPageRoute(builder: (_) => CreateYearPlanScreen(namDaCo: _controller.danhSachNam)),
       );
       if (ok == true) await _controller.taiDanhSach();
-    } else {
-      final ok = await Navigator.push(
+    } else if (action == 'hangCho') {
+      await Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => CreateMaintenancePlanScreen(nam: _controller.namDangChon)),
+        MaterialPageRoute(builder: (_) => const HangChoBaoTriScreen()),
       );
-      if (ok == true) await _controller.taiDanhSach();
+      if (mounted) await _controller.taiDanhSach();
     }
   }
 
@@ -112,7 +113,7 @@ class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen> {
         backgroundColor: AppColors.primary,
         onPressed: _moMenuTaoKeHoach,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Lập kế hoạch', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        label: const Text('Hàng chờ / KH năm', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
       ),
       body: AnimatedBuilder(
         animation: _controller,

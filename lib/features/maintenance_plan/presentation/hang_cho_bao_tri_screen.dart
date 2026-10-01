@@ -57,10 +57,7 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            '${_controller.thongBao ?? 'Đã tạo hồ sơ bảo trì.'} '
-                'Hồ sơ ở Chờ gửi — vào chi tiết bấm Gửi đến xưởng khi sẵn sàng.',
-          ),
+          content: Text(_controller.thongBao ?? 'Đã tạo hồ sơ bảo trì và gửi xưởng (Chờ duyệt).'),
           backgroundColor: AppColors.success,
         ),
       );

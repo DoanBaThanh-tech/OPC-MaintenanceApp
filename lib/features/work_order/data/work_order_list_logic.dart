@@ -42,12 +42,13 @@ class WorkOrderBaoTriListController extends ChangeNotifier {
 
   List<HoSoBaoTri> locTheoTab(String tab) {
     if (tab == 'Tất cả') return danhSach;
-    // Tab Chờ duyệt cũng gồm hồ sơ cũ còn gắn nhãn "Chờ xưởng"
+    // Tab Chờ duyệt: gồm nhãn cũ Chờ xưởng / Chờ gửi
     if (tab == 'Chờ duyệt') {
       return danhSach
           .where((h) =>
       h.trangThai == 'Chờ duyệt' ||
           h.trangThai == 'Chờ xưởng' ||
+          h.trangThai == 'Chờ gửi' ||
           h.trangThai == 'Chờ GĐ duyệt')
           .toList();
     }

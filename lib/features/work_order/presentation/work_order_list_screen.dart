@@ -25,7 +25,6 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
   // Không hiện tab "Chờ xác nhận" trên Hồ sơ BT — Xưởng dùng trang Quy trình riêng.
   final _tabs = const [
     'Tất cả',
-    'Chờ gửi',
     'Chờ duyệt',
     'Đã duyệt',
     'Đang thực hiện',
