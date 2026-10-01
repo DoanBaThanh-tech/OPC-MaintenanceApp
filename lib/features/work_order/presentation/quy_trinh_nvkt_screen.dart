@@ -101,7 +101,10 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         for (final k in keys) {
           final dong = byBuoc[k]!;
           final moTa = dong.first.moTaBuoc;
-          final state = _BuocState(soBuoc: k, moTa: moTa);
+          final state = _BuocState(soBuoc: k, moTa: moTa)
+            ..daChon = true
+            ..daXong = true
+            ..moRong = true;
           for (final c in dong) {
             if (c.tenVatTu.isEmpty || c.soLuong <= 0) continue;
             state.vatTu.add(_VatTuDongState(
@@ -114,8 +117,24 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
           _buoc.add(state);
         }
       }
+
+      // Nạp bước từ quy trình thiết bị (mỗi TB khác nhau)
       if (_buoc.isEmpty) {
-        _buoc.add(_BuocState(soBuoc: 1, moTa: ''));
+        final maTb = y.maThietBi ?? 0;
+        if (maTb > 0) {
+          final loai = _laBaoTri ? 'Bảo trì' : 'Sửa chữa';
+          final mau = await MaterialUsageService.layQuyTrinhThietBi(
+            maThietBi: maTb,
+            loaiCongViec: loai,
+          );
+          for (final b in mau) {
+            _buoc.add(_BuocState(soBuoc: b.soBuoc, moTa: b.moTa));
+          }
+        }
+      }
+      if (_buoc.isEmpty) {
+        _loi = 'Chưa có quy trình ${_laBaoTri ? "bảo trì" : "sửa chữa"} '
+            'cho thiết bị này trong hệ thống.';
       }
     } catch (e) {
       _loi = e is ApiException ? e.message : '$e';
@@ -372,17 +391,21 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
     final y = widget.yeuCau;
     if (y.maHoSo == null) return;
 
-    if (_buoc.isEmpty) {
+    // Chỉ gửi các bước đã tích chọn và đã bấm Xong (không bắt buộc đủ mọi bước)
+    final buocGui = _buoc.where((b) => b.daChon && b.daXong).toList();
+    if (buocGui.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Vui lòng thêm ít nhất 1 bước quy trình'),
+          content: Text(
+            'Hãy tích chọn ít nhất 1 bước, chọn vật tư (nếu cần), bấm Xong từng bước rồi hoàn thành quy trình.',
+          ),
           backgroundColor: AppColors.danger,
         ),
       );
       return;
     }
 
-    for (final b in _buoc) {
+    for (final b in buocGui) {
       for (final d in b.vatTu) {
         final kq = validateSoLuongVatTu(
           d.slCtrl.text,
@@ -419,7 +442,9 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                _cheDoCapNhat ? 'Gửi lại quy trình?' : 'Gửi quy trình?',
+                _cheDoCapNhat
+                    ? 'Gửi lại quy trình?'
+                    : 'Hoàn thành quy trình?',
                 style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
             ),
@@ -428,7 +453,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         content: Text(
           _cheDoCapNhat
               ? 'Quy trình đã chỉnh sẽ được gửi lại Xưởng để xác nhận.'
-              : 'Sau khi Xong, hồ sơ chuyển sang "Chờ xác nhận". Xưởng sẽ xem bước, vật tư và nội dung rồi Xác nhận hoặc Từ chối.',
+              : 'Gửi ${buocGui.length} bước đã hoàn thành (kèm vật tư) về Xưởng xác nhận. Không bắt buộc làm đủ mọi bước.',
           style: TextStyle(color: Colors.grey.shade700, height: 1.4),
         ),
         actions: [
@@ -442,7 +467,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                   borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Xong'),
+            child: const Text('Hoàn thành quy trình'),
           ),
         ],
       ),
@@ -453,7 +478,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
     try {
       final buocApi = <BuocQuyTrinh>[];
       final buffer = StringBuffer();
-      for (final b in _buoc) {
+      for (final b in buocGui) {
         final moTa = b.moTaCtrl.text.trim().isEmpty
             ? 'Bước ${b.soBuoc}'
             : b.moTaCtrl.text.trim();
@@ -802,44 +827,17 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                 ),
 
                 const SizedBox(height: 4),
-                // Add step
-                TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: const Duration(milliseconds: 400),
-                  builder: (context, t, child) =>
-                      Opacity(opacity: t, child: child),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _dangXuLy ? null : _themBuoc,
-                      borderRadius: BorderRadius.circular(16),
-                      child: CustomPaint(
-                        painter: _DashedBorderPainter(
-                          color: _blue.withValues(alpha: 0.45),
-                          radius: 16,
-                        ),
-                        child: Container(
-                          height: 52,
-                          alignment: Alignment.center,
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_circle_outline_rounded,
-                                  color: _blue),
-                              SizedBox(width: 8),
-                              Text(
-                                'Thêm bước quy trình',
-                                style: TextStyle(
-                                  color: _blue,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                // Bước lấy từ quy trình thiết bị — không thêm thủ công
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _blue.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _blue.withValues(alpha: 0.15)),
+                  ),
+                  child: const Text(
+                    'Tích chọn bước cần làm → chọn vật tư (đã chọn sẽ ẩn trong bước) → bấm Xong từng bước. Không bắt buộc đủ mọi bước.',
+                    style: TextStyle(fontSize: 12.5, height: 1.35, fontWeight: FontWeight.w600),
                   ),
                 ),
 
@@ -938,7 +936,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                             Text(
                               _cheDoCapNhat
                                   ? 'Lưu & gửi lại Xưởng'
-                                  : 'Xong — gửi Xưởng xác nhận',
+                                  : 'Hoàn thành quy trình',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w900,
@@ -1003,38 +1001,54 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
               ),
               child: Row(
                 children: [
+                  Checkbox(
+                    value: b.daChon,
+                    activeColor: _blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                    onChanged: _dangXuLy
+                        ? null
+                        : (v) {
+                      setState(() {
+                        b.daChon = v == true;
+                        b.moRong = b.daChon;
+                        if (!b.daChon) {
+                          b.daXong = false;
+                        }
+                      });
+                    },
+                  ),
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [_blue, _blueSoft],
+                      gradient: LinearGradient(
+                        colors: b.daXong
+                            ? [AppColors.success, const Color(0xFF34D399)]
+                            : const [_blue, _blueSoft],
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: _blue.withValues(alpha: 0.35),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text(
+                    child: b.daXong
+                        ? const Icon(Icons.check_rounded,
+                        color: Colors.white, size: 18)
+                        : Text(
                       '${b.soBuoc}',
                       style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
-                        fontSize: 15,
+                        fontSize: 14,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Bước ${b.soBuoc}',
+                      'Bước ${b.soBuoc}${b.daXong ? ' · Đã xong' : ''}',
                       style: const TextStyle(
-                          fontWeight: FontWeight.w900, fontSize: 15.5),
+                          fontWeight: FontWeight.w900, fontSize: 15),
                     ),
                   ),
                   if (b.vatTu.isNotEmpty)
@@ -1054,13 +1068,6 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                         ),
                       ),
                     ),
-                  if (_buoc.length > 1)
-                    IconButton(
-                      onPressed: _dangXuLy ? null : () => _xoaBuoc(index),
-                      icon: Icon(Icons.delete_outline_rounded,
-                          color: AppColors.danger.withValues(alpha: 0.85)),
-                      tooltip: 'Xóa bước',
-                    ),
                 ],
               ),
             ),
@@ -1069,150 +1076,185 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextField(
-                    controller: b.moTaCtrl,
-                    decoration: InputDecoration(
-                      labelText: 'Mô tả bước',
-                      labelStyle: TextStyle(color: Colors.grey.shade600),
-                      filled: true,
-                      fillColor: const Color(0xFFF8FAFC),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide(color: Colors.grey.shade200),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: _blue, width: 1.5),
-                      ),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 12),
+                  Text(
+                    b.moTaCtrl.text.trim().isEmpty
+                        ? 'Bước ${b.soBuoc}'
+                        : b.moTaCtrl.text.trim(),
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.35,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade800,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  ...List.generate(b.vatTu.length, (j) {
-                    final d = b.vatTu[j];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFFF0F9FF), Color(0xFFE0F2FE)],
+                  if (b.daChon) ...[
+                    const SizedBox(height: 12),
+                    ...List.generate(b.vatTu.length, (j) {
+                      final d = b.vatTu[j];
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFFF0F9FF), Color(0xFFE0F2FE)],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: const Color(0xFFBAE6FD)),
                         ),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFFBAE6FD)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              const Icon(Icons.inventory_2_rounded,
-                                  size: 18, color: _blue),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  d.tenVatTu,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w800, fontSize: 13.5),
-                                ),
-                              ),
-                              IconButton(
-                                visualDensity: VisualDensity.compact,
-                                onPressed: _dangXuLy
-                                    ? null
-                                    : () => setState(() {
-                                  d.dispose();
-                                  b.vatTu.removeAt(j);
-                                }),
-                                icon: const Icon(Icons.close_rounded, size: 18),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: d.slCtrl,
-                                  keyboardType: TextInputType.number,
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.digitsOnly,
-                                    FilteringTextInputFormatter.allow(
-                                      soLuongVatTuChoPhepNhap,
-                                    ),
-                                  ],
-                                  decoration: InputDecoration(
-                                    labelText: 'Số lượng',
-                                    hintText: 'Số nguyên > 0',
-                                    errorText: formValidateSoLuongVatTu(
-                                      d.slCtrl.text,
-                                      tenVatTu: d.tenVatTu,
-                                      choPhepRong: true,
-                                    ),
-                                    isDense: true,
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 10),
-                                  ),
-                                  onChanged: (v) {
-                                    final kq = validateSoLuongVatTu(
-                                      v,
-                                      tenVatTu: d.tenVatTu,
-                                      choPhepRong: true,
-                                    );
-                                    d.soLuong = kq.soLuong ?? 0;
-                                    setState(() {});
-                                  },
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: InputDecorator(
-                                  decoration: InputDecoration(
-                                    labelText: 'Đơn giá',
-                                    isDense: true,
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 10),
-                                  ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.inventory_2_rounded,
+                                    size: 18, color: _blue),
+                                const SizedBox(width: 8),
+                                Expanded(
                                   child: Text(
-                                    _fmtTien(d.donGia),
-                                    style: TextStyle(
-                                      color: Colors.grey.shade700,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13,
+                                    d.tenVatTu,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800, fontSize: 13.5),
+                                  ),
+                                ),
+                                IconButton(
+                                  visualDensity: VisualDensity.compact,
+                                  onPressed: _dangXuLy
+                                      ? null
+                                      : () => setState(() {
+                                    d.dispose();
+                                    b.vatTu.removeAt(j);
+                                  }),
+                                  icon: const Icon(Icons.close_rounded, size: 18),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: d.slCtrl,
+                                    keyboardType: TextInputType.number,
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.digitsOnly,
+                                      FilteringTextInputFormatter.allow(
+                                        soLuongVatTuChoPhepNhap,
+                                      ),
+                                    ],
+                                    decoration: InputDecoration(
+                                      labelText: 'Số lượng',
+                                      hintText: 'Số nguyên > 0',
+                                      errorText: formValidateSoLuongVatTu(
+                                        d.slCtrl.text,
+                                        tenVatTu: d.tenVatTu,
+                                        choPhepRong: true,
+                                      ),
+                                      isDense: true,
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 10),
+                                    ),
+                                    onChanged: (v) {
+                                      final kq = validateSoLuongVatTu(
+                                        v,
+                                        tenVatTu: d.tenVatTu,
+                                        choPhepRong: true,
+                                      );
+                                      d.soLuong = kq.soLuong ?? 0;
+                                      setState(() {});
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: InputDecorator(
+                                    decoration: InputDecoration(
+                                      labelText: 'Đơn giá',
+                                      isDense: true,
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 10),
+                                    ),
+                                    child: Text(
+                                      _fmtTien(d.donGia),
+                                      style: TextStyle(
+                                        color: Colors.grey.shade700,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                   ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    TextButton.icon(
+                      onPressed: _dangXuLy || b.daXong
+                          ? null
+                          : () => _themVatTu(index),
+                      icon: const Icon(Icons.add_box_outlined, size: 20, color: _blue),
+                      label: const Text(
+                        'Thêm vật tư',
+                        style: TextStyle(
+                            color: _blue, fontWeight: FontWeight.w700),
                       ),
-                    );
-                  }),
-                  TextButton.icon(
-                    onPressed: _dangXuLy ? null : () => _themVatTu(index),
-                    icon: const Icon(Icons.add_box_outlined, size: 20, color: _blue),
-                    label: const Text(
-                      'Thêm vật tư',
-                      style: TextStyle(
-                          color: _blue, fontWeight: FontWeight.w700),
                     ),
-                  ),
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: FilledButton.icon(
+                        onPressed: _dangXuLy || b.daXong
+                            ? null
+                            : () {
+                          setState(() {
+                            b.daXong = true;
+                            b.moRong = false;
+                          });
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor:
+                          b.daXong ? AppColors.success : _blue,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 10),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        icon: Icon(
+                          b.daXong
+                              ? Icons.check_circle_rounded
+                              : Icons.done_all_rounded,
+                          size: 18,
+                        ),
+                        label: Text(
+                          b.daXong ? 'Đã xong bước' : 'Hoàn thành quy trình',
+                          style: const TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                    ),
+                  ] else
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Text(
+                        'Tích chọn bước này để mở chọn vật tư và bấm Xong.',
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          color: Colors.grey.shade600,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -1263,10 +1305,19 @@ class _BuocState {
   int soBuoc;
   final TextEditingController moTaCtrl;
   final List<_VatTuDongState> vatTu;
+  /// NVKT tích chọn bước sẽ thực hiện
+  bool daChon;
+  /// Đã bấm Xong trong bước
+  bool daXong;
+  /// Mở rộng chọn vật tư
+  bool moRong;
 
   _BuocState({required this.soBuoc, required String moTa})
       : moTaCtrl = TextEditingController(text: moTa),
-        vatTu = [];
+        vatTu = [],
+        daChon = false,
+        daXong = false,
+        moRong = false;
 
   void dispose() {
     moTaCtrl.dispose();

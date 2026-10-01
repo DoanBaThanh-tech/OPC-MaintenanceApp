@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_exception.dart';
+import '../../work_order/data/models/material_usage_models.dart';
+import '../../work_order/data/services/material_usage_service.dart';
 
 // ============================================================
 // MODEL
@@ -310,6 +312,8 @@ class EquipmentListController extends ChangeNotifier {
 
 class EquipmentDetailController extends ChangeNotifier {
   ThietBiModel? thietBi;
+  List<BuocQuyTrinh> quyTrinhBaoTri = [];
+  List<BuocQuyTrinh> quyTrinhSuaChua = [];
   bool dangTai = false;
   String? loi;
 
@@ -319,12 +323,29 @@ class EquipmentDetailController extends ChangeNotifier {
     notifyListeners();
     try {
       thietBi = await EquipmentService.layChiTiet(maThietBi);
+      // Quy trình riêng từng thiết bị (BT + SC)
+      final results = await Future.wait([
+        MaterialUsageService.layQuyTrinhThietBi(
+          maThietBi: maThietBi,
+          loaiCongViec: 'Bảo trì',
+        ),
+        MaterialUsageService.layQuyTrinhThietBi(
+          maThietBi: maThietBi,
+          loaiCongViec: 'Sửa chữa',
+        ),
+      ]);
+      quyTrinhBaoTri = results[0];
+      quyTrinhSuaChua = results[1];
     } on ApiException catch (e) {
       loi = e.message;
       thietBi = null;
+      quyTrinhBaoTri = [];
+      quyTrinhSuaChua = [];
     } catch (_) {
       loi = 'Không tải được chi tiết thiết bị.';
       thietBi = null;
+      quyTrinhBaoTri = [];
+      quyTrinhSuaChua = [];
     } finally {
       dangTai = false;
       notifyListeners();

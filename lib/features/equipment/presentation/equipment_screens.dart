@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../work_order/data/models/material_usage_models.dart';
 import '../data/equipment_logic.dart';
 
 String _fmtDate(DateTime? d) {
@@ -344,6 +345,20 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 16),
+          _QuyTrinhSection(
+            title: 'Quy trình bảo trì',
+            icon: Icons.build_circle_outlined,
+            accent: AppColors.primary,
+            buoc: _controller.quyTrinhBaoTri,
+          ),
+          const SizedBox(height: 12),
+          _QuyTrinhSection(
+            title: 'Quy trình sửa chữa',
+            icon: Icons.handyman_rounded,
+            accent: AppColors.warning,
+            buoc: _controller.quyTrinhSuaChua,
           ),
         ],
       ),
@@ -878,6 +893,135 @@ class _EmptyState extends StatelessWidget {
             ],
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _QuyTrinhSection extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final Color accent;
+  final List<BuocQuyTrinh> buoc;
+
+  const _QuyTrinhSection({
+    required this.title,
+    required this.icon,
+    required this.accent,
+    required this.buoc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: accent.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: accent, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                    color: Colors.grey.shade900,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${buoc.length} bước',
+                  style: TextStyle(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (buoc.isEmpty)
+            Text(
+              'Chưa có quy trình trong hệ thống cho thiết bị này.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.35),
+            )
+          else
+            ...List.generate(buoc.length, (i) {
+              final b = buoc[i];
+              return Container(
+                margin: EdgeInsets.only(bottom: i == buoc.length - 1 ? 0 : 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FBFE),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: accent,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${b.soBuoc}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        b.moTa,
+                        style: const TextStyle(
+                          fontSize: 13.5,
+                          height: 1.35,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
       ),
     );
   }
