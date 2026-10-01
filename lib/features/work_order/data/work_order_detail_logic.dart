@@ -89,9 +89,13 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
   TimeOfDay? gioBatDau;
   TimeOfDay? gioKetThuc;
   DateTime? ngayDuKien;
-  /// Tháng/năm kế hoạch ban đầu — không được đổi khi sửa.
+  /// Tháng/năm kế hoạch ban đầu — chỉ được chọn từ tháng này trở đi.
   DateTime? ngayDuKienGoc;
   DateTime? ngayTaoHoSo;
+  int? maThietBi;
+  int? maHoSoBaoTri;
+  /// Tháng trong năm gốc đã có BT của thiết bị (từ API).
+  List<int> thangDaCoBaoTri = [];
   int? soGioDuKien;
   int? soPhutDuKien;
   bool nhapPhut = false;
@@ -124,10 +128,12 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
-  void batDauChinhSua(HoSoBaoTri hs, {required String thoiGianText}) {
+  Future<void> batDauChinhSua(HoSoBaoTri hs, {required String thoiGianText}) async {
     ngayDuKien = hs.ngayDuKienBaoTri;
     ngayDuKienGoc = hs.ngayDuKienBaoTri;
     ngayTaoHoSo = hs.ngayTao;
+    maThietBi = hs.maThietBi;
+    maHoSoBaoTri = hs.maHoSoBaoTri;
     gioBatDau = _parseGio(hs.gioBatDauDuKien);
     gioKetThuc = _parseGio(hs.gioKetThucDuKien);
     datThoiGianTuChuoi(thoiGianText);
@@ -138,12 +144,31 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     dangChinhSua = true;
     loi = null;
     notifyListeners();
+    await taiThangDaCoBaoTri();
+  }
+
+  Future<void> taiThangDaCoBaoTri() async {
+    final tb = maThietBi;
+    final goc = ngayDuKienGoc;
+    if (tb == null || goc == null) return;
+    try {
+      thangDaCoBaoTri =
+      await WorkOrderService.layThangCoBaoTri(tb, nam: goc.year);
+    } catch (_) {
+      thangDaCoBaoTri = [];
+    }
+    // Re-validate ngày đang chọn
+    if (ngayDuKien != null) {
+      loi = _kiemTraNgayDuKien(ngayDuKien);
+    }
+    notifyListeners();
   }
 
   void huyChinhSua() {
     dangChinhSua = false;
     loi = null;
     loiThoiGian = null;
+    thangDaCoBaoTri = [];
     notifyListeners();
   }
 
@@ -223,8 +248,7 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Tháng ≥ tháng kế hoạch gốc, cùng năm; ngày dự kiến > ngày tạo.
-  /// VD: KH T10/2026 → được chọn T10–T12/2026, không được T9/2026.
+  /// Xưởng chỉ được chọn ngày trong đúng tháng kế hoạch gốc (không đổi tháng).
   String? _kiemTraNgayDuKien(DateTime? ngayMoi) {
     if (ngayMoi == null) return null;
     final goc = ngayDuKienGoc;
@@ -240,13 +264,10 @@ class XuongChinhSuaHoSoController extends ChangeNotifier {
       }
     }
     if (goc != null) {
-      if (ngayMoi.year != goc.year) {
-        return 'Chỉ được chọn ngày trong năm kế hoạch ${goc.year}.';
-      }
-      if (ngayMoi.month < goc.month) {
-        return 'Kế hoạch gốc tháng ${goc.month}/${goc.year}. '
-            'Chỉ được chọn từ tháng ${goc.month} trở đi '
-            '(không được chọn tháng ${ngayMoi.month}).';
+      if (ngayMoi.year != goc.year || ngayMoi.month != goc.month) {
+        return 'Xưởng chỉ được chọn ngày trong tháng kế hoạch '
+            '${goc.month}/${goc.year}. Không được đổi sang tháng khác '
+            '(tháng do Tổ trưởng cơ điện quyết định khi lập kế hoạch).';
       }
     }
     return null;

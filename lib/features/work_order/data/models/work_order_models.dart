@@ -99,6 +99,7 @@ class HoSoBaoTri {
   });
 
   /// Xưởng còn được chỉnh sửa / gửi GĐ (chưa gửi Giám đốc).
+  bool get choGui => trangThai == 'Chờ gửi';
   bool get choXuong => trangThai == 'Chờ duyệt' || trangThai == 'Chờ xưởng';
   /// Đã gửi Giám đốc — Xưởng chỉ xem, không còn nút chỉnh sửa/gửi.
   bool get daGuiGiamDoc => trangThai == 'Chờ GĐ duyệt';
@@ -204,10 +205,12 @@ class HoSoBaoTri {
 
 /// Phân loại trạng thái thành nhóm cố định — presentation tự map ra màu,
 /// logic không phụ thuộc Material theme để giữ file này chủ yếu là dữ liệu.
-enum TrangThaiHoSoBaoTri { choDuyet, daDuyet, dangThucHien, daHoanThanh, tuChoi, khac }
+enum TrangThaiHoSoBaoTri { choGui, choDuyet, daDuyet, dangThucHien, daHoanThanh, tuChoi, khac }
 
 TrangThaiHoSoBaoTri phanLoaiTrangThaiHoSo(String tt) {
   switch (tt) {
+    case 'Chờ gửi':
+      return TrangThaiHoSoBaoTri.choGui;
     case 'Chờ duyệt':
     case 'Chờ GĐ duyệt':
     case 'Chờ xưởng':

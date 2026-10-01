@@ -30,6 +30,8 @@ class ApiConstants {
   static const String themThietBiVaoNam = '$maintenancePlan/them-thiet-bi';
   static const String chuKyBaoTri = '$maintenancePlan/chu-ky';
   static const String yeuCauNgayBaoTri = '$maintenancePlan/yeu-cau-ngay';
+  static const String hangChoDenHan = '$maintenancePlan/hang-cho-den-han';
+  static const String taoHangLoatBaoTri = '$maintenancePlan/tao-hang-loat';
 
   static const String workOrder = "/WorkOrder";
   static const String inventory = "/Inventory";

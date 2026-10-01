@@ -25,6 +25,7 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
   // Không hiện tab "Chờ xác nhận" trên Hồ sơ BT — Xưởng dùng trang Quy trình riêng.
   final _tabs = const [
     'Tất cả',
+    'Chờ gửi',
     'Chờ duyệt',
     'Đã duyệt',
     'Đang thực hiện',
@@ -71,6 +72,8 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
         return AppColors.success;
       case TrangThaiHoSoBaoTri.tuChoi:
         return AppColors.danger;
+      case TrangThaiHoSoBaoTri.choGui:
+        return const Color(0xFF0EA5E9);
       case TrangThaiHoSoBaoTri.choDuyet:
       case TrangThaiHoSoBaoTri.khac:
         return const Color(0xFFF59E0B);
@@ -87,6 +90,8 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
         return Icons.task_alt_rounded;
       case TrangThaiHoSoBaoTri.tuChoi:
         return Icons.cancel_outlined;
+      case TrangThaiHoSoBaoTri.choGui:
+        return Icons.outgoing_mail;
       case TrangThaiHoSoBaoTri.choDuyet:
       case TrangThaiHoSoBaoTri.khac:
         return Icons.schedule_rounded;

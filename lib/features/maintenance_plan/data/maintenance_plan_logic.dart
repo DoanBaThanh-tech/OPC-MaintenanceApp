@@ -52,6 +52,47 @@ class ChuKyBaoTriModel {
   String get nhan => '${loaiThietBi ?? "Chưa rõ loại"} · $soThangChuKyDeXuat tháng/lần';
 }
 
+/// Thiết bị trong hàng chờ đến hạn bảo trì (API hang-cho-den-han).
+class HangChoDenHanItem {
+  final int maThietBi;
+  final String tenThietBi;
+  final String? loaiThietBi;
+  final int soThangChuKy;
+  final DateTime? ngayBaoTriGanNhat;
+  final DateTime ngayDenHan;
+  final String trangThaiHan; // Đến hạn | Trễ hạn
+
+  HangChoDenHanItem({
+    required this.maThietBi,
+    required this.tenThietBi,
+    this.loaiThietBi,
+    required this.soThangChuKy,
+    this.ngayBaoTriGanNhat,
+    required this.ngayDenHan,
+    required this.trangThaiHan,
+  });
+
+  factory HangChoDenHanItem.fromJson(Map<String, dynamic> j) {
+    DateTime? parseD(dynamic v) {
+      if (v == null) return null;
+      if (v is DateTime) return v;
+      return DateTime.tryParse(v.toString());
+    }
+
+    return HangChoDenHanItem(
+      maThietBi: (j['maThietBi'] as num?)?.toInt() ?? 0,
+      tenThietBi: j['tenThietBi']?.toString() ?? '',
+      loaiThietBi: j['loaiThietBi']?.toString(),
+      soThangChuKy: (j['soThangChuKy'] as num?)?.toInt() ?? 1,
+      ngayBaoTriGanNhat: parseD(j['ngayBaoTriGanNhat']),
+      ngayDenHan: parseD(j['ngayDenHan']) ?? DateTime.now(),
+      trangThaiHan: j['trangThaiHan']?.toString() ?? 'Đến hạn',
+    );
+  }
+
+  bool get treHan => trangThaiHan == 'Trễ hạn';
+}
+
 class ChiTietKeHoachInput {
   final ThietBiRutGon thietBi;
   DateTime ngayDuKienBaoTri;
@@ -234,6 +275,141 @@ class MaintenancePlanService {
       if (gioKetThuc != null) 'gioKetThucDuKien': fmtGio(gioKetThuc),
     });
   }
+
+  static Future<List<HangChoDenHanItem>> layHangChoDenHan({
+    required int nam,
+    required int thang,
+  }) async {
+    final data = await ApiClient.instance.get<List<dynamic>>(
+      ApiConstants.hangChoDenHan,
+      query: {'nam': nam, 'thang': thang},
+    );
+    return data
+        .map((e) => HangChoDenHanItem.fromJson(Map<String, dynamic>.from(e as Map)))
+        .toList();
+  }
+
+  /// Trả về message thành công từ API.
+  static Future<String> taoHangLoatBaoTri({
+    required int nam,
+    required int thang,
+    required List<int> danhSachMaThietBi,
+    required String noiDungCongViec,
+  }) async {
+    final res = await ApiClient.instance.post<Map<String, dynamic>>(
+      ApiConstants.taoHangLoatBaoTri,
+      {
+        'nam': nam,
+        'thang': thang,
+        'danhSachMaThietBi': danhSachMaThietBi,
+        'noiDungCongViec': noiDungCongViec,
+      },
+    );
+    return res['message']?.toString() ??
+        res['Message']?.toString() ??
+        'Đã tạo hồ sơ bảo trì hàng loạt.';
+  }
+}
+
+/// Controller màn Hàng chờ đến hạn bảo trì.
+class HangChoDenHanController extends ChangeNotifier {
+  int nam = DateTime.now().year;
+  int thang = DateTime.now().month;
+  List<HangChoDenHanItem> danhSach = [];
+  final Set<int> daChon = {};
+  bool dangTai = false;
+  bool dangTao = false;
+  String? loi;
+  String? thongBao;
+
+  Future<void> tai() async {
+    dangTai = true;
+    loi = null;
+    thongBao = null;
+    notifyListeners();
+    try {
+      danhSach = await MaintenancePlanService.layHangChoDenHan(
+        nam: nam,
+        thang: thang,
+      );
+      // Bỏ chọn những máy không còn trong list
+      daChon.removeWhere((id) => !danhSach.any((e) => e.maThietBi == id));
+    } on ApiException catch (e) {
+      loi = e.message;
+      danhSach = [];
+    } catch (e) {
+      loi = 'Không tải được hàng chờ: $e';
+      danhSach = [];
+    } finally {
+      dangTai = false;
+      notifyListeners();
+    }
+  }
+
+  void doiThangNam(int namMoi, int thangMoi) {
+    nam = namMoi;
+    thang = thangMoi;
+    daChon.clear();
+    tai();
+  }
+
+  void daoChon(int maThietBi) {
+    if (daChon.contains(maThietBi)) {
+      daChon.remove(maThietBi);
+    } else {
+      daChon.add(maThietBi);
+    }
+    notifyListeners();
+  }
+
+  void chonTatCa() {
+    if (daChon.length == danhSach.length) {
+      daChon.clear();
+    } else {
+      daChon
+        ..clear()
+        ..addAll(danhSach.map((e) => e.maThietBi));
+    }
+    notifyListeners();
+  }
+
+  Future<bool> taoHangLoat(String noiDung) async {
+    final nd = noiDung.trim();
+    if (nd.isEmpty) {
+      loi = 'Vui lòng nhập nội dung công việc.';
+      notifyListeners();
+      return false;
+    }
+    if (daChon.isEmpty) {
+      loi = 'Vui lòng chọn ít nhất 1 thiết bị.';
+      notifyListeners();
+      return false;
+    }
+    dangTao = true;
+    loi = null;
+    thongBao = null;
+    notifyListeners();
+    try {
+      thongBao = await MaintenancePlanService.taoHangLoatBaoTri(
+        nam: nam,
+        thang: thang,
+        danhSachMaThietBi: daChon.toList(),
+        noiDungCongViec: nd,
+      );
+      daChon.clear();
+      await tai();
+      return true;
+    } on ApiException catch (e) {
+      loi = e.message;
+      return false;
+    } catch (e) {
+      loi = 'Tạo hàng loạt thất bại: $e';
+      return false;
+    } finally {
+      dangTao = false;
+      notifyListeners();
+    }
+  }
 }
 
 
@@ -404,7 +580,14 @@ class MaintenancePlanMonthDetailController extends ChangeNotifier {
 
 class CreateMaintenancePlanController extends ChangeNotifier {
   final int nam;
-  CreateMaintenancePlanController({required this.nam});
+  final int? thangKhoiTao;
+  final int? maThietBiKhoiTao;
+
+  CreateMaintenancePlanController({
+    required this.nam,
+    this.thangKhoiTao,
+    this.maThietBiKhoiTao,
+  });
 
   List<ThietBiRutGon> dsThietBi = [];
   List<ChuKyBaoTriModel> dsChuKy = [];
@@ -452,7 +635,15 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       _daLapKeHoachKeys.contains(_keyTbThang(maThietBi, thang, nam));
 
   /// Tất cả 12 tháng được chọn bình thường (không phụ thuộc yêu cầu cũ).
-  List<int> get thangChoPhep => List.generate(12, (i) => i + 1);
+  /// Tháng trong năm kế hoạch đang mở; không chọn tháng đã qua.
+  List<int> get thangChoPhep {
+    final now = DateTime.now();
+    if (nam < now.year) return const [];
+    if (nam > now.year) {
+      return List.generate(12, (i) => i + 1);
+    }
+    return List.generate(12 - now.month + 1, (i) => now.month + i);
+  }
 
   Future<void> taiDuLieuBanDau() async {
     dangTai = true;
@@ -488,6 +679,22 @@ class CreateMaintenancePlanController extends ChangeNotifier {
               c.ngayDuKienBaoTri.year,
             ));
           }
+        }
+      }
+      // Prefill khi mở từ chi tiết tháng (Tổ trưởng muốn tạo BT tháng khác)
+      if (thangKhoiTao != null && thangKhoiTao! >= 1 && thangKhoiTao! <= 12) {
+        thang = thangKhoiTao!;
+      }
+      if (maThietBiKhoiTao != null) {
+        ThietBiRutGon? tb;
+        for (final t in dsThietBi) {
+          if (t.maThietBi == maThietBiKhoiTao) {
+            tb = t;
+            break;
+          }
+        }
+        if (tb != null) {
+          await chonThietBi(tb);
         }
       }
       loi = null;
@@ -550,6 +757,14 @@ class CreateMaintenancePlanController extends ChangeNotifier {
   }
 
   void doiThang(int t) {
+    if (!thangChoPhep.contains(t)) {
+      final now = DateTime.now();
+      loi = nam != now.year && nam != DateTime.now().year
+          ? 'Chỉ được lập trong năm kế hoạch đã chọn ($nam), không lấn năm khác khi chưa lập kế hoạch năm.'
+          : 'Tháng $t/$nam không hợp lệ — chỉ chọn tháng từ ${thangChoPhep.isEmpty ? "—": thangChoPhep.first} trở đi trong năm $nam.';
+      notifyListeners();
+      return;
+    }
     thang = t;
     if (chiTietChon != null && thietBiChon != null) {
       var macDinh = ngayDuKienToiThieu;
@@ -558,7 +773,6 @@ class CreateMaintenancePlanController extends ChangeNotifier {
       loi = _loiThangThietBi(
           thietBiChon!.maThietBi, thietBiChon!.tenThietBi, thang, nam);
     } else {
-      // Chưa chọn TB — vẫn báo tháng quá khứ
       final now = DateTime.now();
       loi = thangDaQua(thang, nam)
           ? 'Tháng $thang/$nam đã qua — không được lập bảo trì cho tháng trước. '

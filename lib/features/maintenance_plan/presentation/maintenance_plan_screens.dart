@@ -99,7 +99,9 @@ class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen> {
           mucBanDau: mucs,
         ),
       ),
-    ).then((_) => _controller.taiDanhSach());
+    ).then((_) {
+      _controller.taiDanhSach();
+    });
   }
 
   @override
@@ -579,7 +581,6 @@ class _MaintenanceMonthDetailScreenState extends State<MaintenanceMonthDetailScr
                           style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
                         ),
                       ],
-                      // Trạng thái hồ sơ (đã gom tạo hồ sơ vào "Lập bảo trì cho thiết bị" — không còn nút tạo riêng)
                       const SizedBox(height: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -631,7 +632,16 @@ class _MaintenanceMonthDetailScreenState extends State<MaintenanceMonthDetailScr
 
 class CreateMaintenancePlanScreen extends StatefulWidget {
   final int nam;
-  const CreateMaintenancePlanScreen({super.key, required this.nam});
+  final int? thangKhoiTao;
+  final int? maThietBiKhoiTao;
+
+  const CreateMaintenancePlanScreen({
+    super.key,
+    required this.nam,
+    this.thangKhoiTao,
+    this.maThietBiKhoiTao,
+  });
+
   @override
   State<CreateMaintenancePlanScreen> createState() => _CreateMaintenancePlanScreenState();
 }
@@ -645,7 +655,11 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
   @override
   void initState() {
     super.initState();
-    _controller = CreateMaintenancePlanController(nam: widget.nam);
+    _controller = CreateMaintenancePlanController(
+      nam: widget.nam,
+      thangKhoiTao: widget.thangKhoiTao,
+      maThietBiKhoiTao: widget.maThietBiKhoiTao,
+    );
     _controller.taiDuLieuBanDau();
     _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic);
@@ -1039,8 +1053,9 @@ class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScree
                                           fontSize: 12,
                                           color: Colors.grey.shade600),
                                     ),
-                                    onTap: () =>
-                                        _controller.chonThietBi(tb),
+                                    onTap: () {
+                                      _controller.chonThietBi(tb);
+                                    },
                                   );
                                 },
                               );

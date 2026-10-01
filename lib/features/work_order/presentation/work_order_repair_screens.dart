@@ -1026,7 +1026,9 @@ class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
                       TextField(
                         controller: _moTaCtrl,
                         maxLines: 4,
-                        onChanged: (_) => _ctrl.xoaLoiMoTa(),
+                        onChanged: (_) {
+                          _ctrl.xoaLoiMoTa();
+                        },
                         style: const TextStyle(height: 1.4),
                         decoration: _fieldDeco(
                           hint: 'Hiện tượng hư hỏng, vị trí, mức độ…',

@@ -116,6 +116,33 @@ class WorkOrderService {
     );
   }
 
+  /// Tổ trưởng: Chờ gửi → Chờ duyệt (gửi xưởng).
+  static Future<void> guiDenXuong({required int maHoSoBaoTri}) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/gui-den-xuong',
+      {},
+    );
+  }
+
+  /// Tổ trưởng sửa ngày/nội dung khi còn Chờ gửi.
+  static Future<void> capNhatHoSoChoGui({
+    required int maHoSoBaoTri,
+    String? noiDungCongViec,
+    DateTime? ngayDuKienBaoTri,
+  }) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/bao-tri/$maHoSoBaoTri/cho-gui',
+      {
+        if (noiDungCongViec != null) 'noiDungCongViec': noiDungCongViec,
+        if (ngayDuKienBaoTri != null)
+          'ngayDuKienBaoTri':
+          '${ngayDuKienBaoTri.year.toString().padLeft(4, '0')}-'
+              '${ngayDuKienBaoTri.month.toString().padLeft(2, '0')}-'
+              '${ngayDuKienBaoTri.day.toString().padLeft(2, '0')}',
+      },
+    );
+  }
+
   /// Xưởng gửi Giám đốc duyệt.
   static Future<void> xuongGuiGiamDoc({
     required int maHoSoBaoTri,

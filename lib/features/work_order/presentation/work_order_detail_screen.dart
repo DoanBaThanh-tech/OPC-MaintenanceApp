@@ -103,13 +103,13 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     _xuongCtrl.datThoiGianTuChuoi(v);
   }
 
-  void _batDauChinhSuaXuong(HoSoBaoTri hs) {
+  Future<void> _batDauChinhSuaXuong(HoSoBaoTri hs) async {
     _noiDungXuongCtrl.text = hs.noiDungCongViec ?? '';
     // Giữ chuỗi gốc ("15p" / "4") để nhận đúng đơn vị phút/giờ
     final raw = (hs.thoiGianDuKien ?? '').trim();
     final chiSo = raw.replaceAll(RegExp(r'[^0-9]'), '');
     _thoiGianXuongCtrl.text = chiSo;
-    _xuongCtrl.batDauChinhSua(hs, thoiGianText: raw.isEmpty ? chiSo : raw);
+    await _xuongCtrl.batDauChinhSua(hs, thoiGianText: raw.isEmpty ? chiSo : raw);
   }
 
   void _huyChinhSuaXuong() {
@@ -163,6 +163,123 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     );
   }
 
+  /// Tổ trưởng sửa ngày dự kiến của chính hồ sơ đang Chờ gửi (không tạo HS mới).
+  Future<void> _suaNgayDuKienChoGui(HoSoBaoTri hs) async {
+    final goc = hs.ngayDuKienBaoTri ?? hs.ngayTao ?? DateTime.now();
+    const namKeHoach = 2026;
+    final now = DateTime.now();
+    final ngayMai =
+    DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+    var first = DateTime(namKeHoach, 1, 1);
+    if (ngayMai.isAfter(first)) first = ngayMai;
+    final last = DateTime(namKeHoach, 12, 31);
+    if (first.isAfter(last)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không còn ngày hợp lệ trong năm 2026.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    var initial = goc;
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(last)) initial = last;
+
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
+      helpText: 'Chỉnh ngày dự kiến hồ sơ này (năm $namKeHoach)',
+      cancelText: 'Hủy',
+      confirmText: 'Lưu',
+    );
+    if (picked == null || !mounted) return;
+
+    try {
+      // Kiểm tra trùng tháng khác (client)
+      if (picked.month != goc.month || picked.year != goc.year) {
+        final thangCo = await WorkOrderService.layThangCoBaoTri(
+          hs.maThietBi,
+          nam: picked.year,
+        );
+        if (thangCo.contains(picked.month) && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Thiết bị đã có bảo trì trong tháng ${picked.month}/${picked.year}.',
+              ),
+              backgroundColor: Colors.red.shade700,
+            ),
+          );
+          return;
+        }
+      }
+      await WorkOrderService.capNhatHoSoChoGui(
+        maHoSoBaoTri: hs.maHoSoBaoTri,
+        ngayDuKienBaoTri: picked,
+      );
+      if (!mounted) return;
+      await _controller.taiChiTiet();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã cập nhật ngày dự kiến bảo trì.')),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
+
+  Future<void> _guiDenXuong(HoSoBaoTri hs) async {
+    final xacNhan = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Gửi đến xưởng?'),
+        content: const Text(
+          'Sau khi gửi, hồ sơ chuyển sang Chờ duyệt và xưởng sẽ nhận được. '
+              'Bạn vẫn nên kiểm tra ngày dự kiến trước khi gửi.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Gửi'),
+          ),
+        ],
+      ),
+    );
+    if (xacNhan != true || !mounted) return;
+    try {
+      await WorkOrderService.guiDenXuong(maHoSoBaoTri: hs.maHoSoBaoTri);
+      if (!mounted) return;
+      await _controller.taiChiTiet();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã gửi đến xưởng — trạng thái Chờ duyệt.'),
+          backgroundColor: Color(0xFF16A34A),
+        ),
+      );
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
+
   Color _mauTrangThai(String tt) {
     switch (tt) {
       case 'Đã duyệt':
@@ -173,6 +290,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
         return AppColors.success;
       case 'Từ chối':
         return AppColors.danger;
+      case 'Chờ gửi':
+        return const Color(0xFF0EA5E9);
       case 'Chờ duyệt':
       case 'Chờ xưởng':
         return AppColors.warning;
@@ -477,8 +596,33 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                             _dong('Ngày duyệt', _fmt(hs.ngayDuyet)),
                           ],
                           const Divider(height: 18, color: Color(0xFFE8EEF4)),
-                          _dong('Ngày bảo trì dự kiến',
-                              _fmt(hs.ngayDuKienBaoTri)),
+                          // Tổ trưởng: chỉ sửa ngày của chính hồ sơ này khi còn Chờ gửi
+                          if (_laToTruong && hs.choGui)
+                            InkWell(
+                              onTap: () => _suaNgayDuKienChoGui(hs),
+                              borderRadius: BorderRadius.circular(8),
+                              child: Padding(
+                                padding:
+                                const EdgeInsets.symmetric(vertical: 2),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _dong(
+                                        'Ngày bảo trì dự kiến',
+                                        _fmt(hs.ngayDuKienBaoTri),
+                                      ),
+                                    ),
+                                    Icon(Icons.edit_calendar_outlined,
+                                        size: 18,
+                                        color: AppColors.primary
+                                            .withValues(alpha: 0.85)),
+                                  ],
+                                ),
+                              ),
+                            )
+                          else
+                            _dong('Ngày bảo trì dự kiến',
+                                _fmt(hs.ngayDuKienBaoTri)),
                           const Divider(height: 18, color: Color(0xFFE8EEF4)),
                           _dong(
                             'Thời gian dự kiến',
@@ -754,156 +898,188 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
 
                       const SizedBox(height: 24),
 
+                      // Tổ trưởng: hồ sơ mới tạo — Gửi đến xưởng
+                      if (_laToTruong && hs.choGui)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF0EA5E9).withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: const Color(0xFF0EA5E9).withValues(alpha: 0.35),
+                                ),
+                              ),
+                              child: const Text(
+                                'Hồ sơ đang Chờ gửi — chưa gửi xưởng. '
+                                    'Có thể chỉnh ngày dự kiến nếu cần, rồi bấm Gửi đến xưởng.',
+                                style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            FilledButton.icon(
+                              onPressed: () => _guiDenXuong(hs),
+                              icon: const Icon(Icons.send_rounded),
+                              label: const Text('Gửi đến xưởng'),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
+                          ],
+                        )
                       // Xưởng — Đang thực hiện: quy trình + duyệt; Đã hoàn thành: xem lại
-                      if (_laXuong &&
+                      else if (_laXuong &&
                           (hs.choXacNhanKetQua ||
                               hs.dangThucHien ||
                               hs.daHoanThanh))
                         _buildXuongQuyTrinhVaDuyet(hs)
                       // Tổ trưởng (và vai trò khác): chỉ xem quy trình khi Đã hoàn thành
                       else if (!_laXuong && hs.daHoanThanh)
-                        _buildQuyTrinhChiXemKhiHoanThanh(hs)
-                      // Xưởng: còn chỉnh sửa/gửi HOẶC đã gửi → chỉ hiện chờ GĐ
-                      else if (_laXuong && hs.choXuong)
-                          _buildXuongActions(hs)
-                        else if (_laXuong && hs.daGuiGiamDoc)
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: AppColors.warning.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
-                              ),
-                              child: const Row(
-                                children: [
-                                  Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 22),
-                                  SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      'Đã gửi Giám đốc — đang chờ duyệt. Không thể chỉnh sửa hay gửi lại.',
-                                      style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          else if ((hs.daDuyetChuaPhanCong || hs.phanCongBiTuChoi) && _laToTruong)
-                              ElevatedButton.icon(
-                                icon: const Icon(Icons.groups_rounded),
-                                label: Text(hs.phanCongBiTuChoi ? 'Phân công lại nhân viên khác' : 'Phân công nhân viên'),
-                                onPressed: () async {
-                                  final ok = await Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => PhanCongBaoTriScreen(maHoSoBaoTri: hs.maHoSoBaoTri),
-                                    ),
-                                  );
-                                  if (ok == true && mounted) {
-                                    await _controller.taiChiTiet();
-                                  }
-                                },
-                              )
-                            else if (hs.coTheCapNhatPhanCong && _laToTruong)
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                          _buildQuyTrinhChiXemKhiHoanThanh(hs)
+                        // Xưởng: còn chỉnh sửa/gửi HOẶC đã gửi → chỉ hiện chờ GĐ
+                        else if (_laXuong && hs.choXuong)
+                            _buildXuongActions(hs)
+                          else if (_laXuong && hs.daGuiGiamDoc)
+                              Container(
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.warning.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
+                                ),
+                                child: const Row(
                                   children: [
-                                    if ((hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien) != null) ...[
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.primary.withValues(alpha: 0.07),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            const Icon(Icons.people_alt_rounded, size: 20, color: AppColors.primary),
-                                            const SizedBox(width: 8),
-                                            Expanded(
-                                              child: Text(
-                                                'Đang phân công: ${hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien}',
-                                                style: const TextStyle(fontWeight: FontWeight.w600, height: 1.35),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                    Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 22),
+                                    SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        'Đã gửi Giám đốc — đang chờ duyệt. Không thể chỉnh sửa hay gửi lại.',
+                                        style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
                                       ),
-                                      const SizedBox(height: 10),
-                                    ],
-                                    ElevatedButton.icon(
-                                      icon: const Icon(Icons.manage_accounts_rounded),
-                                      label: const Text('Cập nhật phân công'),
-                                      onPressed: () async {
-                                        final ok = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => PhanCongBaoTriScreen(
-                                              maHoSoBaoTri: hs.maHoSoBaoTri,
-                                              isCapNhat: true,
-                                            ),
-                                          ),
-                                        );
-                                        if (ok == true && mounted) {
-                                          await _controller.taiChiTiet();
-                                        }
-                                      },
                                     ),
                                   ],
+                                ),
+                              )
+                            else if ((hs.daDuyetChuaPhanCong || hs.phanCongBiTuChoi) && _laToTruong)
+                                ElevatedButton.icon(
+                                  icon: const Icon(Icons.groups_rounded),
+                                  label: Text(hs.phanCongBiTuChoi ? 'Phân công lại nhân viên khác' : 'Phân công nhân viên'),
+                                  onPressed: () async {
+                                    final ok = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => PhanCongBaoTriScreen(maHoSoBaoTri: hs.maHoSoBaoTri),
+                                      ),
+                                    );
+                                    if (ok == true && mounted) {
+                                      await _controller.taiChiTiet();
+                                    }
+                                  },
                                 )
-                              else if (hs.dangThucHien && _laNvkt)
-                                  ElevatedButton.icon(
-                                    icon: const Icon(Icons.task_alt_rounded),
-                                    label: const Text('Hoàn thành bảo trì'),
-                                    onPressed: () async {
-                                      final ok = await _controller.nhanVienHoanThanhBaoTri();
-                                      if (!mounted) return;
-                                      if (ok) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('Đã hoàn thành. Đồng bộ trạng thái hồ sơ và kế hoạch bảo trì.')),
-                                        );
-                                        setState(() {});
-                                      } else if (_controller.loi != null) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(_controller.loi!)),
-                                        );
-                                      }
-                                    },
-                                  )
-                                else if (hs.biTuChoi && _laXuong)
-                                    ElevatedButton.icon(
-                                      icon: const Icon(Icons.edit_rounded),
-                                      label: const Text('Chỉnh sửa & gửi lại duyệt'),
-                                      onPressed: () async {
-                                        final ok = await Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => SuaHoSoBiTuChoiScreen(hoSo: hs),
+                              else if (hs.coTheCapNhatPhanCong && _laToTruong)
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                                    children: [
+                                      if ((hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien) != null) ...[
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.primary.withValues(alpha: 0.07),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: AppColors.primary.withValues(alpha: 0.18)),
                                           ),
-                                        );
-                                        if (ok == true && mounted) {
-                                          await _controller.taiChiTiet();
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.people_alt_rounded, size: 20, color: AppColors.primary),
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Text(
+                                                  'Đang phân công: ${hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien}',
+                                                  style: const TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                      ],
+                                      ElevatedButton.icon(
+                                        icon: const Icon(Icons.manage_accounts_rounded),
+                                        label: const Text('Cập nhật phân công'),
+                                        onPressed: () async {
+                                          final ok = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => PhanCongBaoTriScreen(
+                                                maHoSoBaoTri: hs.maHoSoBaoTri,
+                                                isCapNhat: true,
+                                              ),
+                                            ),
+                                          );
+                                          if (ok == true && mounted) {
+                                            await _controller.taiChiTiet();
+                                          }
+                                        },
+                                      ),
+                                    ],
+                                  )
+                                else if (hs.dangThucHien && _laNvkt)
+                                    ElevatedButton.icon(
+                                      icon: const Icon(Icons.task_alt_rounded),
+                                      label: const Text('Hoàn thành bảo trì'),
+                                      onPressed: () async {
+                                        final ok = await _controller.nhanVienHoanThanhBaoTri();
+                                        if (!mounted) return;
+                                        if (ok) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('Đã hoàn thành. Đồng bộ trạng thái hồ sơ và kế hoạch bảo trì.')),
+                                          );
+                                          setState(() {});
+                                        } else if (_controller.loi != null) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text(_controller.loi!)),
+                                          );
                                         }
                                       },
                                     )
-                                  else if (hs.choDuyet)
-                                      Container(
-                                        padding: const EdgeInsets.all(12),
-                                        decoration: BoxDecoration(
-                                          color: AppColors.warning
-                                              .withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(10),
+                                  else if (hs.biTuChoi && _laXuong)
+                                      ElevatedButton.icon(
+                                        icon: const Icon(Icons.edit_rounded),
+                                        label: const Text('Chỉnh sửa & gửi lại duyệt'),
+                                        onPressed: () async {
+                                          final ok = await Navigator.push(
+                                            context,
+                                            MaterialPageRoute(
+                                              builder: (_) => SuaHoSoBiTuChoiScreen(hoSo: hs),
+                                            ),
+                                          );
+                                          if (ok == true && mounted) {
+                                            await _controller.taiChiTiet();
+                                          }
+                                        },
+                                      )
+                                    else if (hs.choDuyet)
+                                        Container(
+                                          padding: const EdgeInsets.all(12),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.warning
+                                                .withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(10),
+                                          ),
+                                          child: const Row(
+                                            children: [
+                                              Icon(Icons.hourglass_top_rounded,
+                                                  color: AppColors.warning, size: 20),
+                                              SizedBox(width: 8),
+                                              Expanded(
+                                                  child: Text(
+                                                      'Đang chờ Giám đốc/Phó giám đốc duyệt')),
+                                            ],
+                                          ),
                                         ),
-                                        child: const Row(
-                                          children: [
-                                            Icon(Icons.hourglass_top_rounded,
-                                                color: AppColors.warning, size: 20),
-                                            SizedBox(width: 8),
-                                            Expanded(
-                                                child: Text(
-                                                    'Đang chờ Giám đốc/Phó giám đốc duyệt')),
-                                          ],
-                                        ),
-                                      ),
                     ],
                   ),
                 ),
@@ -1368,12 +1544,12 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
               const SizedBox(height: 8),
               InkWell(
                 onTap: () async {
-                  // Từ tháng kế hoạch gốc → hết năm (T10 → T10–T12 cùng năm)
+                  // Xưởng chỉ chọn ngày trong đúng tháng kế hoạch (không đổi tháng)
                   final goc = _xuongCtrl.ngayDuKienGoc ??
                       _ngayDuKienXuong ??
                       DateTime.now();
                   final firstOfRange = DateTime(goc.year, goc.month, 1);
-                  final lastOfRange = DateTime(goc.year, 12, 31);
+                  final lastOfRange = DateTime(goc.year, goc.month + 1, 0);
                   var initial = _ngayDuKienXuong ?? firstOfRange;
                   if (initial.isBefore(firstOfRange)) initial = firstOfRange;
                   if (initial.isAfter(lastOfRange)) initial = lastOfRange;
@@ -1383,35 +1559,12 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                     firstDate: firstOfRange,
                     lastDate: lastOfRange,
                     helpText:
-                    'Từ tháng ${goc.month}/${goc.year} đến hết năm ${goc.year}',
+                    'Chỉ ngày trong tháng ${goc.month}/${goc.year} (tháng do Tổ trưởng lập)',
                     cancelText: 'Hủy',
                     confirmText: 'Chọn',
                   );
                   if (picked != null) {
                     _xuongCtrl.datNgayDuKien(picked);
-                    // Cảnh báo nếu tháng đã có lịch BT
-                    final hs = _controller.hoSo;
-                    if (hs != null) {
-                      try {
-                        final thangCo =
-                        await WorkOrderService.layThangCoBaoTri(
-                          hs.maThietBi,
-                          nam: goc.year,
-                        );
-                        if (thangCo.contains(picked.month) &&
-                            picked.month != goc.month &&
-                            mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Lưu ý: tháng ${picked.month}/${goc.year} thiết bị này đã có lịch bảo trì.',
-                              ),
-                              backgroundColor: AppColors.warning,
-                            ),
-                          );
-                        }
-                      } catch (_) {}
-                    }
                   }
                 },
                 borderRadius: BorderRadius.circular(12),
@@ -1429,8 +1582,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         : null,
                     errorMaxLines: 4,
                     helperText: _xuongCtrl.ngayDuKienGoc != null
-                        ? 'Từ tháng ${_xuongCtrl.ngayDuKienGoc!.month}/${_xuongCtrl.ngayDuKienGoc!.year} trở đi trong năm ${_xuongCtrl.ngayDuKienGoc!.year}'
-                        : 'Chọn từ tháng kế hoạch trở đi trong cùng năm',
+                        ? 'Chỉ chọn ngày trong tháng ${_xuongCtrl.ngayDuKienGoc!.month}/${_xuongCtrl.ngayDuKienGoc!.year} (không đổi tháng)'
+                        : 'Chỉ chọn ngày trong tháng kế hoạch Tổ trưởng đã lập',
                     helperMaxLines: 2,
                   ),
                   child: Text(
@@ -1529,7 +1682,9 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: () => _batDauChinhSuaXuong(hs),
+            onPressed: () {
+              _batDauChinhSuaXuong(hs);
+            },
           ),
           const SizedBox(height: 10),
           FilledButton.icon(
@@ -1645,10 +1800,10 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
   }
 
   Future<void> _chonNgay() async {
-    // Từ tháng kế hoạch gốc → hết năm
+    // Xưởng chỉ chọn ngày trong đúng tháng kế hoạch
     final goc = widget.hoSo.ngayDuKienBaoTri ?? _ngayDuKien ?? DateTime.now();
     final firstOfRange = DateTime(goc.year, goc.month, 1);
-    final lastOfRange = DateTime(goc.year, 12, 31);
+    final lastOfRange = DateTime(goc.year, goc.month + 1, 0);
     var initial = _ngayDuKien ?? firstOfRange;
     if (initial.isBefore(firstOfRange)) initial = firstOfRange;
     if (initial.isAfter(lastOfRange)) initial = lastOfRange;
@@ -1657,7 +1812,7 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
       initialDate: initial,
       firstDate: firstOfRange,
       lastDate: lastOfRange,
-      helpText: 'Từ tháng ${goc.month}/${goc.year} đến hết năm ${goc.year}',
+      helpText: 'Chỉ ngày trong tháng ${goc.month}/${goc.year}',
       cancelText: 'Hủy',
       confirmText: 'Chọn',
     );
