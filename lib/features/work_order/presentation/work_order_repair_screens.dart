@@ -243,22 +243,90 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
                       ],
                     ),
                     const SizedBox(height: 14),
-                    TabBar(
-                      controller: _tab,
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.white70,
-                      indicatorColor: Colors.white,
-                      indicatorWeight: 3,
-                      indicatorSize: TabBarIndicatorSize.label,
-                      dividerColor: Colors.transparent,
-                      labelStyle: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 13),
-                      unselectedLabelStyle: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13),
-                      tabs: _tabs.map((e) => Tab(text: e)).toList(),
+                    SizedBox(
+                      height: 40,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _tabs.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, i) {
+                          final selected = _tab.index == i;
+                          final count = _ctrl.locTheoTab(_tabs[i]).length;
+                          return GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _tab.animateTo(i));
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(
+                                  color: selected
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.25),
+                                ),
+                                boxShadow: selected
+                                    ? [
+                                  BoxShadow(
+                                    color: Colors.black
+                                        .withValues(alpha: 0.12),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _tabs[i],
+                                    style: TextStyle(
+                                      color: selected
+                                          ? const Color(0xFF0369A1)
+                                          : Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: selected
+                                          ? const Color(0xFF0EA5E9)
+                                          .withValues(alpha: 0.15)
+                                          : Colors.white
+                                          .withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$count',
+                                      style: TextStyle(
+                                        color: selected
+                                            ? const Color(0xFF0369A1)
+                                            : Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
+                    const SizedBox(height: 12),
                   ],
                 ),
               ),

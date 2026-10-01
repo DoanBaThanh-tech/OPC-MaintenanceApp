@@ -1875,49 +1875,10 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
   }
 
   Future<void> _luu() async {
-    // Validate lại theo đơn vị đang chọn (giờ ≤24 / phút ≤1440)
-    _controller.datThoiGianDuKienTuChuoi(_thoiGian.text);
-    if (_controller.loiThoiGianDuKien != null) {
-      setState(() {});
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_controller.loiThoiGianDuKien!),
-          backgroundColor: Colors.red.shade700,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-      return;
-    }
-    if (_gioBatDau == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Vui lòng chọn giờ bắt đầu'),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
-      return;
-    }
-    _controller.datGioBatDau(_gioBatDau!);
-    _gioKetThuc = _controller.gioKetThuc;
-    if (_gioKetThuc == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _controller.loiThoiGianDuKien ??
-                'Chưa tính được giờ kết thúc (thời lượng có thể tràn sang ngày sau)',
-          ),
-          backgroundColor: Colors.red.shade700,
-        ),
-      );
-      return;
-    }
-
+    // Thời gian chỉ hiển thị — không bắt buộc nhập khi sửa từ chối
     final ok = await _controller.luu(
       maHoSoBaoTri: widget.hoSo.maHoSoBaoTri,
       noiDungCongViec: _noiDung.text,
-      thoiGianDuKien: _controller.chuoiThoiGianLuu ?? _thoiGian.text.trim(),
-      gioBatDauDuKien: _fmtTime(_gioBatDau),
-      gioKetThucDuKien: _fmtTime(_gioKetThuc),
       ngayDuKienBaoTri: _ngayDuKien,
       ngayDuKienGoc: widget.hoSo.ngayDuKienBaoTri,
       ngayTao: widget.hoSo.ngayTao,
@@ -1925,7 +1886,13 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
     if (!mounted) return;
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã gửi lại hồ sơ để duyệt')),
+        SnackBar(
+          content: const Text('Đã gửi lại hồ sơ để duyệt'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
       );
       Navigator.pop(context, true);
     } else if (_controller.loi != null) {
@@ -1941,153 +1908,487 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top;
+    final hs = widget.hoSo;
+    final thoiGianHien = (hs.thoiGianDuKien == null ||
+        hs.thoiGianDuKien!.trim().isEmpty)
+        ? '?'
+        : formatThoiGianDuKienHienThi(hs.thoiGianDuKien);
+    final gioBd = (hs.gioBatDauDuKien == null ||
+        hs.gioBatDauDuKien!.trim().isEmpty)
+        ? '?'
+        : hs.gioBatDauDuKien!;
+    final gioKt = (hs.gioKetThucDuKien == null ||
+        hs.gioKetThucDuKien!.trim().isEmpty)
+        ? '?'
+        : hs.gioKetThucDuKien!;
+
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Sửa hồ sơ bị từ chối'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
+      backgroundColor: const Color(0xFFF0F7FC),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
-          return ListView(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          return Column(
             children: [
-              if (widget.hoSo.lyDoTuChoi != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.danger.withValues(alpha: 0.25)),
+              // Header gradient
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.fromLTRB(8, top + 4, 16, 20),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Color(0xFF0B6BCB),
+                      Color(0xFF0284C7),
+                      Color(0xFF0EA5E9),
+                    ],
                   ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(Icons.info_outline_rounded, color: AppColors.danger, size: 22),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Lý do từ chối',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 12.5,
-                                color: AppColors.danger,
+                  borderRadius:
+                  BorderRadius.vertical(bottom: Radius.circular(28)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x400B6BCB),
+                      blurRadius: 18,
+                      offset: Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white, size: 20),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'Sửa hồ sơ bị từ chối',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 18,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            'HS #${hs.maHoSoBaoTri}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 0),
+                      child: Text(
+                        hs.tenThietBi,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.92),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Expanded(
+                child: ListView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+                  children: [
+                    // Lý do từ chối
+                    if (hs.lyDoTuChoi != null)
+                      TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: 1),
+                        duration: const Duration(milliseconds: 420),
+                        curve: Curves.easeOutCubic,
+                        builder: (context, t, child) => Opacity(
+                          opacity: t,
+                          child: Transform.translate(
+                            offset: Offset(0, 12 * (1 - t)),
+                            child: child,
+                          ),
+                        ),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 14),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFFFEE2E2),
+                                Colors.white,
+                              ],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color: const Color(0xFFFECACA)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.danger
+                                    .withValues(alpha: 0.08),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.danger
+                                      .withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(
+                                    Icons.report_gmailerrorred_rounded,
+                                    color: AppColors.danger,
+                                    size: 20),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'Lý do từ chối',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                        color: AppColors.danger,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      hs.lyDoTuChoi!,
+                                      style: TextStyle(
+                                        color: Colors.red.shade900,
+                                        height: 1.4,
+                                        fontSize: 13.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                    // Nội dung
+                    _sectionCard(
+                      title: 'Nội dung công việc',
+                      child: TextField(
+                        controller: _noiDung,
+                        maxLines: 4,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w600, height: 1.35),
+                        decoration: _inputDeco(
+                          hint: 'Mô tả công việc bảo trì…',
+                          icon: Icons.description_outlined,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Thời gian chỉ xem
+                    _sectionCard(
+                      title: 'Thời gian thực hiện',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                  child: _pillInfo(
+                                      'Dự kiến', thoiGianHien)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: _pillInfo('Bắt đầu', gioBd)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: _pillInfo('Kết thúc', gioKt)),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Chỉ xem — ghi nhận khi NVKT Tiến hành / hoàn thành.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.grey.shade600,
+                              height: 1.3,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Ngày dự kiến
+                    _sectionCard(
+                      title: 'Lịch bảo trì dự kiến',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Material(
+                            color: const Color(0xFFF0F9FF),
+                            borderRadius: BorderRadius.circular(14),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(14),
+                              onTap: _chonNgay,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 14, vertical: 14),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        gradient: const LinearGradient(
+                                          colors: [
+                                            Color(0xFF0B6BCB),
+                                            Color(0xFF0EA5E9),
+                                          ],
+                                        ),
+                                        borderRadius:
+                                        BorderRadius.circular(12),
+                                      ),
+                                      child: const Icon(
+                                          Icons.calendar_month_rounded,
+                                          color: Colors.white,
+                                          size: 20),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Ngày bảo trì dự kiến',
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _ngayDuKien == null
+                                                ? 'Chạm để chọn ngày'
+                                                : '${_ngayDuKien!.day.toString().padLeft(2, '0')}/${_ngayDuKien!.month.toString().padLeft(2, '0')}/${_ngayDuKien!.year}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 15,
+                                              color: Color(0xFF0F172A),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Icon(Icons.chevron_right_rounded,
+                                        color: Colors.grey.shade400),
+                                  ],
+                                ),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              widget.hoSo.lyDoTuChoi!,
-                              style: TextStyle(color: Colors.red.shade800, height: 1.35),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            hs.ngayDuKienBaoTri != null
+                                ? 'Chỉ chọn ngày trong tháng ${hs.ngayDuKienBaoTri!.month}/${hs.ngayDuKienBaoTri!.year} (kế hoạch Tổ trưởng).'
+                                : 'Chỉ chọn ngày trong đúng tháng kế hoạch.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: Colors.grey.shade600,
+                              height: 1.3,
                             ),
-                          ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    if (_controller.loi != null) ...[
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: const Color(0xFFFECACA)),
+                        ),
+                        child: Text(
+                          _controller.loi!,
+                          style: const TextStyle(
+                              color: Color(0xFFB91C1C),
+                              fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
-                  ),
-                ),
 
-              _sectionCard(
-                title: 'Nội dung công việc',
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    TextField(
-                      controller: _noiDung,
-                      maxLines: 4,
-                      decoration: _inputDeco(
-                        hint: 'Mô tả công việc bảo trì…',
-                        icon: Icons.description_outlined,
+                    const SizedBox(height: 22),
+                    // CTA gradient
+                    SizedBox(
+                      height: 52,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: _controller.dangLuu
+                              ? null
+                              : const LinearGradient(
+                            colors: [
+                              Color(0xFF0B6BCB),
+                              Color(0xFF0284C7),
+                            ],
+                          ),
+                          color: _controller.dangLuu
+                              ? Colors.grey.shade300
+                              : null,
+                          boxShadow: _controller.dangLuu
+                              ? null
+                              : [
+                            BoxShadow(
+                              color: const Color(0xFF0B6BCB)
+                                  .withValues(alpha: 0.35),
+                              blurRadius: 14,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onTap:
+                            _controller.dangLuu ? null : _luu,
+                            child: Center(
+                              child: _controller.dangLuu
+                                  ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child:
+                                CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: Colors.white,
+                                ),
+                              )
+                                  : const Row(
+                                mainAxisAlignment:
+                                MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.send_rounded,
+                                      color: Colors.white,
+                                      size: 20),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Gửi lại duyệt',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 15.5,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Thời gian dự kiến / bắt đầu / kết thúc không nhập tại đây — hệ thống ghi nhận khi NVKT Tiến hành và khi hoàn thành.',
-                      style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600, height: 1.35),
-                    ),
                   ],
-                ),
-              ),
-              const SizedBox(height: 14),
-
-              _sectionCard(
-                title: 'Lịch bảo trì dự kiến',
-
-                child: Column(
-                  children: [
-                    _pickerTile(
-                      icon: Icons.calendar_month_rounded,
-                      iconColor: const Color(0xFF0068A9),
-                      label: 'Ngày bảo trì dự kiến',
-                      value: _ngayDuKien == null
-                          ? 'Chạm để chọn ngày'
-                          : '${_ngayDuKien!.day.toString().padLeft(2, '0')}/${_ngayDuKien!.month.toString().padLeft(2, '0')}/${_ngayDuKien!.year}',
-                      onTap: _chonNgay,
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      widget.hoSo.ngayDuKienBaoTri != null
-                          ? 'Chỉ được chọn ngày trong tháng ${widget.hoSo.ngayDuKienBaoTri!.month}/${widget.hoSo.ngayDuKienBaoTri!.year} '
-                          '(theo kế hoạch Tổ trưởng). Không được đổi sang tháng trước/sau.'
-                          : 'Chỉ được chọn ngày trong đúng tháng kế hoạch. Không được đổi sang tháng khác.',
-                      style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, height: 1.3),
-                    ),
-                  ],
-                ),
-              ),
-
-              if (_controller.loi != null) ...[
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    _controller.loi!,
-                    style: const TextStyle(color: AppColors.danger),
-                  ),
-                ),
-              ],
-
-              const SizedBox(height: 24),
-              SizedBox(
-                height: 50,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  onPressed: _controller.dangLuu ? null : _luu,
-                  icon: _controller.dangLuu
-                      ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                      : const Icon(Icons.send_rounded),
-                  label: Text(
-                    _controller.dangLuu ? 'Đang gửi...' : 'Gửi lại duyệt',
-                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                  ),
                 ),
               ),
             ],
           );
         },
       ),
+    );
+  }
+
+  Widget _pillInfo(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F9FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFBAE6FD)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 13.5,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dongChiXem(String nhan, String giaTri) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 130,
+          child: Text(
+            nhan,
+            style: TextStyle(
+              fontSize: 13,
+              color: Colors.grey.shade600,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            giaTri,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

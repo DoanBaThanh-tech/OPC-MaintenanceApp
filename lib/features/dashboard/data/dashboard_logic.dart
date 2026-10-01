@@ -143,7 +143,6 @@ class DashboardLogic {
               label: 'Duyệt hồ sơ vật tư',
               screenBuilder: () => const HoSoVatTuListScreen(chiXemDaGui: true),
             ),
-            MenuItemData(icon: Icons.history_rounded, label: 'Lịch sử phê duyệt', screenBuilder: () => const LichSuPheDuyetScreen()),
           ]),
         ];
 

@@ -47,6 +47,9 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
       vsync: this,
       duration: const Duration(milliseconds: 700),
     )..forward();
+    _tab.addListener(() {
+      if (mounted) setState(() {});
+    });
     _controller.addListener(() {
       if (mounted) setState(() {});
     });
@@ -307,22 +310,92 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
                       ],
                     ),
                     const SizedBox(height: 14),
-                    TabBar(
-                      controller: _tab,
-                      isScrollable: true,
-                      tabAlignment: TabAlignment.start,
-                      labelColor: Colors.white,
-                      unselectedLabelColor: Colors.white70,
-                      indicatorColor: Colors.white,
-                      indicatorWeight: 3,
-                      indicatorSize: TabBarIndicatorSize.label,
-                      dividerColor: Colors.transparent,
-                      labelStyle: const TextStyle(
-                          fontWeight: FontWeight.w800, fontSize: 13),
-                      unselectedLabelStyle: const TextStyle(
-                          fontWeight: FontWeight.w600, fontSize: 13),
-                      tabs: _tabs.map((e) => Tab(text: e)).toList(),
+                    // Chip trạng thái + số lượng — dễ lọc, gọn hơn TabBar chữ dài
+                    SizedBox(
+                      height: 40,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: _tabs.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: 8),
+                        itemBuilder: (context, i) {
+                          final selected = _tab.index == i;
+                          final count =
+                              _controller.locTheoTab(_tabs[i]).length;
+                          return GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              setState(() => _tab.animateTo(i));
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? Colors.white
+                                    : Colors.white.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(22),
+                                border: Border.all(
+                                  color: selected
+                                      ? Colors.white
+                                      : Colors.white.withValues(alpha: 0.25),
+                                ),
+                                boxShadow: selected
+                                    ? [
+                                  BoxShadow(
+                                    color: Colors.black
+                                        .withValues(alpha: 0.12),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ]
+                                    : null,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    _tabs[i],
+                                    style: TextStyle(
+                                      color: selected
+                                          ? const Color(0xFF0369A1)
+                                          : Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12.5,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: selected
+                                          ? const Color(0xFF0EA5E9)
+                                          .withValues(alpha: 0.15)
+                                          : Colors.white
+                                          .withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: Text(
+                                      '$count',
+                                      style: TextStyle(
+                                        color: selected
+                                            ? const Color(0xFF0369A1)
+                                            : Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
+                    const SizedBox(height: 12),
                   ],
                 ),
               ),
@@ -448,7 +521,7 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
           child: ListView.builder(
             physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 24),
             itemCount: list.length,
             itemBuilder: (context, i) {
               final hs = list[i];
@@ -574,33 +647,32 @@ class _HsCardState extends State<_HsCard> with SingleTickerProviderStateMixin {
         );
       },
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.only(bottom: 10),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
             onHighlightChanged: (v) => setState(() => _pressed = v),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(16),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 140),
               transform: Matrix4.identity()..scale(_pressed ? 0.985 : 1.0),
               transformAlignment: Alignment.center,
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(16),
+                border: Border(
+                  left: BorderSide(color: widget.mau, width: 4),
+                  top: const BorderSide(color: Color(0xFFE2E8F0)),
+                  right: const BorderSide(color: Color(0xFFE2E8F0)),
+                  bottom: const BorderSide(color: Color(0xFFE2E8F0)),
+                ),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF0F172A)
-                        .withValues(alpha: _pressed ? 0.03 : 0.05),
-                    blurRadius: _pressed ? 8 : 16,
-                    offset: Offset(0, _pressed ? 3 : 6),
-                  ),
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+                    color: widget.mau.withValues(alpha: _pressed ? 0.06 : 0.1),
+                    blurRadius: _pressed ? 8 : 14,
+                    offset: Offset(0, _pressed ? 2 : 5),
                   ),
                 ],
               ),
@@ -610,43 +682,43 @@ class _HsCardState extends State<_HsCard> with SingleTickerProviderStateMixin {
                   Row(
                     children: [
                       Container(
-                        width: 48,
-                        height: 48,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              widget.mau.withValues(alpha: 0.15),
+                              widget.mau.withValues(alpha: 0.18),
                               _btAccent.withValues(alpha: 0.1),
                             ],
                             begin: Alignment.topLeft,
                             end: Alignment.bottomRight,
                           ),
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: Icon(widget.icon, color: widget.mau, size: 24),
+                        child: Icon(widget.icon, color: widget.mau, size: 20),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               widget.tenThietBi,
-                              maxLines: 2,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w800,
-                                fontSize: 15.5,
+                                fontSize: 14.5,
                                 color: Color(0xFF0F172A),
                                 letterSpacing: -0.2,
-                                height: 1.25,
+                                height: 1.2,
                               ),
                             ),
-                            const SizedBox(height: 3),
+                            const SizedBox(height: 2),
                             Text(
                               'HS #${widget.maHoSo} · ${widget.ngayTao}',
                               style: TextStyle(
-                                fontSize: 12.5,
+                                fontSize: 11.5,
                                 color: Colors.grey.shade600,
                                 fontWeight: FontWeight.w500,
                               ),
@@ -656,7 +728,7 @@ class _HsCardState extends State<_HsCard> with SingleTickerProviderStateMixin {
                       ),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 11, vertical: 6),
+                            horizontal: 9, vertical: 5),
                         decoration: BoxDecoration(
                           color: widget.mau.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(20),
