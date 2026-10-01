@@ -62,13 +62,17 @@ class WorkOrderService {
     int? maNhanVienThucHien,
     List<int>? maNhanVienThucHiens,
     int? maNhanVienGhiChep,
-    required DateTime ngayBatDau,
-    required DateTime ngayKetThuc,
+    DateTime? ngayBatDau,
+    DateTime? ngayKetThuc,
   }) async {
-    final body = <String, dynamic>{
-      'ngayBatDauDuKien': ngayBatDau.toIso8601String(),
-      'ngayKetThucDuKien': ngayKetThuc.toIso8601String(),
-    };
+    final body = <String, dynamic>{};
+    // Giờ thực tế ghi nhận khi NVKT Tiến hành / hoàn thành — không bắt buộc khi phân công
+    if (ngayBatDau != null) {
+      body['ngayBatDauDuKien'] = ngayBatDau.toIso8601String();
+    }
+    if (ngayKetThuc != null) {
+      body['ngayKetThucDuKien'] = ngayKetThuc.toIso8601String();
+    }
     if (maNhanVienThucHiens != null && maNhanVienThucHiens.isNotEmpty) {
       body['maNhanVienThucHiens'] = maNhanVienThucHiens;
     } else if (maNhanVienThucHien != null) {
@@ -294,13 +298,16 @@ class WorkOrderService {
     List<int>? maNhanVienThucHiens,
     int? maNhanVienThucHien,
     int? maNhanVienGhiChep,
-    required DateTime ngayBatDau,
-    required DateTime ngayKetThuc,
+    DateTime? ngayBatDau,
+    DateTime? ngayKetThuc,
   }) async {
-    final body = <String, dynamic>{
-      'ngayBatDauDuKien': ngayBatDau.toIso8601String(),
-      'ngayKetThucDuKien': ngayKetThuc.toIso8601String(),
-    };
+    final body = <String, dynamic>{};
+    if (ngayBatDau != null) {
+      body['ngayBatDauDuKien'] = ngayBatDau.toIso8601String();
+    }
+    if (ngayKetThuc != null) {
+      body['ngayKetThucDuKien'] = ngayKetThuc.toIso8601String();
+    }
     if (maNhanVienThucHiens != null && maNhanVienThucHiens.isNotEmpty) {
       body['maNhanVienThucHiens'] = maNhanVienThucHiens;
     } else if (maNhanVienThucHien != null) {

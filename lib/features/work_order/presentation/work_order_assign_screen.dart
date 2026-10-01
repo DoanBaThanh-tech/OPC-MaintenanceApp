@@ -120,135 +120,56 @@ class _PhanCongBaoTriScreenState extends State<PhanCongBaoTriScreen>
                   child: ListView(
                     padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
                     children: [
-                      // ===== Khung giờ =====
-                      _GlassCard(
-                        child: Column(
+                      // ===== Ghi chú thời gian (không nhập giờ khi phân công) =====
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                          ),
+                        ),
+                        child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: accent.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(Icons.schedule_rounded,
-                                      color: accent, size: 20),
+                            Icon(Icons.schedule_rounded,
+                                size: 20, color: accent),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Không cần nhập giờ dự kiến khi phân công.\n'
+                                    '• Giờ bắt đầu: khi NVKT bấm «Tiến hành quy trình»\n'
+                                    '• Giờ kết thúc: khi NVKT bấm «Xong» / hoàn thành quy trình\n'
+                                    '• Thời gian dự kiến: hệ thống tự tính (giờ · phút · giây)',
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  height: 1.4,
+                                  color: Colors.grey.shade800,
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    isSc
-                                        ? 'Lịch sửa chữa (có thể chỉnh)'
-                                        : 'Lịch bảo trì theo hồ sơ',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 14.5),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: isSc
-                                        ? () async {
-                                      final d = await showDatePicker(
-                                        context: context,
-                                        initialDate:
-                                        _controller.ngayDuKien ??
-                                            DateTime.now(),
-                                        firstDate: DateTime.now().subtract(
-                                            const Duration(days: 1)),
-                                        lastDate: DateTime.now()
-                                            .add(const Duration(days: 90)),
-                                      );
-                                      if (d != null) {
-                                        _controller.datNgayDuKien(d);
-                                      }
-                                    }
-                                        : null,
-                                    child: _MiniStat(
-                                      icon: Icons.calendar_month_rounded,
-                                      label: 'Ngày',
-                                      value: _fmtDate(_controller.ngayDuKien),
-                                      color: const Color(0xFF0068A9),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: isSc
-                                        ? () async {
-                                      final t = await showTimePicker(
-                                        context: context,
-                                        initialTime:
-                                        _controller.gioBatDau ??
-                                            const TimeOfDay(
-                                                hour: 8, minute: 0),
-                                      );
-                                      if (t != null) {
-                                        _controller.datGioBatDau(t);
-                                      }
-                                    }
-                                        : null,
-                                    child: _MiniStat(
-                                      icon: Icons.play_arrow_rounded,
-                                      label: 'Bắt đầu',
-                                      value: _fmtTime(_controller.gioBatDau),
-                                      color: const Color(0xFF059669),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: GestureDetector(
-                                    onTap: isSc
-                                        ? () async {
-                                      final t = await showTimePicker(
-                                        context: context,
-                                        initialTime:
-                                        _controller.gioKetThuc ??
-                                            const TimeOfDay(
-                                                hour: 17, minute: 0),
-                                      );
-                                      if (t != null) {
-                                        _controller.datGioKetThuc(t);
-                                      }
-                                    }
-                                        : null,
-                                    child: _MiniStat(
-                                      icon: Icons.stop_rounded,
-                                      label: 'Kết thúc',
-                                      value: _fmtTime(_controller.gioKetThuc),
-                                      color: const Color(0xFFDC2626),
-                                    ),
-                                  ),
-                                ),
-                              ],
+                              ),
                             ),
                           ],
                         ),
                       ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
 
                       // ===== Hint =====
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
                           color: isCapNhat
                               ? const Color(0xFFFFF7ED)
-                              : AppColors.primary.withValues(alpha: 0.06),
+                              : const Color(0xFFF8FAFC),
                           borderRadius: BorderRadius.circular(14),
                           border: Border.all(
                             color: isCapNhat
                                 ? const Color(0xFFFDBA74)
-                                : AppColors.primary.withValues(alpha: 0.15),
+                                : const Color(0xFFE2E8F0),
                           ),
                         ),
                         child: Row(

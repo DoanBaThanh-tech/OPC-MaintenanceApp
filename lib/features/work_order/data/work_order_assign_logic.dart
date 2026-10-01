@@ -80,10 +80,10 @@ class PhanCongBaoTriController extends ChangeNotifier {
     try {
       if (isSuaChua) {
         hoSoSc = await WorkOrderService.layChiTietHoSoSuaChua(maHoSo);
-        // SC không có giờ cố định trên hồ sơ → mặc định hôm nay 08:00–17:00
+        // Không gán giờ mặc định — giờ thực tế ghi khi NVKT Tiến hành / hoàn thành
         ngayDuKien = DateTime.now();
-        gioBatDau = const TimeOfDay(hour: 8, minute: 0);
-        gioKetThuc = const TimeOfDay(hour: 17, minute: 0);
+        gioBatDau = null;
+        gioKetThuc = null;
 
         if (isCapNhat && hoSoSc != null && hoSoSc!.maNhanVienThucHiens.isNotEmpty) {
           maNhanVienDaChon.addAll(hoSoSc!.maNhanVienThucHiens);
@@ -93,14 +93,10 @@ class PhanCongBaoTriController extends ChangeNotifier {
         }
       } else {
         hoSo = await WorkOrderService.layChiTietHoSoBaoTri(maHoSo);
-        gioBatDau = _parseGio(hoSo!.gioBatDauDuKien);
-        gioKetThuc = _parseGio(hoSo!.gioKetThucDuKien);
-        ngayDuKien = hoSo!.ngayDuKienBaoTri ?? DateTime.now();
-
-        if (gioBatDau == null || gioKetThuc == null) {
-          loi =
-          'Hồ sơ chưa có giờ bắt đầu/kết thúc. Vui lòng sửa hồ sơ trước khi phân công.';
-        }
+        // Chỉ lấy ngày dự kiến bảo trì (nếu có). Giờ không bắt buộc khi phân công.
+        ngayDuKien = hoSo!.ngayDuKienBaoTri;
+        gioBatDau = null;
+        gioKetThuc = null;
 
         if (isCapNhat && hoSo != null) {
           if (hoSo!.maNhanVienThucHiens.isNotEmpty) {
@@ -217,37 +213,15 @@ class PhanCongBaoTriController extends ChangeNotifier {
     notifyListeners();
   }
 
-  DateTime get thoiDiemBatDau {
-    final d = ngayDuKien ?? DateTime.now();
-    final g = gioBatDau ?? const TimeOfDay(hour: 8, minute: 0);
-    return DateTime(d.year, d.month, d.day, g.hour, g.minute);
-  }
-
-  DateTime get thoiDiemKetThuc {
-    final d = ngayDuKien ?? DateTime.now();
-    final g = gioKetThuc ?? const TimeOfDay(hour: 17, minute: 0);
-    return DateTime(d.year, d.month, d.day, g.hour, g.minute);
-  }
-
   Future<bool> xacNhan(int maHoSo) async {
     if (maNhanVienDaChon.isEmpty) {
       loi = 'Vui lòng chọn ít nhất một nhân viên thực hiện';
       notifyListeners();
       return false;
     }
-    // Không còn chọn người ghi chép — mọi NV phân công đều làm quy trình
+    // Mọi NV phân công đều làm quy trình — không bắt giờ dự kiến
     maNhanVienGhiChep =
     maNhanVienDaChon.isNotEmpty ? maNhanVienDaChon.first : null;
-    if (gioBatDau == null || gioKetThuc == null) {
-      loi = 'Thiếu giờ bắt đầu/kết thúc — không thể phân công';
-      notifyListeners();
-      return false;
-    }
-    if (thoiDiemKetThuc.isBefore(thoiDiemBatDau)) {
-      loi = 'Giờ kết thúc phải sau giờ bắt đầu';
-      notifyListeners();
-      return false;
-    }
 
     dangLuu = true;
     loi = null;
@@ -258,16 +232,12 @@ class PhanCongBaoTriController extends ChangeNotifier {
           maHoSoSuaChua: maHoSo,
           maNhanVienThucHiens: maNhanVienDaChon.toList(),
           maNhanVienGhiChep: maNhanVienGhiChep,
-          ngayBatDau: thoiDiemBatDau,
-          ngayKetThuc: thoiDiemKetThuc,
         );
       } else {
         await WorkOrderService.phanCongBaoTri(
           maHoSoBaoTri: maHoSo,
           maNhanVienThucHiens: maNhanVienDaChon.toList(),
           maNhanVienGhiChep: maNhanVienGhiChep,
-          ngayBatDau: thoiDiemBatDau,
-          ngayKetThuc: thoiDiemKetThuc,
         );
       }
       return true;
