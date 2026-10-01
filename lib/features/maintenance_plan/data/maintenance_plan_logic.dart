@@ -315,6 +315,8 @@ class MaintenancePlanService {
 class HangChoDenHanController extends ChangeNotifier {
   int nam = DateTime.now().year;
   int thang = DateTime.now().month;
+  /// Các năm đã có kế hoạch (từ API) — dropdown Năm hiển thị theo đây.
+  List<int> danhSachNam = [];
   List<HangChoDenHanItem> danhSach = [];
   final Set<int> daChon = {};
   bool dangTai = false;
@@ -328,17 +330,27 @@ class HangChoDenHanController extends ChangeNotifier {
     thongBao = null;
     notifyListeners();
     try {
+      // Đồng bộ năm đã lập KH
+      final keHoach = await MaintenancePlanService.layDanhSachKeHoach();
+      final nams = keHoach.map((k) => k.nam).toSet().toList()..sort();
+      if (nams.isEmpty) nams.add(DateTime.now().year);
+      danhSachNam = nams;
+      if (!danhSachNam.contains(nam)) {
+        nam = danhSachNam.contains(DateTime.now().year)
+            ? DateTime.now().year
+            : danhSachNam.last;
+      }
+
       danhSach = await MaintenancePlanService.layHangChoDenHan(
         nam: nam,
         thang: thang,
       );
-      // Bỏ chọn những máy không còn trong list
       daChon.removeWhere((id) => !danhSach.any((e) => e.maThietBi == id));
     } on ApiException catch (e) {
       loi = e.message;
       danhSach = [];
     } catch (e) {
-      loi = 'Không tải được hàng chờ: $e';
+      loi = 'Không tải được lập kế hoạch: $e';
       danhSach = [];
     } finally {
       dangTai = false;

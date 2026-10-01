@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/maintenance_plan_logic.dart';
 
-/// Hàng chờ thiết bị đến hạn / trễ hạn bảo trì — tạo HS hàng loạt (chỉ BT).
+/// Lập kế hoạch — thiết bị đến hạn / trễ hạn, tạo HS hàng loạt gửi xưởng.
 class HangChoBaoTriScreen extends StatefulWidget {
   const HangChoBaoTriScreen({super.key});
 
@@ -10,11 +10,14 @@ class HangChoBaoTriScreen extends StatefulWidget {
   State<HangChoBaoTriScreen> createState() => _HangChoBaoTriScreenState();
 }
 
-class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
+class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
+    with SingleTickerProviderStateMixin {
   final _controller = HangChoDenHanController();
   final _noiDungCtrl = TextEditingController(
     text: 'Bảo trì định kỳ theo chu kỳ đề xuất',
   );
+  late final AnimationController _fadeCtrl;
+  late final Animation<double> _fadeAnim;
 
   static const _tenThang = [
     '',
@@ -35,11 +38,19 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
   @override
   void initState() {
     super.initState();
-    _controller.tai();
+    _fadeCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 480),
+    );
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic);
+    _controller.tai().then((_) {
+      if (mounted) _fadeCtrl.forward();
+    });
   }
 
   @override
   void dispose() {
+    _fadeCtrl.dispose();
     _noiDungCtrl.dispose();
     _controller.dispose();
     super.dispose();
@@ -57,7 +68,10 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(_controller.thongBao ?? 'Đã tạo hồ sơ bảo trì và gửi xưởng (Chờ duyệt).'),
+          content: Text(
+            _controller.thongBao ??
+                'Đã tạo hồ sơ bảo trì và gửi xưởng (Chờ duyệt).',
+          ),
           backgroundColor: AppColors.success,
         ),
       );
@@ -74,36 +88,29 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Hàng chờ bảo trì'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => _controller.tai(),
-            tooltip: 'Tải lại',
-          ),
-        ],
-      ),
+      backgroundColor: const Color(0xFFF0F7FC),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
           return Column(
             children: [
-              _buildBoLoc(),
-              if (_controller.loi != null && !_controller.dangTao)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                  child: Text(
-                    _controller.loi!,
-                    style: TextStyle(color: Colors.red.shade700, fontSize: 13),
+              _buildHeroHeader(),
+              Expanded(
+                child: FadeTransition(
+                  opacity: _fadeAnim,
+                  child: Column(
+                    children: [
+                      if (_controller.loi != null && !_controller.dangTao)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                          child: _LoiBanner(text: _controller.loi!),
+                        ),
+                      Expanded(child: _buildDanhSach()),
+                      _buildThanhTao(),
+                    ],
                   ),
                 ),
-              Expanded(child: _buildDanhSach()),
-              _buildThanhTao(),
+              ),
             ],
           );
         },
@@ -111,103 +118,233 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
     );
   }
 
-  Widget _buildBoLoc() {
+  Widget _buildHeroHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0B6BCB), Color(0xFF0284C7), Color(0xFF0EA5E9)],
+        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+            color: Color(0x400B6BCB),
+            blurRadius: 20,
+            offset: Offset(0, 8),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: DropdownButtonFormField<int>(
-              value: _controller.thang,
-              decoration: InputDecoration(
-                labelText: 'Tháng',
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 4, 12, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                        color: Colors.white, size: 20),
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Lập kế hoạch',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                    ),
+                  ),
+                  Material(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () {
+                        _fadeCtrl.reset();
+                        _controller.tai().then((_) {
+                          if (mounted) _fadeCtrl.forward();
+                        });
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(10),
+                        child: Icon(Icons.refresh_rounded,
+                            color: Colors.white, size: 22),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              items: List.generate(
-                12,
-                    (i) => DropdownMenuItem(
-                  value: i + 1,
-                  child: Text(_tenThang[i + 1]),
+              const SizedBox(height: 4),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'Thiết bị đến hạn / trễ hạn — chọn máy và tạo hồ sơ gửi xưởng',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.88),
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
                 ),
               ),
-              onChanged: (v) {
-                if (v != null) {
-                  _controller.doiThangNam(_controller.nam, v);
-                }
-              },
-            ),
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Row(
+                  children: [
+                    Expanded(child: _pillDropdownThang()),
+                    const SizedBox(width: 10),
+                    Expanded(child: _pillDropdownNam()),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: DropdownButtonFormField<int>(
-              value: _controller.nam,
-              decoration: InputDecoration(
-                labelText: 'Năm',
-                isDense: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              ),
-              items: [
-                for (var y = 2026; y <= 2026; y++)
-                  DropdownMenuItem(value: y, child: Text('$y')),
-              ],
-              onChanged: (v) {
-                if (v != null) {
-                  _controller.doiThangNam(v, _controller.thang);
-                }
-              },
-            ),
+        ),
+      ),
+    );
+  }
+
+  Widget _pillDropdownThang() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: _controller.thang,
+          isExpanded: true,
+          icon: const Icon(Icons.expand_more_rounded, color: Color(0xFF0B6BCB)),
+          style: const TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+          items: List.generate(
+            12,
+                (i) => DropdownMenuItem(value: i + 1, child: Text(_tenThang[i + 1])),
+          ),
+          onChanged: (v) {
+            if (v != null) {
+              _fadeCtrl.reset();
+              _controller.doiThangNam(_controller.nam, v);
+              _fadeCtrl.forward();
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _pillDropdownNam() {
+    final nams = _controller.danhSachNam.isEmpty
+        ? <int>[_controller.nam]
+        : _controller.danhSachNam;
+    final value = nams.contains(_controller.nam) ? _controller.nam : nams.last;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<int>(
+          value: value,
+          isExpanded: true,
+          icon: const Icon(Icons.expand_more_rounded, color: Color(0xFF0B6BCB)),
+          style: const TextStyle(
+            color: Color(0xFF0F172A),
+            fontWeight: FontWeight.w700,
+            fontSize: 14,
+          ),
+          items: nams
+              .map((y) => DropdownMenuItem(value: y, child: Text('Năm $y')))
+              .toList(),
+          onChanged: (v) {
+            if (v != null) {
+              _fadeCtrl.reset();
+              _controller.doiThangNam(v, _controller.thang);
+              _fadeCtrl.forward();
+            }
+          },
+        ),
       ),
     );
   }
 
   Widget _buildDanhSach() {
     if (_controller.dangTai) {
-      return const Center(child: CircularProgressIndicator());
+      return const Center(
+        child: CircularProgressIndicator(color: Color(0xFF0B6BCB)),
+      );
     }
     final list = _controller.danhSach;
     if (list.isEmpty) {
       return Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.event_available_rounded,
-                size: 56, color: Colors.grey.shade300),
-            const SizedBox(height: 12),
-            Text(
-              'Không có thiết bị đến hạn trong '
-                  '${_tenThang[_controller.thang].toLowerCase()}/${_controller.nam}',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey.shade600),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Chỉ hiển thị máy đến hạn / trễ hạn và chưa có hồ sơ BT tháng này.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 12.5, color: Colors.grey.shade500),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF0B6BCB).withValues(alpha: 0.15),
+                      const Color(0xFF0EA5E9).withValues(alpha: 0.08),
+                    ],
+                  ),
+                ),
+                child: const Icon(Icons.event_available_rounded,
+                    size: 40, color: Color(0xFF0B6BCB)),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Không có thiết bị đến hạn',
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                  color: Colors.grey.shade800,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Trong ${_tenThang[_controller.thang].toLowerCase()}/${_controller.nam}\n'
+                    'chỉ hiện máy đến hạn / trễ hạn và chưa có hồ sơ BT.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.4,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -215,14 +352,23 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 8, 4),
+          padding: const EdgeInsets.fromLTRB(16, 14, 8, 6),
           child: Row(
             children: [
-              Text(
-                '${list.length} thiết bị',
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade700,
+              Container(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0B6BCB).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${list.length} thiết bị',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12.5,
+                    color: Color(0xFF0B6BCB),
+                  ),
                 ),
               ),
               const Spacer(),
@@ -233,11 +379,16 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
                       ? Icons.check_box_rounded
                       : Icons.check_box_outline_blank_rounded,
                   size: 20,
+                  color: const Color(0xFF0B6BCB),
                 ),
                 label: Text(
                   _controller.daChon.length == list.length
                       ? 'Bỏ chọn'
                       : 'Chọn tất cả',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0B6BCB),
+                  ),
                 ),
               ),
             ],
@@ -251,79 +402,102 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
             itemBuilder: (context, i) {
               final item = list[i];
               final chon = _controller.daChon.contains(item.maThietBi);
-              final mau = item.treHan ? AppColors.danger : AppColors.warning;
-              return Material(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                elevation: 0.6,
-                shadowColor: Colors.black26,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () => _controller.daoChon(item.maThietBi),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border(
-                        left: BorderSide(color: mau, width: 4),
+              final mau =
+              item.treHan ? const Color(0xFFDC2626) : const Color(0xFFD97706);
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: Duration(milliseconds: 280 + (i * 40).clamp(0, 240)),
+                curve: Curves.easeOutCubic,
+                builder: (context, v, child) => Opacity(
+                  opacity: v,
+                  child: Transform.translate(
+                    offset: Offset(0, 12 * (1 - v)),
+                    child: child,
+                  ),
+                ),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  elevation: chon ? 2.5 : 0.8,
+                  shadowColor: chon
+                      ? const Color(0xFF0B6BCB).withValues(alpha: 0.25)
+                      : Colors.black26,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => _controller.daoChon(item.maThietBi),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: chon
+                              ? const Color(0xFF0B6BCB).withValues(alpha: 0.45)
+                              : Colors.transparent,
+                          width: 1.5,
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        Checkbox(
-                          value: chon,
-                          onChanged: (_) =>
-                              _controller.daoChon(item.maThietBi),
-                          activeColor: AppColors.primary,
-                        ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.tenThietBi,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14.5,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${item.loaiThietBi ?? "—"} · Chu kỳ ${item.soThangChuKy} tháng',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Hạn: ${_fmt(item.ngayDenHan)}'
-                                    '${item.ngayBaoTriGanNhat != null ? ' · Gần nhất: ${_fmt(item.ngayBaoTriGanNhat)}' : ''}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: mau.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            item.trangThaiHan,
-                            style: TextStyle(
-                              color: mau,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
+                      child: Row(
+                        children: [
+                          Checkbox(
+                            value: chon,
+                            onChanged: (_) =>
+                                _controller.daoChon(item.maThietBi),
+                            activeColor: const Color(0xFF0B6BCB),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(5),
                             ),
                           ),
-                        ),
-                      ],
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  item.tenThietBi,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 14.5,
+                                    color: Color(0xFF0F172A),
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${item.loaiThietBi ?? "—"} · Chu kỳ ${item.soThangChuKy} tháng',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Hạn: ${_fmt(item.ngayDenHan)}'
+                                      '${item.ngayBaoTriGanNhat != null ? ' · Gần nhất: ${_fmt(item.ngayBaoTriGanNhat)}' : ''}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade700,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: mau.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              item.trangThaiHan,
+                              style: TextStyle(
+                                color: mau,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -343,11 +517,12 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
         decoration: BoxDecoration(
           color: Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
+              color: Colors.black.withValues(alpha: 0.07),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
             ),
           ],
         ),
@@ -360,45 +535,124 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen> {
               decoration: InputDecoration(
                 labelText: 'Nội dung công việc (chung)',
                 hintText: 'Mô tả bảo trì định kỳ...',
+                filled: true,
+                fillColor: const Color(0xFFF8FBFE),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: BorderSide(color: Colors.grey.shade200),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide:
+                  const BorderSide(color: Color(0xFF0B6BCB), width: 1.5),
                 ),
                 isDense: true,
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
-              height: 48,
-              child: FilledButton.icon(
-                onPressed: _controller.dangTao || soChon == 0
-                    ? null
-                    : _taoHangLoat,
-                icon: _controller.dangTao
-                    ? const SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: Colors.white,
+              height: 50,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: soChon == 0 || _controller.dangTao
+                      ? null
+                      : const LinearGradient(
+                    colors: [Color(0xFF0B6BCB), Color(0xFF0284C7)],
                   ),
-                )
-                    : const Icon(Icons.playlist_add_check_rounded),
-                label: Text(
-                  soChon == 0
-                      ? 'Chọn thiết bị để tạo hồ sơ'
-                      : 'Tạo $soChon hồ sơ bảo trì',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+                  color: soChon == 0 || _controller.dangTao
+                      ? Colors.grey.shade300
+                      : null,
+                  boxShadow: soChon == 0
+                      ? null
+                      : [
+                    BoxShadow(
+                      color: const Color(0xFF0B6BCB)
+                          .withValues(alpha: 0.35),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: _controller.dangTao || soChon == 0
+                        ? null
+                        : _taoHangLoat,
+                    child: Center(
+                      child: _controller.dangTao
+                          ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.4,
+                          color: Colors.white,
+                        ),
+                      )
+                          : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.playlist_add_check_rounded,
+                            color: soChon == 0
+                                ? Colors.grey.shade600
+                                : Colors.white,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            soChon == 0
+                                ? 'Chọn thiết bị để tạo hồ sơ'
+                                : 'Tạo $soChon hồ sơ bảo trì',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                              color: soChon == 0
+                                  ? Colors.grey.shade600
+                                  : Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoiBanner extends StatelessWidget {
+  final String text;
+  const _LoiBanner({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEE2E2),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFECACA)),
+      ),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Color(0xFFB91C1C),
+          fontSize: 13,
+          height: 1.35,
         ),
       ),
     );
