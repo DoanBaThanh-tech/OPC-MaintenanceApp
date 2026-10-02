@@ -2,30 +2,35 @@ class QuyTrinhNvktRules {
   QuyTrinhNvktRules._();
 
   /// Được sửa số lượng / thêm / xóa vật tư trong bước.
-  /// Khóa chỉ khi bước đã Xong (của mình hoặc người khác), trừ Xưởng từ chối.
+  /// - Khóa khi người khác đã Xong
+  /// - Khóa khi đã Xong (trừ đang chờ điều chỉnh sau Xưởng từ chối)
+  /// - Khóa ngay sau khi đã bấm "Lưu lại bước" ([daLuuDieuChinh])
   static bool coTheSuaVatTu({
     required bool daChon,
     required bool daXong,
     required bool khoaBoiNguoiKhac,
     required bool cheDoCapNhat,
     required bool dangXuLy,
+    bool daLuuDieuChinh = false,
   }) {
     if (dangXuLy) return false;
-    // khoaBoiNguoiKhac chỉ true khi người khác đã Xong
     if (khoaBoiNguoiKhac) return false;
+    if (daLuuDieuChinh) return false;
     if (daXong && !cheDoCapNhat) return false;
     return daChon;
   }
 
-  /// Được tích checkbox — chỉ chặn khi người khác đã Xong bước đó.
+  /// Được tích checkbox — chặn khi người khác đã Xong hoặc đã lưu điều chỉnh.
   static bool coTheDoiCheckbox({
     required bool daXong,
     required bool khoaBoiNguoiKhac,
     required bool cheDoCapNhat,
     required bool dangXuLy,
+    bool daLuuDieuChinh = false,
   }) {
     if (dangXuLy) return false;
-    if (khoaBoiNguoiKhac) return false; // người khác đã Xong
+    if (khoaBoiNguoiKhac) return false;
+    if (daLuuDieuChinh) return false;
     if (daXong && !cheDoCapNhat) return false;
     return true;
   }
@@ -33,7 +38,9 @@ class QuyTrinhNvktRules {
   static bool coTheBoTich({
     required bool daXong,
     required bool cheDoCapNhat,
+    bool daLuuDieuChinh = false,
   }) {
+    if (daLuuDieuChinh) return false;
     if (daXong && !cheDoCapNhat) return false;
     return true;
   }
@@ -43,8 +50,10 @@ class QuyTrinhNvktRules {
     required bool khoaBoiNguoiKhac,
     required bool cheDoCapNhat,
     required bool dangXuLy,
+    bool daLuuDieuChinh = false,
   }) {
     if (dangXuLy || khoaBoiNguoiKhac) return false;
+    if (daLuuDieuChinh) return false;
     if (daXong && !cheDoCapNhat) return false;
     return true;
   }
@@ -109,10 +118,13 @@ class QuyTrinhNvktRules {
         .toList();
   }
 
+  /// Nhãn nút Xong / Lưu lại / đã khóa sau lưu điều chỉnh.
   static String nhanNutXong({
     required bool daXong,
     required bool cheDoCapNhat,
+    bool daLuuDieuChinh = false,
   }) {
+    if (daLuuDieuChinh) return 'Cập nhật thành công';
     if (!daXong) return 'Xong';
     if (cheDoCapNhat) return 'Lưu lại bước';
     return 'Đã xong bước';

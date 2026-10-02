@@ -216,11 +216,17 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
           if (moTa != null && moTa.isNotEmpty) {
             b.moTaCtrl.text = moTa;
           }
+          // Luôn ghi đè vật tư từ server (sau khi NV sửa & Lưu bước — NV khác reload phải thấy).
+          // Không dùng điều kiện vatTu.isEmpty (dữ liệu cũ từ hồ sơ VT sẽ che mất bản cập nhật).
           final jsonVt = (row['jsonVatTu'] ?? row['JsonVatTu'])?.toString();
-          if (jsonVt != null && jsonVt.isNotEmpty && b.vatTu.isEmpty) {
+          if (jsonVt != null && jsonVt.isNotEmpty) {
             try {
               final arr = jsonDecode(jsonVt);
               if (arr is List) {
+                for (final d in b.vatTu) {
+                  d.dispose();
+                }
+                b.vatTu.clear();
                 for (final item in arr) {
                   if (item is! Map) continue;
                   final m = Map<String, dynamic>.from(item);
@@ -334,7 +340,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
       );
       setState(() {
         b.daXong = true;
-        b.moRong = false;
+        b.moRong = true; // giữ mở để thấy vật tư vừa lưu
         b.khoaBoiNguoiKhac = false;
         b.tenNguoiGiu = _tenToi;
       });
@@ -342,7 +348,9 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Đã xong bước ${b.soBuoc}'
+              _cheDoCapNhat
+                  ? 'Đã lưu điều chỉnh bước ${b.soBuoc} — NV khác vào lại / reload sẽ thấy bản mới.'
+                  : 'Đã xong bước ${b.soBuoc}'
                   '${_tenToi != null && _tenToi!.isNotEmpty ? " · $_tenToi" : ""}'
                   ' — NV khác reload sẽ thấy.',
             ),
