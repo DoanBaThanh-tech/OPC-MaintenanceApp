@@ -605,6 +605,18 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
     return '$buf ₫';
   }
 
+  /// Tổng tiền mọi vật tư đã chọn trên các bước (logic file).
+  int _tinhTongTien() {
+    final dong = <({int soLuong, int donGia})>[];
+    for (final b in _buoc) {
+      for (final d in b.vatTu) {
+        final sl = int.tryParse(d.slCtrl.text.trim()) ?? d.soLuong;
+        dong.add((soLuong: sl, donGia: d.donGia));
+      }
+    }
+    return QuyTrinhNvktRules.tongTienVatTu(dong);
+  }
+
   Future<void> _xong() async {
     final y = widget.yeuCau;
     if (y.maHoSo == null) return;
@@ -1100,7 +1112,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
             ),
           ),
 
-          // ===== BOTTOM CTA =====
+          // ===== BOTTOM: Tổng tiền + Hoàn thành quy trình =====
           if (!_dangTai && _loi == null)
             Container(
               padding: EdgeInsets.fromLTRB(
@@ -1115,58 +1127,103 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                   ),
                 ],
               ),
-              child: SizedBox(
-                height: 54,
-                width: double.infinity,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    gradient: const LinearGradient(
-                      colors: [_blue, _blueMid, _blueSoft],
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    margin: const EdgeInsets.only(bottom: 10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: _blue.withValues(alpha: 0.35),
-                        blurRadius: 14,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _dangXuLy ? null : _xong,
-                      borderRadius: BorderRadius.circular(16),
-                      child: Center(
-                        child: _dangXuLy
-                            ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2.4, color: Colors.white),
-                        )
-                            : Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.check_circle_rounded,
-                                color: Colors.white, size: 22),
-                            const SizedBox(width: 10),
-                            Text(
-                              _cheDoCapNhat
-                                  ? 'Lưu & gửi lại Xưởng'
-                                  : 'Hoàn thành quy trình',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w900,
-                                fontSize: 15.5,
-                              ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.payments_rounded,
+                            color: Color(0xFF059669), size: 22),
+                        const SizedBox(width: 10),
+                        const Expanded(
+                          child: Text(
+                            'Tổng tiền vật tư',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                              color: Color(0xFF065F46),
                             ),
-                          ],
+                          ),
+                        ),
+                        Text(
+                          _fmtTien(_tinhTongTien()),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            color: Color(0xFF047857),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 54,
+                    width: double.infinity,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: const LinearGradient(
+                          colors: [_blue, _blueMid, _blueSoft],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _blue.withValues(alpha: 0.35),
+                            blurRadius: 14,
+                            offset: const Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: _dangXuLy ? null : _xong,
+                          borderRadius: BorderRadius.circular(16),
+                          child: Center(
+                            child: _dangXuLy
+                                ? const SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2.4,
+                                  color: Colors.white),
+                            )
+                                : Row(
+                              mainAxisAlignment:
+                              MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Colors.white,
+                                    size: 22),
+                                const SizedBox(width: 10),
+                                Text(
+                                  _cheDoCapNhat
+                                      ? 'Lưu & gửi lại Xưởng'
+                                      : 'Hoàn thành quy trình',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 15.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
         ],

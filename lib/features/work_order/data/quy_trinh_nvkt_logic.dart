@@ -64,6 +64,51 @@ class QuyTrinhNvktRules {
     return null;
   }
 
+  /// Thành tiền 1 dòng = số lượng × đơn giá.
+  static int thanhTienDong({required int soLuong, required int donGia}) {
+    if (soLuong <= 0 || donGia < 0) return 0;
+    return soLuong * donGia;
+  }
+
+  /// Tổng tiền mọi dòng vật tư đã chọn.
+  static int tongTienVatTu(List<({int soLuong, int donGia})> dong) {
+    var sum = 0;
+    for (final d in dong) {
+      sum += thanhTienDong(soLuong: d.soLuong, donGia: d.donGia);
+    }
+    return sum;
+  }
+
+  /// Gộp vật tư trùng (cùng mã/tên) — hồ sơ vật tư chỉ liệt kê VT, không theo bước.
+  static List<({String ten, int soLuong, int donGia, int thanhTien})>
+  gopVatTuKhongTheoBuoc(
+      List<({int? maVatTu, String ten, int soLuong, int donGia})> dong,
+      ) {
+    final map = <String, ({String ten, int soLuong, int donGia})>{};
+    for (final d in dong) {
+      if (d.ten.isEmpty || d.soLuong <= 0) continue;
+      final key = d.maVatTu != null ? 'id:${d.maVatTu}' : 'ten:${d.ten}';
+      final cu = map[key];
+      if (cu == null) {
+        map[key] = (ten: d.ten, soLuong: d.soLuong, donGia: d.donGia);
+      } else {
+        map[key] = (
+        ten: cu.ten,
+        soLuong: cu.soLuong + d.soLuong,
+        donGia: d.donGia > 0 ? d.donGia : cu.donGia,
+        );
+      }
+    }
+    return map.values
+        .map((e) => (
+    ten: e.ten,
+    soLuong: e.soLuong,
+    donGia: e.donGia,
+    thanhTien: thanhTienDong(soLuong: e.soLuong, donGia: e.donGia),
+    ))
+        .toList();
+  }
+
   static String nhanNutXong({
     required bool daXong,
     required bool cheDoCapNhat,

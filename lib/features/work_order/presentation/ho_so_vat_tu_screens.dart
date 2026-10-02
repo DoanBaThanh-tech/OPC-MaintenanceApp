@@ -5,6 +5,7 @@ import '../../../core/theme/modern_detail_ui.dart';
 import '../../../core/network/api_exception.dart';
 import '../data/models/material_usage_models.dart';
 import '../data/services/material_usage_service.dart';
+import '../data/quy_trinh_nvkt_logic.dart';
 
 /// Danh sách hồ sơ vật tư — Tổ trưởng cơ điện / Giám đốc.
 class HoSoVatTuListScreen extends StatefulWidget {
@@ -937,13 +938,12 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                           height: 18,
                           decoration: BoxDecoration(
                             color: AppColors.primary,
-                            borderRadius:
-                            BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(4),
                           ),
                         ),
                         const SizedBox(width: 8),
                         const Text(
-                          'Chi tiết theo bước',
+                          'Danh sách vật tư',
                           style: TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 16,
@@ -951,7 +951,7 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                         ),
                         const Spacer(),
                         Text(
-                          '${_nhomChiTietTheoBuoc(item.chiTiet).length} bước',
+                          '${_gopVatTu(item.chiTiet).length} loại',
                           style: TextStyle(
                             color: Colors.grey.shade600,
                             fontWeight: FontWeight.w600,
@@ -962,25 +962,22 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                     ),
                     const SizedBox(height: 12),
 
-                    // ===== Step cards (gộp nhiều vật tư cùng bước) =====
-                    ..._nhomChiTietTheoBuoc(item.chiTiet)
-                        .asMap()
-                        .entries
-                        .map((e) {
+                    // Chỉ liệt kê vật tư (gộp trùng), không hiện bước quy trình
+                    ..._gopVatTu(item.chiTiet).asMap().entries.map((e) {
                       final i = e.key;
-                      final nhom = e.value;
+                      final vt = e.value;
                       return TweenAnimationBuilder<double>(
                         tween: Tween(begin: 0, end: 1),
-                        duration: Duration(milliseconds: 320 + i * 70),
+                        duration: Duration(milliseconds: 280 + i * 50),
                         curve: Curves.easeOutCubic,
                         builder: (context, v, child) => Opacity(
                           opacity: v,
                           child: Transform.translate(
-                            offset: Offset(0, 12 * (1 - v)),
+                            offset: Offset(0, 10 * (1 - v)),
                             child: child,
                           ),
                         ),
-                        child: _buocCardNhom(nhom),
+                        child: _vatTuDongCard(vt),
                       );
                     }),
 
@@ -1157,6 +1154,84 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
                       fontWeight: FontWeight.w800, fontSize: 13.5),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Gộp vật tư trùng — không theo bước (logic).
+  List<({String ten, int soLuong, int donGia, int thanhTien})> _gopVatTu(
+      List<ChiTietVatTuSuDung> chiTiet) {
+    return QuyTrinhNvktRules.gopVatTuKhongTheoBuoc([
+      for (final c in chiTiet)
+        (
+        maVatTu: c.maVatTu,
+        ten: c.tenVatTu,
+        soLuong: c.soLuong,
+        donGia: c.donGia,
+        ),
+    ]);
+  }
+
+  Widget _vatTuDongCard(
+      ({String ten, int soLuong, int donGia, int thanhTien}) vt) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.inventory_2_rounded,
+                color: AppColors.primary, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vt.ten,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'SL: ${vt.soLuong}  ·  ĐG: ${_fmtTien(vt.donGia)}',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Text(
+            _fmtTien(vt.thanhTien),
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              fontSize: 14,
+              color: Color(0xFF047857),
             ),
           ),
         ],
