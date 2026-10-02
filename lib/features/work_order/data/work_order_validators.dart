@@ -210,11 +210,18 @@ class KetQuaValidateSoLuong {
   bool get hopLe => loi == null && soLuong != null && soLuong! > 0;
 }
 
-/// Regex cho phép khi nhập: rỗng hoặc toàn chữ số (để gõ được "0" rồi hiện lỗi đỏ).
-/// Thập phân / ký tự đặc biệt bị chặn ở inputFormatters (digitsOnly).
-final RegExp soLuongVatTuChoPhepNhap = RegExp(r'^\d*$');
+/// Số lượng vật tư tối đa cho phép (tránh số quá lớn gây quá tải / tràn số).
+const int soLuongVatTuToiDa = 9999;
 
-/// Số lượng vật tư: số nguyên dương (> 0), không 0, không thập phân, không ký tự đặc biệt.
+/// Độ dài tối đa khi gõ (khớp [soLuongVatTuToiDa]).
+const int soLuongVatTuDoDaiToiDa = 4;
+
+/// Regex cho phép khi nhập: rỗng hoặc tối đa 4 chữ số.
+/// Thập phân / ký tự đặc biệt bị chặn ở inputFormatters (digitsOnly).
+final RegExp soLuongVatTuChoPhepNhap = RegExp(r'^\d{0,4}$');
+
+/// Số lượng vật tư: số nguyên dương (1 … [soLuongVatTuToiDa]),
+/// không 0, không thập phân, không ký tự đặc biệt, không số quá lớn.
 ///
 /// [tenVatTu]: tên để gắn vào thông báo (tuỳ chọn).
 /// [choPhepRong]: true → chuỗi rỗng không báo lỗi (đang gõ); false → bắt buộc khi gửi/cập nhật.
@@ -247,16 +254,28 @@ KetQuaValidateSoLuong validateSoLuongVatTu(
     );
   }
 
+  if (t.length > soLuongVatTuDoDaiToiDa) {
+    return KetQuaValidateSoLuong(
+      loi:
+      'Số lượng${nhan.isEmpty ? '' : ' $nhan'} không được vượt quá $soLuongVatTuToiDa',
+    );
+  }
+
   final n = int.tryParse(t);
   if (n == null) {
     return KetQuaValidateSoLuong(
       loi: 'Số lượng${nhan.isEmpty ? '' : ' $nhan'} không hợp lệ',
     );
   }
-  // 0 hoặc số âm (không xảy ra với digitsOnly) → lỗi đỏ
   if (n <= 0) {
     return KetQuaValidateSoLuong(
       loi: 'Số lượng${nhan.isEmpty ? '' : ' $nhan'} phải lớn hơn 0',
+    );
+  }
+  if (n > soLuongVatTuToiDa) {
+    return KetQuaValidateSoLuong(
+      loi:
+      'Số lượng${nhan.isEmpty ? '' : ' $nhan'} tối đa $soLuongVatTuToiDa (không nhập số quá lớn)',
     );
   }
   return KetQuaValidateSoLuong(soLuong: n);

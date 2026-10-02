@@ -75,13 +75,11 @@ class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen> {
     if (action == null || !mounted) return;
 
     if (action == 'namMoi') {
-      final namMoi = await Navigator.push<int>(
+      // Dialog nhỏ — không mở full page (tiết kiệm giao diện / dung lượng)
+      final namMoi = await showDialogLapKeHoachNam(
         context,
-        MaterialPageRoute(
-          builder: (_) => CreateYearPlanScreen(namDaCo: _controller.danhSachNam),
-        ),
+        namDaCo: List<int>.from(_controller.danhSachNam),
       );
-      // Năm vừa lập → hiện ngay trong dropdown và chọn năm đó
       if (namMoi != null && mounted) {
         await _controller.sauKhiTaoNam(namMoi);
       }
@@ -383,76 +381,313 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-class CreateYearPlanScreen extends StatefulWidget {
-  final List<int> namDaCo;
-  const CreateYearPlanScreen({super.key, required this.namDaCo});
-  @override
-  State<CreateYearPlanScreen> createState() => _CreateYearPlanScreenState();
+/// Dialog lập kế hoạch năm — gọn, xanh hiện đại (không full page).
+Future<int?> showDialogLapKeHoachNam(
+    BuildContext context, {
+      required List<int> namDaCo,
+    }) {
+  return showGeneralDialog<int>(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'Đóng',
+    barrierColor: Colors.black54,
+    transitionDuration: const Duration(milliseconds: 280),
+    pageBuilder: (ctx, anim, _) => const SizedBox.shrink(),
+    transitionBuilder: (ctx, anim, _, __) {
+      final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+      return FadeTransition(
+        opacity: anim,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.88, end: 1).animate(curved),
+          child: _DialogLapKeHoachNam(namDaCo: namDaCo),
+        ),
+      );
+    },
+  );
 }
 
-class _CreateYearPlanScreenState extends State<CreateYearPlanScreen> {
-  late final CreateYearPlanController _controller;
+class _DialogLapKeHoachNam extends StatefulWidget {
+  final List<int> namDaCo;
+  const _DialogLapKeHoachNam({required this.namDaCo});
+
+  @override
+  State<_DialogLapKeHoachNam> createState() => _DialogLapKeHoachNamState();
+}
+
+class _DialogLapKeHoachNamState extends State<_DialogLapKeHoachNam> {
+  late final CreateYearPlanController _ctrl;
+  final _focus = FocusNode();
 
   @override
   void initState() {
     super.initState();
-    _controller = CreateYearPlanController(widget.namDaCo);
+    _ctrl = CreateYearPlanController(widget.namDaCo);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focus.requestFocus();
+    });
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _focus.dispose();
+    _ctrl.dispose();
     super.dispose();
   }
 
-  Future<void> _luu() async {
-    final ok = await _controller.luu();
-    // Trả về năm vừa tạo để màn danh sách cập nhật dropdown ngay
-    if (ok && mounted) Navigator.pop(context, _controller.nam);
+  Future<void> _tao() async {
+    final ok = await _ctrl.luu();
+    if (ok && mounted) Navigator.pop(context, _ctrl.nam);
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Lập kế hoạch theo năm'), backgroundColor: AppColors.success, foregroundColor: Colors.white),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: AnimatedBuilder(
-              animation: _controller,
-              builder: (context, _) => Column(
+    final maxNam = widget.namDaCo.isEmpty
+        ? null
+        : widget.namDaCo.reduce((a, b) => a > b ? a : b);
+    return Center(
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: MediaQuery.sizeOf(context).width * 0.88,
+          constraints: const BoxConstraints(maxWidth: 360),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0B6BCB).withValues(alpha: 0.25),
+                blurRadius: 28,
+                offset: const Offset(0, 12),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: AnimatedBuilder(
+            animation: _ctrl,
+            builder: (context, _) {
+              return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.calendar_month_rounded, size: 56, color: AppColors.success),
-                  const SizedBox(height: 16),
-                  const Text('Năm áp dụng', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                  const SizedBox(height: 8),
-                  TextField(
-                    keyboardType: TextInputType.number,
-                    maxLength: 4,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w800),
-                    decoration: const InputDecoration(counterText: '', border: OutlineInputBorder(), hintText: 'VD: 2028'),
-                    onChanged: _controller.datNam,
+                  // Header gradient xanh
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.fromLTRB(20, 22, 20, 20),
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Color(0xFF0B6BCB),
+                          Color(0xFF0284C7),
+                          Color(0xFF38BDF8),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: const Icon(
+                            Icons.calendar_month_rounded,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Lập kế hoạch năm',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          maxNam != null
+                              ? 'Bạn muốn lập kế hoạch năm nào?\n(Phải lớn hơn $maxNam)'
+                              : 'Bạn muốn lập kế hoạch năm nào?',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.92),
+                            fontSize: 13.5,
+                            height: 1.35,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                  if (_controller.loi != null) ...[
-                    const SizedBox(height: 8),
-                    Text(_controller.loi!, style: const TextStyle(color: AppColors.danger)),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.success, padding: const EdgeInsets.symmetric(vertical: 16)),
-                    onPressed: _controller.dangLuu ? null : _luu,
-                    child: _controller.dangLuu
-                        ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Tạo kế hoạch năm', style: TextStyle(fontWeight: FontWeight.w700)),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        TextField(
+                          focusNode: _focus,
+                          keyboardType: TextInputType.number,
+                          maxLength: 4,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 6,
+                            color: Color(0xFF0B6BCB),
+                          ),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(4),
+                          ],
+                          decoration: InputDecoration(
+                            counterText: '',
+                            hintText: 'VD: ${maxNam != null ? maxNam + 1 : 2027}',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 4,
+                              fontSize: 22,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFFF0F9FF),
+                            contentPadding: const EdgeInsets.symmetric(
+                                vertical: 16, horizontal: 12),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                  color: Color(0xFFBAE6FD), width: 1.5),
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                  color: Color(0xFF0B6BCB), width: 2),
+                            ),
+                            errorBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: const BorderSide(
+                                  color: AppColors.danger, width: 1.5),
+                            ),
+                          ),
+                          onChanged: _ctrl.datNam,
+                          onSubmitted: (_) => _tao(),
+                        ),
+                        if (_ctrl.loi != null) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              const Icon(Icons.error_outline_rounded,
+                                  size: 16, color: AppColors.danger),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  _ctrl.loi!,
+                                  style: const TextStyle(
+                                    color: AppColors.danger,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
+                                    height: 1.3,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                        if (widget.namDaCo.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            'Đã có: ${widget.namDaCo.join(', ')}',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 18),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextButton(
+                            onPressed: _ctrl.dangLuu
+                                ? null
+                                : () => Navigator.pop(context),
+                            child: Text(
+                              'Hủy',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Colors.grey.shade700,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: SizedBox(
+                            height: 48,
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFF0B6BCB),
+                                    Color(0xFF0284C7),
+                                  ],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF0B6BCB)
+                                        .withValues(alpha: 0.35),
+                                    blurRadius: 12,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: _ctrl.dangLuu ? null : _tao,
+                                  child: Center(
+                                    child: _ctrl.dangLuu
+                                        ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                        : const Text(
+                                      'Tạo kế hoạch',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-            ),
+              );
+            },
           ),
         ),
       ),

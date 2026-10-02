@@ -179,35 +179,50 @@ class QuyTrinhNvktRules {
   }
 
   /// Áp tiến độ API:
-  /// - DaXong của người khác → khóa
-  /// - DangLam → không khóa (NV khác vẫn làm được; chỉ DaXong mới khóa)
+  /// - DaXong / DaCapNhat của người khác → khóa (không sửa bước người khác)
+  /// - DaCapNhat của mình → đã lưu sau từ chối → khóa, nút «Cập nhật thành công»
+  /// - DaXong của mình + chế độ từ chối → còn được «Lưu lại bước»
+  /// - DangLam → không khóa cho người khác
   static ({
   bool daChon,
   bool daXong,
   bool khoaBoiNguoiKhac,
   bool moRong,
+  bool daLuuDieuChinh,
   String? tenHienThi,
   }) apDungTienDo({
     required String trangThai,
     required bool laCuaToi,
     String? tenNhanVien,
   }) {
+    // Đã lưu điều chỉnh sau Xưởng từ chối
+    if (trangThai == 'DaCapNhat') {
+      return (
+      daChon: true,
+      daXong: true,
+      khoaBoiNguoiKhac: !laCuaToi,
+      moRong: true,
+      daLuuDieuChinh: true,
+      tenHienThi: tenNhanVien,
+      );
+    }
     if (trangThai == 'DaXong') {
       return (
       daChon: true,
       daXong: true,
       khoaBoiNguoiKhac: !laCuaToi,
       moRong: true,
+      daLuuDieuChinh: false,
       tenHienThi: tenNhanVien,
       );
     }
-    // DangLam: không khóa cho người khác
     if (trangThai == 'DangLam' && laCuaToi) {
       return (
       daChon: true,
       daXong: false,
       khoaBoiNguoiKhac: false,
       moRong: true,
+      daLuuDieuChinh: false,
       tenHienThi: tenNhanVien,
       );
     }
@@ -216,6 +231,7 @@ class QuyTrinhNvktRules {
     daXong: false,
     khoaBoiNguoiKhac: false,
     moRong: false,
+    daLuuDieuChinh: false,
     tenHienThi: null,
     );
   }

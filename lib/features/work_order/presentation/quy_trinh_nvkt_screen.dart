@@ -201,24 +201,26 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
           laCuaToi: laCuaToi,
           tenNhanVien: tenNv,
         );
-        // Chỉ áp khi DaXong (khóa) hoặc DangLam của chính mình — DangLam người khác không khóa
-        if (tt == 'DaXong' || (tt == 'DangLam' && laCuaToi)) {
+        // DaXong / DaCapNhat / DangLam của mình
+        if (tt == 'DaXong' ||
+            tt == 'DaCapNhat' ||
+            (tt == 'DangLam' && laCuaToi)) {
           b.daChon = ap.daChon;
           b.daXong = ap.daXong;
           b.khoaBoiNguoiKhac = ap.khoaBoiNguoiKhac;
           b.moRong = ap.moRong;
+          b.daLuuDieuChinh = ap.daLuuDieuChinh;
           if (ap.tenHienThi != null && ap.tenHienThi!.isNotEmpty) {
             b.tenNguoiGiu = ap.tenHienThi;
           }
         }
-        if (tt == 'DaXong') {
+        if (tt == 'DaXong' || tt == 'DaCapNhat') {
           b.tenNguoiGiu = tenNv;
           final moTa = (row['moTaBuoc'] ?? row['MoTaBuoc'])?.toString();
           if (moTa != null && moTa.isNotEmpty) {
             b.moTaCtrl.text = moTa;
           }
-          // Luôn ghi đè vật tư từ server (sau khi NV sửa & Lưu bước — NV khác reload phải thấy).
-          // Không dùng điều kiện vatTu.isEmpty (dữ liệu cũ từ hồ sơ VT sẽ che mất bản cập nhật).
+          // Luôn ghi đè vật tư từ server
           final jsonVt = (row['jsonVatTu'] ?? row['JsonVatTu'])?.toString();
           if (jsonVt != null && jsonVt.isNotEmpty) {
             try {
@@ -336,7 +338,9 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         moTaBuoc: b.moTaCtrl.text.trim().isEmpty
             ? 'Bước ${b.soBuoc}'
             : b.moTaCtrl.text.trim(),
-        trangThai: 'DaXong',
+        // Sau từ chối: lưu DaCapNhat (persist — back/văng app vẫn khóa + «Cập nhật thành công»)
+        // Quy trình mới: DaXong → «Đã xong bước»
+        trangThai: _cheDoCapNhat ? 'DaCapNhat' : 'DaXong',
         jsonVatTu: jsonVt,
       );
       setState(() {
@@ -344,8 +348,6 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         b.moRong = true;
         b.khoaBoiNguoiKhac = false;
         b.tenNguoiGiu = _tenToi;
-        // Chỉ khi Xưởng từ chối: đánh dấu đã lưu điều chỉnh → nút «Cập nhật thành công»
-        // Quy trình mới: không set → nút «Đã xong bước»
         if (_cheDoCapNhat) b.daLuuDieuChinh = true;
       });
       if (mounted) {

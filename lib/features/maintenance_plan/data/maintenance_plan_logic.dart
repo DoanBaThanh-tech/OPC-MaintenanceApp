@@ -536,31 +536,76 @@ class MaintenancePlanListController extends ChangeNotifier {
   }
 }
 
+/// Ràng buộc năm lập kế hoạch (chỉ số, đủ 4 chữ số, nguyên dương, lớn hơn năm đã có).
+class NamKeHoachRules {
+  NamKeHoachRules._();
+
+  static const int doDaiBatBuoc = 4;
+
+  /// null = hợp lệ; ngược lại chuỗi lỗi đỏ.
+  static String? validateNam(String raw, List<int> namDaCo) {
+    final t = raw.trim();
+    if (t.isEmpty) return 'Vui lòng nhập năm cần lập kế hoạch';
+    if (t.contains('.') || t.contains(',') || t.contains('-') || t.contains(' ')) {
+      return 'Năm phải là số nguyên (không thập phân, không ký tự đặc biệt)';
+    }
+    if (!RegExp(r'^\d+$').hasMatch(t)) {
+      return 'Chỉ được nhập số, không nhập chữ hoặc ký tự đặc biệt';
+    }
+    if (t.length != doDaiBatBuoc) {
+      return 'Năm phải đủ đúng $doDaiBatBuoc chữ số (VD: 2028)';
+    }
+    final n = int.tryParse(t);
+    if (n == null) return 'Năm không hợp lệ';
+    if (n <= 0) return 'Năm phải là số dương';
+    if (namDaCo.contains(n)) {
+      return 'Năm $n đã có kế hoạch — không được trùng';
+    }
+    if (namDaCo.isNotEmpty) {
+      final maxNam = namDaCo.reduce((a, b) => a > b ? a : b);
+      if (n <= maxNam) {
+        return 'Năm phải lớn hơn $maxNam (năm lớn nhất đã có kế hoạch)';
+      }
+    }
+    return null;
+  }
+
+  static int? parseNamHopLe(String raw, List<int> namDaCo) {
+    if (validateNam(raw, namDaCo) != null) return null;
+    return int.tryParse(raw.trim());
+  }
+}
+
 class CreateYearPlanController extends ChangeNotifier {
   final List<int> namDaCo;
   CreateYearPlanController(this.namDaCo);
 
   int? nam;
+  String _rawNam = '';
   bool dangLuu = false;
   String? loi;
 
   void datNam(String value) {
-    nam = int.tryParse(value);
-    loi = null;
+    _rawNam = value.trim();
+    nam = int.tryParse(_rawNam);
+    loi = NamKeHoachRules.validateNam(_rawNam, namDaCo);
+    // Đang gõ chưa đủ 4 số → chưa báo lỗi đỏ (trừ ký tự sai)
+    if (_rawNam.isEmpty) {
+      loi = null;
+    } else if (_rawNam.length < NamKeHoachRules.doDaiBatBuoc &&
+        RegExp(r'^\d+$').hasMatch(_rawNam)) {
+      loi = null;
+    }
     notifyListeners();
   }
 
   Future<bool> luu() async {
-    if (nam == null || nam.toString().length > 4 || nam! < 2000) {
-      loi = 'Vui lòng nhập năm hợp lệ (tối đa 4 số)';
+    loi = NamKeHoachRules.validateNam(_rawNam.isEmpty ? '${nam ?? ''}' : _rawNam, namDaCo);
+    if (loi != null) {
       notifyListeners();
       return false;
     }
-    if (namDaCo.contains(nam)) {
-      loi = 'Năm $nam đã có kế hoạch, vui lòng chọn năm khác';
-      notifyListeners();
-      return false;
-    }
+    nam = int.parse(_rawNam.isEmpty ? '$nam' : _rawNam);
     dangLuu = true;
     loi = null;
     notifyListeners();
