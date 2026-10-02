@@ -344,8 +344,9 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         b.moRong = true;
         b.khoaBoiNguoiKhac = false;
         b.tenNguoiGiu = _tenToi;
-        // Sau Lưu lại bước / Xong → khóa chỉnh sửa; nút → "Cập nhật thành công"
-        b.daLuuDieuChinh = true;
+        // Chỉ khi Xưởng từ chối: đánh dấu đã lưu điều chỉnh → nút «Cập nhật thành công»
+        // Quy trình mới: không set → nút «Đã xong bước»
+        if (_cheDoCapNhat) b.daLuuDieuChinh = true;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

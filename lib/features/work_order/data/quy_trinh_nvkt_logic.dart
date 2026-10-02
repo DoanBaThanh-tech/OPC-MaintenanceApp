@@ -1,5 +1,10 @@
 class QuyTrinhNvktRules {
   QuyTrinhNvktRules._();
+
+  /// Được sửa số lượng / thêm / xóa vật tư trong bước.
+  /// - Khóa khi người khác đã Xong
+  /// - Khóa khi đã Xong (trừ đang chờ điều chỉnh sau Xưởng từ chối)
+  /// - Khóa ngay sau khi đã bấm "Lưu lại bước" ([daLuuDieuChinh])
   static bool coTheSuaVatTu({
     required bool daChon,
     required bool daXong,
@@ -113,13 +118,16 @@ class QuyTrinhNvktRules {
         .toList();
   }
 
-  /// Nhãn nút Xong / Lưu lại / đã khóa sau lưu điều chỉnh.
+  /// Nhãn nút theo đúng hoàn cảnh:
+  /// - Quy trình mới: «Xong» → sau khi bấm: «Đã xong bước»
+  /// - Xưởng từ chối (cheDoCapNhat): «Lưu lại bước» → sau khi lưu: «Cập nhật thành công»
   static String nhanNutXong({
     required bool daXong,
     required bool cheDoCapNhat,
     bool daLuuDieuChinh = false,
   }) {
-    if (daLuuDieuChinh) return 'Cập nhật thành công';
+    // Chỉ dùng «Cập nhật thành công» khi đang điều chỉnh sau từ chối và đã lưu
+    if (cheDoCapNhat && daLuuDieuChinh) return 'Cập nhật thành công';
     if (!daXong) return 'Xong';
     if (cheDoCapNhat) return 'Lưu lại bước';
     return 'Đã xong bước';
@@ -169,6 +177,10 @@ class QuyTrinhNvktRules {
     return 'Tích chọn bước → chọn vật tư → bấm Xong. '
         'Chỉ khi đã Xong, NV khác mới không sửa được bước đó.';
   }
+
+  /// Áp tiến độ API:
+  /// - DaXong của người khác → khóa
+  /// - DangLam → không khóa (NV khác vẫn làm được; chỉ DaXong mới khóa)
   static ({
   bool daChon,
   bool daXong,
