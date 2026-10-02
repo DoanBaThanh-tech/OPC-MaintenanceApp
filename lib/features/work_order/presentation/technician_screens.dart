@@ -994,6 +994,11 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                             ? (y.laSuaChua
                             ? 'Cập nhật quy trình sửa chữa'
                             : 'Cập nhật quy trình bảo trì')
+                            : (y.trangThaiPhanCong == 'Đang thực hiện' ||
+                            y.trangThaiHoSo == 'Đang thực hiện')
+                            ? (y.laBaoTri
+                            ? 'Tiếp tục quy trình bảo trì'
+                            : 'Tiếp tục quy trình sửa chữa')
                             : (y.laBaoTri
                             ? 'Tiến hành quy trình bảo trì'
                             : 'Tiến hành quy trình sửa chữa'),

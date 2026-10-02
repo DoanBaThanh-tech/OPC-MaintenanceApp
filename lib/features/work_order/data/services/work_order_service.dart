@@ -338,6 +338,47 @@ class WorkOrderService {
     );
   }
 
+  /// Tiến độ bước quy trình (đồng bộ giữa các NVKT).
+  static Future<List<Map<String, dynamic>>> layTienDoBuoc({
+    int? maHoSoBaoTri,
+    int? maHoSoSuaChua,
+  }) async {
+    final data = await ApiClient.instance.get<dynamic>(
+      '${ApiConstants.workOrder}/tien-do-buoc',
+      query: {
+        if (maHoSoBaoTri != null) 'maHoSoBaoTri': maHoSoBaoTri,
+        if (maHoSoSuaChua != null) 'maHoSoSuaChua': maHoSoSuaChua,
+      },
+    );
+    if (data is! List) return const [];
+    return data
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
+  }
+
+  /// Nhận bước (DangLam) hoặc lưu đã xong (DaXong). Ném ApiException nếu bị người khác giữ.
+  static Future<void> luuTienDoBuoc({
+    int? maHoSoBaoTri,
+    int? maHoSoSuaChua,
+    required int soBuoc,
+    String? moTaBuoc,
+    required String trangThai,
+    String? jsonVatTu,
+  }) async {
+    await ApiClient.instance.post<Map<String, dynamic>>(
+      '${ApiConstants.workOrder}/tien-do-buoc',
+      {
+        if (maHoSoBaoTri != null) 'maHoSoBaoTri': maHoSoBaoTri,
+        if (maHoSoSuaChua != null) 'maHoSoSuaChua': maHoSoSuaChua,
+        'soBuoc': soBuoc,
+        if (moTaBuoc != null) 'moTaBuoc': moTaBuoc,
+        'trangThai': trangThai,
+        if (jsonVatTu != null) 'jsonVatTu': jsonVatTu,
+      },
+    );
+  }
+
   /// Tháng trong năm đã có hồ sơ BT của thiết bị.
   static Future<List<int>> layThangCoBaoTri(int maThietBi, {int? nam}) async {
     final y = nam ?? DateTime.now().year;

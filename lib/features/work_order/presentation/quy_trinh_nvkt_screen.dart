@@ -1,12 +1,17 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/storage/token_storage.dart';
 import '../data/models/work_order_models.dart';
 import '../data/models/material_usage_models.dart';
 import '../data/services/material_usage_service.dart';
 import '../data/services/work_order_service.dart';
 import '../data/work_order_validators.dart';
+import '../data/quy_trinh_nvkt_logic.dart';
 
 /// Trang quy trình BT/SC — NVKT tự tạo bước + vật tư (đơn giá chỉ đọc) + nội dung CV.
 /// Xong → Chờ xác nhận Xưởng. Có thể cập nhật lại khi Xưởng từ chối.
@@ -33,12 +38,22 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
   bool _dangXuLy = false;
   String? _loi;
   int? _maHoSoVatTu;
+  String? _tenToi;
+  Timer? _pollTimer;
 
   late final AnimationController _headerAnim;
   late final AnimationController _pulseAnim;
 
   bool get _laBaoTri => widget.yeuCau.laBaoTri;
   bool get _cheDoCapNhat => widget.yeuCau.biTuChoi;
+
+  bool _coTheSuaVatTu(_BuocState b) => QuyTrinhNvktRules.coTheSuaVatTu(
+    daChon: b.daChon,
+    daXong: b.daXong,
+    khoaBoiNguoiKhac: b.khoaBoiNguoiKhac,
+    cheDoCapNhat: _cheDoCapNhat,
+    dangXuLy: _dangXuLy,
+  );
 
   @override
   void initState() {
@@ -52,10 +67,12 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
       duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
     _tai();
+    // Không poll realtime — reload trang là thấy bước người khác đã làm
   }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _headerAnim.dispose();
     _pulseAnim.dispose();
     _noiDungCtrl.dispose();
@@ -71,6 +88,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
       _loi = null;
     });
     try {
+      _tenToi = await TokenStorage.getHoTen();
       final y = widget.yeuCau;
       final results = await Future.wait([
         MaterialUsageService.layDanhSachVatTu(),
@@ -91,47 +109,50 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
       }
       _buoc.clear();
 
+      // Luôn nạp mẫu quy trình thiết bị trước, rồi áp tiến độ đã lưu
+      final maTb = y.maThietBi ?? 0;
+      if (maTb > 0) {
+        final loai = _laBaoTri ? 'Bảo trì' : 'Sửa chữa';
+        final mau = await MaterialUsageService.layQuyTrinhThietBi(
+          maThietBi: maTb,
+          loaiCongViec: loai,
+        );
+        for (final b in mau) {
+          _buoc.add(_BuocState(soBuoc: b.soBuoc, moTa: b.moTa));
+        }
+      }
+
+      // Hồ sơ vật tư đã gửi (sau hoàn thành) — ưu tiên khôi phục
       if (hoSoCu != null && hoSoCu.chiTiet.isNotEmpty) {
         _maHoSoVatTu = hoSoCu.maHoSoVatTu;
         final byBuoc = <int, List<ChiTietVatTuSuDung>>{};
         for (final c in hoSoCu.chiTiet) {
           byBuoc.putIfAbsent(c.soBuoc, () => []).add(c);
         }
-        final keys = byBuoc.keys.toList()..sort();
-        for (final k in keys) {
-          final dong = byBuoc[k]!;
-          final moTa = dong.first.moTaBuoc;
-          final state = _BuocState(soBuoc: k, moTa: moTa)
-            ..daChon = true
-            ..daXong = true
-            ..moRong = true;
+        for (final b in _buoc) {
+          final dong = byBuoc[b.soBuoc];
+          if (dong == null || dong.isEmpty) continue;
+          b.daChon = true;
+          b.daXong = true;
+          b.moRong = false;
+          if (dong.first.moTaBuoc.isNotEmpty) {
+            b.moTaCtrl.text = dong.first.moTaBuoc;
+          }
           for (final c in dong) {
             if (c.tenVatTu.isEmpty || c.soLuong <= 0) continue;
-            state.vatTu.add(_VatTuDongState(
+            b.vatTu.add(_VatTuDongState(
               maVatTu: c.maVatTu,
               tenVatTu: c.tenVatTu,
               soLuong: c.soLuong,
               donGia: c.donGia,
             ));
           }
-          _buoc.add(state);
         }
       }
 
-      // Nạp bước từ quy trình thiết bị (mỗi TB khác nhau)
-      if (_buoc.isEmpty) {
-        final maTb = y.maThietBi ?? 0;
-        if (maTb > 0) {
-          final loai = _laBaoTri ? 'Bảo trì' : 'Sửa chữa';
-          final mau = await MaterialUsageService.layQuyTrinhThietBi(
-            maThietBi: maTb,
-            loaiCongViec: loai,
-          );
-          for (final b in mau) {
-            _buoc.add(_BuocState(soBuoc: b.soBuoc, moTa: b.moTa));
-          }
-        }
-      }
+      // Tiến độ bước đã lưu (back app / crash) + khóa bước người khác
+      await _dongBoTienDo(silent: true);
+
       if (_buoc.isEmpty) {
         _loi = 'Chưa có quy trình ${_laBaoTri ? "bảo trì" : "sửa chữa"} '
             'cho thiết bị này trong hệ thống.';
@@ -140,6 +161,202 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
       _loi = e is ApiException ? e.message : '$e';
     } finally {
       if (mounted) setState(() => _dangTai = false);
+    }
+  }
+
+  /// Đồng bộ tiến độ từ server (lưu bước + khóa realtime).
+  Future<void> _dongBoTienDo({bool silent = false}) async {
+    final y = widget.yeuCau;
+    if (y.maHoSo == null || _buoc.isEmpty) return;
+    try {
+      final list = await WorkOrderService.layTienDoBuoc(
+        maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+        maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+      );
+      if (!mounted) return;
+      final tenToi = (_tenToi ?? '').trim().toLowerCase();
+      for (final row in list) {
+        final soBuocRaw = row['soBuoc'] ?? row['SoBuoc'];
+        final soBuoc = soBuocRaw is num
+            ? soBuocRaw.toInt()
+            : int.tryParse('$soBuocRaw');
+        if (soBuoc == null) continue;
+        _BuocState? b;
+        for (final x in _buoc) {
+          if (x.soBuoc == soBuoc) {
+            b = x;
+            break;
+          }
+        }
+        if (b == null) continue;
+        final tenNv =
+            (row['tenNhanVien'] ?? row['TenNhanVien'])?.toString() ?? '';
+        final tt = (row['trangThai'] ?? row['TrangThai'])?.toString() ?? '';
+        final laCuaToi =
+            tenToi.isNotEmpty && tenNv.trim().toLowerCase() == tenToi;
+        b.tenNguoiGiu = tenNv;
+        final ap = QuyTrinhNvktRules.apDungTienDo(
+          trangThai: tt,
+          laCuaToi: laCuaToi,
+          tenNhanVien: tenNv,
+        );
+        // Chỉ áp khi DaXong (khóa) hoặc DangLam của chính mình — DangLam người khác không khóa
+        if (tt == 'DaXong' || (tt == 'DangLam' && laCuaToi)) {
+          b.daChon = ap.daChon;
+          b.daXong = ap.daXong;
+          b.khoaBoiNguoiKhac = ap.khoaBoiNguoiKhac;
+          b.moRong = ap.moRong;
+          if (ap.tenHienThi != null && ap.tenHienThi!.isNotEmpty) {
+            b.tenNguoiGiu = ap.tenHienThi;
+          }
+        }
+        if (tt == 'DaXong') {
+          b.tenNguoiGiu = tenNv;
+          final moTa = (row['moTaBuoc'] ?? row['MoTaBuoc'])?.toString();
+          if (moTa != null && moTa.isNotEmpty) {
+            b.moTaCtrl.text = moTa;
+          }
+          final jsonVt = (row['jsonVatTu'] ?? row['JsonVatTu'])?.toString();
+          if (jsonVt != null && jsonVt.isNotEmpty && b.vatTu.isEmpty) {
+            try {
+              final arr = jsonDecode(jsonVt);
+              if (arr is List) {
+                for (final item in arr) {
+                  if (item is! Map) continue;
+                  final m = Map<String, dynamic>.from(item);
+                  final ten = m['tenVatTu']?.toString() ?? '';
+                  final sl = (m['soLuong'] as num?)?.toInt() ?? 0;
+                  if (ten.isEmpty || sl <= 0) continue;
+                  b.vatTu.add(_VatTuDongState(
+                    maVatTu: (m['maVatTu'] as num?)?.toInt(),
+                    tenVatTu: ten,
+                    soLuong: sl,
+                    donGia: (m['donGia'] as num?)?.toInt() ?? 0,
+                  ));
+                }
+              }
+            } catch (_) {}
+          }
+        }
+      }
+      if (!silent && mounted) setState(() {});
+    } catch (_) {
+      // Không chặn UI nếu poll lỗi
+    }
+  }
+
+  Future<bool> _claimBuoc(_BuocState b) async {
+    final y = widget.yeuCau;
+    if (y.maHoSo == null) return false;
+    try {
+      await WorkOrderService.luuTienDoBuoc(
+        maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+        maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+        soBuoc: b.soBuoc,
+        moTaBuoc: b.moTaCtrl.text.trim(),
+        trangThai: 'DangLam',
+      );
+      b.khoaBoiNguoiKhac = false;
+      b.tenNguoiGiu = _tenToi;
+      return true;
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.message),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+      return false;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$e'),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
+  Future<void> _luuBuocDaXong(_BuocState b) async {
+    final y = widget.yeuCau;
+    if (y.maHoSo == null) return;
+
+    // Ràng buộc: phải chọn vật tư trước khi Xong
+    final loiVatTu = <String?>[];
+    for (final d in b.vatTu) {
+      final kq = validateSoLuongVatTu(
+        d.slCtrl.text,
+        tenVatTu: d.tenVatTu,
+        choPhepRong: false,
+      );
+      loiVatTu.add(kq.hopLe ? null : (kq.loi ?? 'Số lượng không hợp lệ'));
+      if (kq.hopLe) d.soLuong = kq.soLuong!;
+    }
+    final loiTruocXong = QuyTrinhNvktRules.kiemTraTruocKhiXong(
+      soDongVatTu: b.vatTu.length,
+      loiSoLuongTungDong: loiVatTu,
+    );
+    if (loiTruocXong != null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(loiTruocXong),
+            backgroundColor: AppColors.danger,
+          ),
+        );
+      }
+      return;
+    }
+    final jsonVt = jsonEncode(b.vatTu
+        .where((d) => d.tenVatTu.isNotEmpty && d.soLuong > 0)
+        .map((d) => {
+      'maVatTu': d.maVatTu,
+      'tenVatTu': d.tenVatTu,
+      'soLuong': d.soLuong,
+      'donGia': d.donGia,
+    })
+        .toList());
+    try {
+      await WorkOrderService.luuTienDoBuoc(
+        maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+        maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+        soBuoc: b.soBuoc,
+        moTaBuoc: b.moTaCtrl.text.trim().isEmpty
+            ? 'Bước ${b.soBuoc}'
+            : b.moTaCtrl.text.trim(),
+        trangThai: 'DaXong',
+        jsonVatTu: jsonVt,
+      );
+      setState(() {
+        b.daXong = true;
+        b.moRong = false;
+        b.khoaBoiNguoiKhac = false;
+        b.tenNguoiGiu = _tenToi;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Đã xong bước ${b.soBuoc}'
+                  '${_tenToi != null && _tenToi!.isNotEmpty ? " · $_tenToi" : ""}'
+                  ' — NV khác reload sẽ thấy.',
+            ),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.danger),
+        );
+      }
     }
   }
 
@@ -163,17 +380,18 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
   }
 
   Future<void> _themVatTu(int buocIdx) async {
+    final b = _buoc[buocIdx];
+    if (!_coTheSuaVatTu(b)) return;
     // Trong cùng bước: ẩn vật tư đã chọn — tăng số lượng thay vì chọn lại.
     // Sang bước khác: danh sách hiện đủ lại (exclude chỉ theo bước hiện tại).
-    final daChon = _buoc[buocIdx]
-        .vatTu
+    final daChon = b.vatTu
         .map((e) => e.maVatTu)
         .whereType<int>()
         .toSet();
     final vt = await _chonVatTu(excludeMa: daChon);
     if (vt == null) return;
     setState(() {
-      _buoc[buocIdx].vatTu.add(_VatTuDongState(
+      b.vatTu.add(_VatTuDongState(
         maVatTu: vt.maVatTu,
         tenVatTu: vt.tenVatTu,
         soLuong: 1,
@@ -1007,16 +1225,53 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(5),
                     ),
-                    onChanged: _dangXuLy
+                    onChanged: !QuyTrinhNvktRules.coTheDoiCheckbox(
+                      daXong: b.daXong,
+                      khoaBoiNguoiKhac: b.khoaBoiNguoiKhac,
+                      cheDoCapNhat: _cheDoCapNhat,
+                      dangXuLy: _dangXuLy,
+                    )
                         ? null
-                        : (v) {
-                      setState(() {
-                        b.daChon = v == true;
-                        b.moRong = b.daChon;
-                        if (!b.daChon) {
-                          b.daXong = false;
+                        : (v) async {
+                      // Chỉ tích chọn local — không claim DangLam (tránh khóa sớm).
+                      // Khóa chỉ khi bấm Xong (DaXong trên server).
+                      if (v == true) {
+                        // Nếu bước đã DaXong bởi người khác → API/sync sẽ khóa
+                        await _dongBoTienDo(silent: true);
+                        if (b.khoaBoiNguoiKhac) {
+                          if (mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  QuyTrinhNvktRules.goiYChuaChonBuoc(
+                                    khoaBoiNguoiKhac: true,
+                                    daXong: true,
+                                    tenNguoiGiu: b.tenNguoiGiu,
+                                  ),
+                                ),
+                                backgroundColor: AppColors.danger,
+                              ),
+                            );
+                          }
+                          return;
                         }
-                      });
+                        setState(() {
+                          b.daChon = true;
+                          b.moRong = true;
+                          b.tenNguoiGiu = _tenToi;
+                        });
+                      } else {
+                        if (!QuyTrinhNvktRules.coTheBoTich(
+                          daXong: b.daXong,
+                          cheDoCapNhat: _cheDoCapNhat,
+                        )) {
+                          return;
+                        }
+                        setState(() {
+                          b.daChon = false;
+                          b.moRong = false;
+                        });
+                      }
                     },
                   ),
                   Container(
@@ -1046,7 +1301,12 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Bước ${b.soBuoc}${b.daXong ? ' · Đã xong' : ''}',
+                      QuyTrinhNvktRules.tieuDeBuoc(
+                        soBuoc: b.soBuoc,
+                        daXong: b.daXong,
+                        dangLam: b.daChon && !b.daXong,
+                        tenNguoiThucHien: b.tenNguoiGiu,
+                      ),
                       style: const TextStyle(
                           fontWeight: FontWeight.w900, fontSize: 15),
                     ),
@@ -1116,16 +1376,16 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                                         fontWeight: FontWeight.w800, fontSize: 13.5),
                                   ),
                                 ),
-                                IconButton(
-                                  visualDensity: VisualDensity.compact,
-                                  onPressed: _dangXuLy
-                                      ? null
-                                      : () => setState(() {
-                                    d.dispose();
-                                    b.vatTu.removeAt(j);
-                                  }),
-                                  icon: const Icon(Icons.close_rounded, size: 18),
-                                ),
+                                if (_coTheSuaVatTu(b))
+                                  IconButton(
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () => setState(() {
+                                      d.dispose();
+                                      b.vatTu.removeAt(j);
+                                    }),
+                                    icon:
+                                    const Icon(Icons.close_rounded, size: 18),
+                                  ),
                               ],
                             ),
                             const SizedBox(height: 6),
@@ -1134,6 +1394,8 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                                 Expanded(
                                   child: TextField(
                                     controller: d.slCtrl,
+                                    enabled: _coTheSuaVatTu(b),
+                                    readOnly: !_coTheSuaVatTu(b),
                                     keyboardType: TextInputType.number,
                                     inputFormatters: [
                                       FilteringTextInputFormatter.digitsOnly,
@@ -1144,21 +1406,27 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                                     decoration: InputDecoration(
                                       labelText: 'Số lượng',
                                       hintText: 'Số nguyên > 0',
-                                      errorText: formValidateSoLuongVatTu(
+                                      errorText: _coTheSuaVatTu(b)
+                                          ? formValidateSoLuongVatTu(
                                         d.slCtrl.text,
                                         tenVatTu: d.tenVatTu,
                                         choPhepRong: true,
-                                      ),
+                                      )
+                                          : null,
                                       isDense: true,
                                       filled: true,
-                                      fillColor: Colors.white,
+                                      fillColor: _coTheSuaVatTu(b)
+                                          ? Colors.white
+                                          : const Color(0xFFF1F5F9),
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(10),
                                       ),
                                       contentPadding: const EdgeInsets.symmetric(
                                           horizontal: 10, vertical: 10),
                                     ),
-                                    onChanged: (v) {
+                                    onChanged: !_coTheSuaVatTu(b)
+                                        ? null
+                                        : (v) {
                                       final kq = validateSoLuongVatTu(
                                         v,
                                         tenVatTu: d.tenVatTu,
@@ -1199,55 +1467,85 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                         ),
                       );
                     }),
-                    TextButton.icon(
-                      onPressed: _dangXuLy || b.daXong
-                          ? null
-                          : () => _themVatTu(index),
-                      icon: const Icon(Icons.add_box_outlined, size: 20, color: _blue),
-                      label: const Text(
-                        'Thêm vật tư',
-                        style: TextStyle(
-                            color: _blue, fontWeight: FontWeight.w700),
+                    if (_coTheSuaVatTu(b))
+                      TextButton.icon(
+                        onPressed: () => _themVatTu(index),
+                        icon: const Icon(Icons.add_box_outlined,
+                            size: 20, color: _blue),
+                        label: const Text(
+                          'Thêm vật tư',
+                          style: TextStyle(
+                              color: _blue, fontWeight: FontWeight.w700),
+                        ),
                       ),
-                    ),
+                    if (QuyTrinhNvktRules.ghiChuBuocDaXong(
+                      daXong: b.daXong,
+                      khoaBoiNguoiKhac: b.khoaBoiNguoiKhac,
+                      cheDoCapNhat: _cheDoCapNhat,
+                      tenNguoiGiu: b.tenNguoiGiu,
+                    ) !=
+                        null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        QuyTrinhNvktRules.ghiChuBuocDaXong(
+                          daXong: b.daXong,
+                          khoaBoiNguoiKhac: b.khoaBoiNguoiKhac,
+                          cheDoCapNhat: _cheDoCapNhat,
+                          tenNguoiGiu: b.tenNguoiGiu,
+                        )!,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: FilledButton.icon(
-                        onPressed: _dangXuLy || b.daXong
-                            ? null
-                            : () {
-                          setState(() {
-                            b.daXong = true;
-                            b.moRong = false;
-                          });
-                        },
-                        style: FilledButton.styleFrom(
-                          backgroundColor:
-                          b.daXong ? AppColors.success : _blue,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 10),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    if (!b.khoaBoiNguoiKhac)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: FilledButton.icon(
+                          onPressed: !QuyTrinhNvktRules.coTheBamXong(
+                            daXong: b.daXong,
+                            khoaBoiNguoiKhac: b.khoaBoiNguoiKhac,
+                            cheDoCapNhat: _cheDoCapNhat,
+                            dangXuLy: _dangXuLy,
+                          )
+                              ? null
+                              : () => _luuBuocDaXong(b),
+                          style: FilledButton.styleFrom(
+                            backgroundColor:
+                            b.daXong ? AppColors.success : _blue,
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          icon: Icon(
+                            b.daXong
+                                ? Icons.check_circle_rounded
+                                : Icons.done_all_rounded,
+                            size: 18,
+                          ),
+                          label: Text(
+                            QuyTrinhNvktRules.nhanNutXong(
+                              daXong: b.daXong,
+                              cheDoCapNhat: _cheDoCapNhat,
+                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
-                        icon: Icon(
-                          b.daXong
-                              ? Icons.check_circle_rounded
-                              : Icons.done_all_rounded,
-                          size: 18,
-                        ),
-                        label: Text(
-                          b.daXong ? 'Đã xong bước' : 'Hoàn thành quy trình',
-                          style: const TextStyle(fontWeight: FontWeight.w800),
-                        ),
                       ),
-                    ),
                   ] else
                     Padding(
                       padding: const EdgeInsets.only(top: 6),
                       child: Text(
-                        'Tích chọn bước này để mở chọn vật tư và bấm Xong.',
+                        QuyTrinhNvktRules.goiYChuaChonBuoc(
+                          khoaBoiNguoiKhac: b.khoaBoiNguoiKhac,
+                          daXong: b.daXong,
+                          tenNguoiGiu: b.tenNguoiGiu,
+                        ),
                         style: TextStyle(
                           fontSize: 12.5,
                           color: Colors.grey.shade600,
@@ -1311,13 +1609,17 @@ class _BuocState {
   bool daXong;
   /// Mở rộng chọn vật tư
   bool moRong;
+  /// Người khác đang giữ / đã xong bước này
+  bool khoaBoiNguoiKhac;
+  String? tenNguoiGiu;
 
   _BuocState({required this.soBuoc, required String moTa})
       : moTaCtrl = TextEditingController(text: moTa),
         vatTu = [],
         daChon = false,
         daXong = false,
-        moRong = false;
+        moRong = false,
+        khoaBoiNguoiKhac = false;
 
   void dispose() {
     moTaCtrl.dispose();
