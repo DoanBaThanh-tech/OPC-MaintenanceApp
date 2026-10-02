@@ -983,25 +983,14 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        y.biTuChoi
+                        TechnicianYeuCauRules.dangCapNhatSauTuChoi(y)
                             ? Icons.edit_note_rounded
                             : Icons.play_circle_outline_rounded,
                         size: 22,
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        y.biTuChoi
-                            ? (y.laSuaChua
-                            ? 'Cập nhật quy trình sửa chữa'
-                            : 'Cập nhật quy trình bảo trì')
-                            : (y.trangThaiPhanCong == 'Đang thực hiện' ||
-                            y.trangThaiHoSo == 'Đang thực hiện')
-                            ? (y.laBaoTri
-                            ? 'Tiếp tục quy trình bảo trì'
-                            : 'Tiếp tục quy trình sửa chữa')
-                            : (y.laBaoTri
-                            ? 'Tiến hành quy trình bảo trì'
-                            : 'Tiến hành quy trình sửa chữa'),
+                        TechnicianYeuCauRules.nhanNutTienHanh(y),
                         style: const TextStyle(
                             fontWeight: FontWeight.w700, fontSize: 15.5),
                       ),

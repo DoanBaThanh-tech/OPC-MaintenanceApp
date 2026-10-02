@@ -1,10 +1,5 @@
 class QuyTrinhNvktRules {
   QuyTrinhNvktRules._();
-
-  /// Được sửa số lượng / thêm / xóa vật tư trong bước.
-  /// - Khóa khi người khác đã Xong
-  /// - Khóa khi đã Xong (trừ đang chờ điều chỉnh sau Xưởng từ chối)
-  /// - Khóa ngay sau khi đã bấm "Lưu lại bước" ([daLuuDieuChinh])
   static bool coTheSuaVatTu({
     required bool daChon,
     required bool daXong,
@@ -174,10 +169,6 @@ class QuyTrinhNvktRules {
     return 'Tích chọn bước → chọn vật tư → bấm Xong. '
         'Chỉ khi đã Xong, NV khác mới không sửa được bước đó.';
   }
-
-  /// Áp tiến độ API:
-  /// - DaXong của người khác → khóa
-  /// - DangLam → không khóa (NV khác vẫn làm được; chỉ DaXong mới khóa)
   static ({
   bool daChon,
   bool daXong,

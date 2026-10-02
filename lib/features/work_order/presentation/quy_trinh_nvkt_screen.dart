@@ -53,6 +53,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
     khoaBoiNguoiKhac: b.khoaBoiNguoiKhac,
     cheDoCapNhat: _cheDoCapNhat,
     dangXuLy: _dangXuLy,
+    daLuuDieuChinh: b.daLuuDieuChinh,
   );
 
   @override
@@ -340,16 +341,18 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
       );
       setState(() {
         b.daXong = true;
-        b.moRong = true; // giữ mở để thấy vật tư vừa lưu
+        b.moRong = true;
         b.khoaBoiNguoiKhac = false;
         b.tenNguoiGiu = _tenToi;
+        // Sau Lưu lại bước / Xong → khóa chỉnh sửa; nút → "Cập nhật thành công"
+        b.daLuuDieuChinh = true;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               _cheDoCapNhat
-                  ? 'Đã lưu điều chỉnh bước ${b.soBuoc} — NV khác vào lại / reload sẽ thấy bản mới.'
+                  ? 'Cập nhật thành công bước ${b.soBuoc} — đã khóa. NV khác reload sẽ thấy và không sửa được bước này.'
                   : 'Đã xong bước ${b.soBuoc}'
                   '${_tenToi != null && _tenToi!.isNotEmpty ? " · $_tenToi" : ""}'
                   ' — NV khác reload sẽ thấy.',
@@ -1295,6 +1298,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                       khoaBoiNguoiKhac: b.khoaBoiNguoiKhac,
                       cheDoCapNhat: _cheDoCapNhat,
                       dangXuLy: _dangXuLy,
+                      daLuuDieuChinh: b.daLuuDieuChinh,
                     )
                         ? null
                         : (v) async {
@@ -1329,6 +1333,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                         if (!QuyTrinhNvktRules.coTheBoTich(
                           daXong: b.daXong,
                           cheDoCapNhat: _cheDoCapNhat,
+                          daLuuDieuChinh: b.daLuuDieuChinh,
                         )) {
                           return;
                         }
@@ -1575,12 +1580,14 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                             khoaBoiNguoiKhac: b.khoaBoiNguoiKhac,
                             cheDoCapNhat: _cheDoCapNhat,
                             dangXuLy: _dangXuLy,
+                            daLuuDieuChinh: b.daLuuDieuChinh,
                           )
                               ? null
                               : () => _luuBuocDaXong(b),
                           style: FilledButton.styleFrom(
-                            backgroundColor:
-                            b.daXong ? AppColors.success : _blue,
+                            backgroundColor: (b.daXong || b.daLuuDieuChinh)
+                                ? AppColors.success
+                                : _blue,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 10),
                             shape: RoundedRectangleBorder(
@@ -1588,7 +1595,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                             ),
                           ),
                           icon: Icon(
-                            b.daXong
+                            (b.daXong || b.daLuuDieuChinh)
                                 ? Icons.check_circle_rounded
                                 : Icons.done_all_rounded,
                             size: 18,
@@ -1597,6 +1604,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                             QuyTrinhNvktRules.nhanNutXong(
                               daXong: b.daXong,
                               cheDoCapNhat: _cheDoCapNhat,
+                              daLuuDieuChinh: b.daLuuDieuChinh,
                             ),
                             style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
@@ -1677,6 +1685,8 @@ class _BuocState {
   /// Người khác đang giữ / đã xong bước này
   bool khoaBoiNguoiKhac;
   String? tenNguoiGiu;
+  /// Đã bấm Lưu lại bước / Xong thành công → khóa nút & không sửa nữa
+  bool daLuuDieuChinh;
 
   _BuocState({required this.soBuoc, required String moTa})
       : moTaCtrl = TextEditingController(text: moTa),
@@ -1684,7 +1694,8 @@ class _BuocState {
         daChon = false,
         daXong = false,
         moRong = false,
-        khoaBoiNguoiKhac = false;
+        khoaBoiNguoiKhac = false,
+        daLuuDieuChinh = false;
 
   void dispose() {
     moTaCtrl.dispose();

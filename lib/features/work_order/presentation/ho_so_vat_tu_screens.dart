@@ -25,9 +25,10 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen>
   String? _loi;
   late final AnimationController _headerAnim;
 
-  /// Tổ trưởng: Chờ gửi | Chờ duyệt | Xác nhận
-  static const _tabsTt = ['Chờ gửi', 'Chờ duyệt', 'Xác nhận'];
-  String _tab = 'Chờ gửi';
+  /// Tổ trưởng chỉ theo dõi: Chờ duyệt (đã gửi GĐ) | Xác nhận — không còn tab Chờ gửi
+  /// (Xưởng xác nhận quy trình → HS vật tư gửi thẳng Giám đốc).
+  static const _tabsTt = ['Chờ duyệt', 'Xác nhận'];
+  String _tab = 'Chờ duyệt';
 
   @override
   void initState() {
@@ -75,13 +76,12 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen>
       return gui;
     }
     switch (_tab) {
-      case 'Chờ duyệt':
-        return _all.where((e) => e.choDuyet).toList();
       case 'Xác nhận':
         return _all.where((e) => e.daXacNhan).toList();
-      case 'Chờ gửi':
+      case 'Chờ duyệt':
       default:
-        return _all.where((e) => e.choGui).toList();
+      // Gồm cả bản ghi cũ còn "Chờ gửi" (sẽ được API đẩy sang Chờ duyệt)
+        return _all.where((e) => e.choDuyet || e.choGui).toList();
     }
   }
 
@@ -119,7 +119,9 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen>
         transitionDuration: const Duration(milliseconds: 320),
         pageBuilder: (_, a, __) => HoSoVatTuDetailScreen(
           maHoSoVatTu: item.maHoSoVatTu,
-          choPhepGuiGiamDoc: !widget.chiXemDaGui,
+          // TT không gửi GĐ; chỉ GĐ xác nhận — Xưởng XN quy trình đã gửi thẳng GĐ
+          choPhepGuiGiamDoc: false,
+          choPhepXacNhan: widget.chiXemDaGui,
         ),
         transitionsBuilder: (_, a, __, child) => FadeTransition(
           opacity: a,
@@ -255,15 +257,14 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen>
                           final tab = tabs[i];
                           final selected = _tab == tab;
                           final count = () {
-                            if (tab == 'Chờ gửi') {
-                              return _all.where((e) => e.choGui).length;
-                            }
                             if (tab == 'Chờ duyệt') {
                               return widget.chiXemDaGui
                                   ? _all
                                   .where((e) => e.daGuiGiamDoc && e.choDuyet)
                                   .length
-                                  : _all.where((e) => e.choDuyet).length;
+                                  : _all
+                                  .where((e) => e.choDuyet || e.choGui)
+                                  .length;
                             }
                             return widget.chiXemDaGui
                                 ? _all
@@ -634,11 +635,14 @@ class _HoSoVatTuListScreenState extends State<HoSoVatTuListScreen>
 class HoSoVatTuDetailScreen extends StatefulWidget {
   final int maHoSoVatTu;
   final bool choPhepGuiGiamDoc;
+  /// Chỉ Giám đốc được Xác nhận hồ sơ vật tư.
+  final bool choPhepXacNhan;
 
   const HoSoVatTuDetailScreen({
     super.key,
     required this.maHoSoVatTu,
-    this.choPhepGuiGiamDoc = true,
+    this.choPhepGuiGiamDoc = false,
+    this.choPhepXacNhan = false,
   });
 
   @override
@@ -832,7 +836,7 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
     final showGui = widget.choPhepGuiGiamDoc &&
         item != null &&
         item.trangThai == 'Chờ gửi';
-    final showXacNhan = !widget.choPhepGuiGiamDoc &&
+    final showXacNhan = widget.choPhepXacNhan &&
         item != null &&
         (item.trangThai == 'Chờ duyệt' || item.trangThai == 'Đã gửi GĐ');
 

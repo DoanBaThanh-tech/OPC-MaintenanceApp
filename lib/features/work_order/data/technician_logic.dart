@@ -10,6 +10,33 @@ export 'services/work_order_service.dart';
 
 // Logic cho technician_screens.dart (quản lý yêu cầu / kết quả thực hiện)
 
+/// Nhãn nút chi tiết yêu cầu NVKT.
+/// - Chưa từng Tiến hành (thoiDiemBatDauThucTe == null) → «Tiến hành quy trình…»
+/// - Đã Tiến hành ít nhất 1 lần → «Tiếp tục quy trình…»
+/// - Xưởng từ chối → «Cập nhật quy trình…»
+/// Áp dụng mọi tài khoản NVKT.
+class TechnicianYeuCauRules {
+  TechnicianYeuCauRules._();
+
+  static String nhanNutTienHanh(YeuCauPhanCong y) {
+    if (y.biTuChoi) {
+      return y.laSuaChua
+          ? 'Cập nhật quy trình sửa chữa'
+          : 'Cập nhật quy trình bảo trì';
+    }
+    if (y.daBatDauQuyTrinh) {
+      return y.laBaoTri
+          ? 'Tiếp tục quy trình bảo trì'
+          : 'Tiếp tục quy trình sửa chữa';
+    }
+    return y.laBaoTri
+        ? 'Tiến hành quy trình bảo trì'
+        : 'Tiến hành quy trình sửa chữa';
+  }
+
+  static bool dangCapNhatSauTuChoi(YeuCauPhanCong y) => y.biTuChoi;
+}
+
 class QuanLyYeuCauController extends ChangeNotifier {
   List<YeuCauPhanCong> danhSach = [];
   bool dangTai = true;

@@ -291,6 +291,8 @@ class YeuCauPhanCong {
   final DateTime? ngayTaoHoSo;
   /// true = được gán ghi chép quy trình (Tiến hành / Xong).
   final bool laNguoiGhiChep;
+  /// Thời điểm NVKT lần đầu bấm «Tiến hành quy trình» (null = chưa bắt đầu).
+  final DateTime? thoiDiemBatDauThucTe;
 
   YeuCauPhanCong({
     required this.maPhanCong,
@@ -310,7 +312,11 @@ class YeuCauPhanCong {
     this.ngayDuKienBaoTri,
     this.ngayTaoHoSo,
     this.laNguoiGhiChep = true, // mặc định true cho dữ liệu cũ
+    this.thoiDiemBatDauThucTe,
   });
+
+  /// Đã có NVKT bấm Tiến hành ít nhất 1 lần (áp dụng mọi tài khoản NVKT).
+  bool get daBatDauQuyTrinh => thoiDiemBatDauThucTe != null;
 
   /// Đã gửi quy trình chờ Xưởng (HS Đang thực hiện + PC Chờ xác nhận).
   bool get choXacNhanKetQua =>
@@ -371,6 +377,8 @@ class YeuCauPhanCong {
       ngayDuKienBaoTri: asDate(j['ngayDuKienBaoTri']),
       ngayTaoHoSo: asDate(j['ngayTaoHoSo']),
       laNguoiGhiChep: laGhiChep,
+      thoiDiemBatDauThucTe: asDate(
+          j['thoiDiemBatDauThucTe'] ?? j['ThoiDiemBatDauThucTe']),
     );
   }
 }
