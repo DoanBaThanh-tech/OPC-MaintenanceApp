@@ -23,13 +23,17 @@ class NhanVienRutGon {
   });
 
   factory NhanVienRutGon.fromJson(Map<String, dynamic> j) => NhanVienRutGon(
-    maNhanVien: (j['maNhanVien'] as num?)?.toInt() ?? 0,
-    hoTen: j['hoTen']?.toString() ?? '',
-    email: j['email']?.toString(),
-    soDienThoai: j['soDienThoai']?.toString(),
-    chucVu: j['chucVu']?.toString(),
-    tenVaiTro: j['tenVaiTro']?.toString(),
-    soCongViecDangLam: (j['soCongViecDangLam'] as num?)?.toInt() ?? 0,
+    maNhanVien: (j['maNhanVien'] as num?)?.toInt() ??
+        (j['MaNhanVien'] as num?)?.toInt() ??
+        0,
+    hoTen: j['hoTen']?.toString() ?? j['HoTen']?.toString() ?? '',
+    email: j['email']?.toString() ?? j['Email']?.toString(),
+    soDienThoai: j['soDienThoai']?.toString() ?? j['SoDienThoai']?.toString(),
+    chucVu: j['chucVu']?.toString() ?? j['ChucVu']?.toString(),
+    tenVaiTro: j['tenVaiTro']?.toString() ?? j['TenVaiTro']?.toString(),
+    soCongViecDangLam: (j['soCongViecDangLam'] as num?)?.toInt() ??
+        (j['SoCongViecDangLam'] as num?)?.toInt() ??
+        0,
   );
 }
 

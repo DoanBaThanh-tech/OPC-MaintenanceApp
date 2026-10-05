@@ -1,5 +1,6 @@
 import '../../../../core/network/api_client.dart';
 import '../../../../core/network/api_constants.dart';
+import '../../../../core/network/api_exception.dart';
 import '../models/work_order_models.dart';
 
 // Service gọi API — không giữ state UI
@@ -65,18 +66,27 @@ class WorkOrderService {
     DateTime? ngayBatDau,
     DateTime? ngayKetThuc,
   }) async {
-    final body = <String, dynamic>{};
-    // Giờ thực tế ghi nhận khi NVKT Tiến hành / hoàn thành — không bắt buộc khi phân công
+    final ds = <int>[];
+    if (maNhanVienThucHiens != null) {
+      ds.addAll(maNhanVienThucHiens.where((e) => e > 0));
+    }
+    if (ds.isEmpty && maNhanVienThucHien != null && maNhanVienThucHien > 0) {
+      ds.add(maNhanVienThucHien);
+    }
+    if (ds.isEmpty) {
+      throw ApiException(400, 'Vui lòng chọn ít nhất một nhân viên thực hiện.');
+    }
+
+    final body = <String, dynamic>{
+      // Gửi cả camelCase để bind chắc chắn với API
+      'maNhanVienThucHiens': ds,
+      'MaNhanVienThucHiens': ds,
+    };
     if (ngayBatDau != null) {
       body['ngayBatDauDuKien'] = ngayBatDau.toIso8601String();
     }
     if (ngayKetThuc != null) {
       body['ngayKetThucDuKien'] = ngayKetThuc.toIso8601String();
-    }
-    if (maNhanVienThucHiens != null && maNhanVienThucHiens.isNotEmpty) {
-      body['maNhanVienThucHiens'] = maNhanVienThucHiens;
-    } else if (maNhanVienThucHien != null) {
-      body['maNhanVienThucHien'] = maNhanVienThucHien;
     }
     if (maNhanVienGhiChep != null && maNhanVienGhiChep > 0) {
       body['maNhanVienGhiChep'] = maNhanVienGhiChep;

@@ -41,7 +41,9 @@ class HoSoBaoTriDuyet {
     required this.namTuKeHoach,
   });
 
-  bool get choDuyet => trangThai == 'Chờ duyệt' || trangThai == 'Chờ GĐ duyệt';
+  /// Giám đốc chỉ thấy hồ sơ khi Xưởng đã gửi (Chờ GĐ duyệt).
+  /// «Chờ duyệt» = đang ở Xưởng, chưa gửi GĐ — không hiện bên Giám đốc.
+  bool get choDuyet => trangThai == 'Chờ GĐ duyệt';
   bool get daDuyet => trangThai == 'Đã duyệt';
   bool get dangThucHien =>
       trangThai == 'Đang thực hiện' || trangThai == 'Chờ xác nhận';
