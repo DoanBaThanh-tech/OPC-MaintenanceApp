@@ -71,6 +71,8 @@ class HoSoBaoTri {
   final String? rowVersion;
   /// API: đã gửi quy trình chờ Xưởng xác nhận.
   final bool? choXuongXacNhanQuyTrinhFlag;
+  /// Thời điểm NVKT lần đầu bấm «Tiến hành quy trình».
+  final DateTime? thoiDiemBatDauThucTe;
 
   HoSoBaoTri({
     required this.maHoSoBaoTri,
@@ -100,6 +102,7 @@ class HoSoBaoTri {
     required this.namTuKeHoach,
     this.rowVersion,
     this.choXuongXacNhanQuyTrinhFlag,
+    this.thoiDiemBatDauThucTe,
   });
 
   /// Xưởng còn được chỉnh sửa / gửi GĐ (chưa gửi Giám đốc).
@@ -132,6 +135,9 @@ class HoSoBaoTri {
           trangThaiPhanCong != 'Hoàn thành';
   bool get biTuChoi => trangThai == 'Từ chối';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
+
+  /// NVKT đã bấm Tiến hành quy trình (có thời điểm bắt đầu thực tế).
+  bool get daBatDauQuyTrinh => thoiDiemBatDauThucTe != null;
 
   /// NVKT đã gửi quy trình — HS vẫn Đang thực hiện; PC = Chờ xác nhận (Xưởng).
   bool get choXacNhanKetQua =>
@@ -203,6 +209,8 @@ class HoSoBaoTri {
       rowVersion: (j['rowVersion'] ?? j['RowVersion'])?.toString(),
       choXuongXacNhanQuyTrinhFlag: j['choXuongXacNhanQuyTrinh'] == true ||
           j['ChoXuongXacNhanQuyTrinh'] == true,
+      thoiDiemBatDauThucTe:
+      asDate(j['thoiDiemBatDauThucTe'] ?? j['ThoiDiemBatDauThucTe']),
     );
   }
 }

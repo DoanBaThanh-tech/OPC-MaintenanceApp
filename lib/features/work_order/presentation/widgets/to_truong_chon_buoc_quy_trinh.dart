@@ -10,6 +10,8 @@ class ToTruongChonBuocQuyTrinh extends StatefulWidget {
   final String loaiCongViec;
   /// true = chỉ xem (đã phân công / hoàn thành)
   final bool chiXem;
+  /// NVKT đã bấm Tiến hành quy trình (ThoiDiemBatDauThucTe có giá trị).
+  final bool nvktDaTienHanh;
   final ValueChanged<bool>? onDaLuuChanged;
 
   const ToTruongChonBuocQuyTrinh({
@@ -19,6 +21,7 @@ class ToTruongChonBuocQuyTrinh extends StatefulWidget {
     required this.maThietBi,
     required this.loaiCongViec,
     this.chiXem = false,
+    this.nvktDaTienHanh = false,
     this.onDaLuuChanged,
   });
 
@@ -41,6 +44,7 @@ class _ToTruongChonBuocQuyTrinhState extends State<ToTruongChonBuocQuyTrinh> {
       maThietBi: widget.maThietBi,
       loaiCongViec: widget.loaiCongViec,
       chiXem: widget.chiXem,
+      forceNvktDaTienHanh: widget.nvktDaTienHanh,
     );
     _ctrl.addListener(() {
       if (mounted) setState(() {});
@@ -225,59 +229,86 @@ class _ToTruongChonBuocQuyTrinhState extends State<ToTruongChonBuocQuyTrinh> {
               }),
           if (!widget.chiXem && _ctrl.mau.isNotEmpty) ...[
             const SizedBox(height: 8),
-            FilledButton.icon(
-              style: FilledButton.styleFrom(
-                backgroundColor: _ctrl.daKhoa && !_ctrl.cheDoCapNhat
-                    ? const Color(0xFFD97706)
-                    : _blue,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              onPressed: _ctrl.dangLuu
-                  ? null
-                  : () async {
-                final dangMoKhoa =
-                    _ctrl.daKhoa && !_ctrl.cheDoCapNhat;
-                final err = await _ctrl.xuLyNutChinh();
-                if (!context.mounted) return;
-                if (dangMoKhoa && err == null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                          'Đã mở khóa — tích/bỏ tích bước rồi bấm «Lưu cập nhật bước»'),
-                      backgroundColor: Color(0xFFD97706),
-                      behavior: SnackBarBehavior.floating,
+            if (_ctrl.nvktDaTienHanh)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                      color: AppColors.danger.withValues(alpha: 0.3)),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.lock_rounded, color: AppColors.danger, size: 20),
+                    SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'NVKT đã tiến hành quy trình — Tổ trưởng không được chỉnh sửa bước nữa.',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700, height: 1.35),
+                      ),
                     ),
-                  );
-                  return;
-                }
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                  content: Text(err ??
-                      'Đã lưu ${_ctrl.daChon.length} bước — đã khóa tích chọn'),
-                  backgroundColor:
-                  err == null ? AppColors.success : AppColors.danger,
-                  behavior: SnackBarBehavior.floating,
-                ));
-              },
-              icon: _ctrl.dangLuu
-                  ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
+                  ],
+                ),
               )
-                  : Icon(_ctrl.daKhoa && !_ctrl.cheDoCapNhat
-                  ? Icons.lock_open_rounded
-                  : Icons.save_rounded),
-              label: Text(
-                _ctrl.nhanNut,
-                style: const TextStyle(fontWeight: FontWeight.w800),
+            else
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: _ctrl.daKhoa && !_ctrl.cheDoCapNhat
+                      ? const Color(0xFFD97706)
+                      : _blue,
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _ctrl.dangLuu
+                    ? null
+                    : () async {
+                  final dangMoKhoa =
+                      _ctrl.daKhoa && !_ctrl.cheDoCapNhat;
+                  final err = await _ctrl.xuLyNutChinh();
+                  if (!context.mounted) return;
+                  if (dangMoKhoa && err == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                            'Đã mở khóa — tích/bỏ tích bước rồi bấm «Lưu cập nhật bước»'),
+                        backgroundColor: Color(0xFFD97706),
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                    return;
+                  }
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: Text(err ??
+                        'Đã lưu ${_ctrl.daChon.length} bước — đã khóa tích chọn'),
+                    backgroundColor: err == null
+                        ? AppColors.success
+                        : AppColors.danger,
+                    behavior: SnackBarBehavior.floating,
+                  ));
+                },
+                icon: _ctrl.dangLuu
+                    ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white),
+                )
+                    : Icon(_ctrl.daKhoa && !_ctrl.cheDoCapNhat
+                    ? Icons.lock_open_rounded
+                    : Icons.save_rounded),
+                label: Text(
+                  _ctrl.nhanNut,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
               ),
-            ),
             const SizedBox(height: 6),
             Text(
-              _ctrl.daKhoa && !_ctrl.cheDoCapNhat
+              _ctrl.nvktDaTienHanh
+                  ? 'Chỉ xem các bước đã chọn — NVKT đang/đã thực hiện quy trình.'
+                  : _ctrl.daKhoa && !_ctrl.cheDoCapNhat
                   ? 'Bước đã khóa. Bấm «Cập nhật bước quy trình» để mở khóa chỉnh sửa.'
                   : _ctrl.cheDoCapNhat
                   ? 'Đang mở khóa — chỉnh tích chọn rồi bấm «Lưu cập nhật bước» để khóa lại.'

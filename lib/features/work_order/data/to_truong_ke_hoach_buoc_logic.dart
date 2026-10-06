@@ -35,7 +35,8 @@ class ToTruongKeHoachBuocService {
         loaiCongViec: loaiCongViec,
       );
 
-  static Future<Set<int>> laySoBuocDaChon({
+  /// Các bước đã chọn + cờ NVKT đã tiến hành (có tiến độ thật).
+  static Future<({Set<int> soBuoc, bool nvktDaTienHanh})> layTienDoKeHoach({
     int? maHoSoBaoTri,
     int? maHoSoSuaChua,
   }) async {
@@ -47,10 +48,14 @@ class ToTruongKeHoachBuocService {
       },
     );
     final set = <int>{};
+    var nvktDaTienHanh = false;
     for (final e in data) {
       if (e is! Map) continue;
       final m = Map<String, dynamic>.from(e);
       final tt = (m['trangThai'] ?? m['TrangThai'])?.toString() ?? '';
+      final maNv = (m['maNhanVien'] as num?)?.toInt() ??
+          (m['MaNhanVien'] as num?)?.toInt() ??
+          0;
       if (tt == 'DuocChon' ||
           tt == 'DangLam' ||
           tt == 'DaXong' ||
@@ -60,8 +65,22 @@ class ToTruongKeHoachBuocService {
             0;
         if (so > 0) set.add(so);
       }
+      if (tt != 'DuocChon' && maNv > 0) {
+        nvktDaTienHanh = true;
+      }
     }
-    return set;
+    return (soBuoc: set, nvktDaTienHanh: nvktDaTienHanh);
+  }
+
+  static Future<Set<int>> laySoBuocDaChon({
+    int? maHoSoBaoTri,
+    int? maHoSoSuaChua,
+  }) async {
+    final r = await layTienDoKeHoach(
+      maHoSoBaoTri: maHoSoBaoTri,
+      maHoSoSuaChua: maHoSoSuaChua,
+    );
+    return r.soBuoc;
   }
 
   static Future<void> luu({
@@ -91,6 +110,8 @@ class ToTruongKeHoachBuocController extends ChangeNotifier {
   final int maThietBi;
   final String loaiCongViec;
   final bool chiXem;
+  /// true nếu hồ sơ đã có ThoiDiemBatDauThucTe (NVKT bấm Tiến hành).
+  final bool forceNvktDaTienHanh;
 
   ToTruongKeHoachBuocController({
     this.maHoSoBaoTri,
@@ -98,6 +119,7 @@ class ToTruongKeHoachBuocController extends ChangeNotifier {
     required this.maThietBi,
     required this.loaiCongViec,
     this.chiXem = false,
+    this.forceNvktDaTienHanh = false,
   });
 
   List<BuocQuyTrinh> mau = [];
@@ -108,16 +130,22 @@ class ToTruongKeHoachBuocController extends ChangeNotifier {
   bool daKhoa = false;
   /// Đang mở khóa để chỉnh (sau khi bấm Cập nhật).
   bool cheDoCapNhat = false;
+  /// NVKT đã tiến hành / có tiến độ thực tế → Tổ trưởng không được sửa nữa.
+  bool nvktDaTienHanh = false;
   bool dangTai = true;
   bool dangLuu = false;
   String? loi;
 
-  /// Chỉ được tích khi chưa khóa, hoặc đang ở chế độ cập nhật.
+  /// Chỉ được tích khi chưa khóa, hoặc đang ở chế độ cập nhật — và NVKT chưa làm.
   bool get coTheTich =>
-      !chiXem && !dangLuu && (!daKhoa || cheDoCapNhat);
+      !chiXem &&
+          !nvktDaTienHanh &&
+          !dangLuu &&
+          (!daKhoa || cheDoCapNhat);
 
   /// Nhãn nút chính theo trạng thái khóa.
   String get nhanNut {
+    if (nvktDaTienHanh) return 'NVKT đã tiến hành — không sửa được';
     if (dangLuu) return 'Đang lưu…';
     if (!daLuuServer && !daKhoa) return 'Lưu bước quy trình';
     if (daKhoa && !cheDoCapNhat) return 'Cập nhật bước quy trình';
@@ -134,18 +162,20 @@ class ToTruongKeHoachBuocController extends ChangeNotifier {
           maThietBi: maThietBi,
           loaiCongViec: loaiCongViec,
         ),
-        ToTruongKeHoachBuocService.laySoBuocDaChon(
+        ToTruongKeHoachBuocService.layTienDoKeHoach(
           maHoSoBaoTri: maHoSoBaoTri,
           maHoSoSuaChua: maHoSoSuaChua,
         ),
       ]);
       mau = results[0] as List<BuocQuyTrinh>;
+      final tienDo = results[1] as ({Set<int> soBuoc, bool nvktDaTienHanh});
       daChon
         ..clear()
-        ..addAll(results[1] as Set<int>);
+        ..addAll(tienDo.soBuoc);
+      nvktDaTienHanh = tienDo.nvktDaTienHanh || forceNvktDaTienHanh;
       daLuuServer = daChon.isNotEmpty;
-      // Đã có bước trên server → khóa (ổ khóa)
-      daKhoa = daLuuServer;
+      // Đã có bước trên server → khóa; NVKT đã làm → khóa cứng
+      daKhoa = daLuuServer || nvktDaTienHanh;
       cheDoCapNhat = false;
     } on ApiException catch (e) {
       loi = e.message;
@@ -169,7 +199,7 @@ class ToTruongKeHoachBuocController extends ChangeNotifier {
 
   /// Bấm «Cập nhật bước quy trình» khi đang khóa → mở khóa để tích/bỏ tích.
   void batDauCapNhat() {
-    if (chiXem || dangLuu) return;
+    if (chiXem || dangLuu || nvktDaTienHanh) return;
     if (!daKhoa) return;
     cheDoCapNhat = true;
     notifyListeners();
@@ -212,6 +242,9 @@ class ToTruongKeHoachBuocController extends ChangeNotifier {
 
   /// Xử lý bấm nút chính: khóa → mở cập nhật; còn lại → lưu.
   Future<String?> xuLyNutChinh() async {
+    if (nvktDaTienHanh) {
+      return 'Nhân viên kỹ thuật đã tiến hành quy trình — không thể chỉnh sửa bước.';
+    }
     if (daKhoa && !cheDoCapNhat) {
       batDauCapNhat();
       return null;

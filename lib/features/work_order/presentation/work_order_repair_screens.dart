@@ -1549,6 +1549,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                         maThietBi: hs.maThietBi,
                         loaiCongViec: 'Sửa chữa',
                         chiXem: hs.coTheCapNhatPhanCong,
+                        // Khóa cứng khi API tiến độ có bước NVKT (DangLam/DaXong…)
                         onDaLuuChanged: (v) {
                           if (mounted) setState(() => _daLuuKeHoachBuoc = v);
                         },

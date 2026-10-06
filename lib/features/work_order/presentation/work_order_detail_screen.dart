@@ -977,6 +977,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                                         maHoSoBaoTri: hs.maHoSoBaoTri,
                                         maThietBi: hs.maThietBi,
                                         loaiCongViec: 'Bảo trì',
+                                        nvktDaTienHanh: hs.daBatDauQuyTrinh,
                                         onDaLuuChanged: (v) {
                                           if (mounted) setState(() => _daLuuKeHoachBuoc = v);
                                         },
@@ -1025,6 +1026,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                                           maThietBi: hs.maThietBi,
                                           loaiCongViec: 'Bảo trì',
                                           chiXem: true,
+                                          nvktDaTienHanh: hs.daBatDauQuyTrinh,
                                         ),
                                       if ((hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien) != null) ...[
                                         Container(
