@@ -128,11 +128,13 @@ class HoSoBaoTri {
               trangThaiPhanCong == 'Đã phân công' ||
               trangThaiPhanCong == null);
   bool get dangThucHien => trangThai == 'Đang thực hiện';
-  /// Đã phân công, tổ trưởng có thể cập nhật lại danh sách NV.
+  /// Đã phân công, tổ trưởng có thể cập nhật lại danh sách NV —
+  /// không khi NVKT đã tiến hành quy trình.
   bool get coTheCapNhatPhanCong =>
       dangThucHien &&
           (maPhanCong != null || maNhanVienThucHiens.isNotEmpty) &&
-          trangThaiPhanCong != 'Hoàn thành';
+          trangThaiPhanCong != 'Hoàn thành' &&
+          thoiDiemBatDauThucTe == null;
   bool get biTuChoi => trangThai == 'Từ chối';
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
 
@@ -416,6 +418,8 @@ class HoSoSuaChua {
   final String? tenNhanVienThucHiens;
   final String? rowVersion;
   final bool? choXuongXacNhanQuyTrinhFlag;
+  /// Thời điểm NVKT tiến hành quy trình.
+  final DateTime? thoiDiemBatDauThucTe;
 
   HoSoSuaChua({
     required this.maHoSoSuaChua,
@@ -438,6 +442,7 @@ class HoSoSuaChua {
     this.tenNhanVienThucHiens,
     this.rowVersion,
     this.choXuongXacNhanQuyTrinhFlag,
+    this.thoiDiemBatDauThucTe,
   });
 
   bool get dangThucHien => trangThai == 'Đang thực hiện';
@@ -460,11 +465,12 @@ class HoSoSuaChua {
       !daCoPhanCong &&
           (trangThai == 'Chờ phân công' || trangThai == 'Đã duyệt');
 
-  /// Đã phân công, còn được đổi NV (NV báo bận) — nút "Cập nhật phân công".
+  /// Đã phân công, còn được đổi NV — không khi NVKT đã tiến hành quy trình.
   bool get coTheCapNhatPhanCong =>
       daCoPhanCong &&
           !daHoanThanh &&
           !biTuChoi &&
+          thoiDiemBatDauThucTe == null &&
           (trangThai == 'Chờ phân công' ||
               trangThai == 'Đã duyệt' ||
               trangThai == 'Đang thực hiện');
@@ -521,6 +527,8 @@ class HoSoSuaChua {
       rowVersion: (j['rowVersion'] ?? j['RowVersion'])?.toString(),
       choXuongXacNhanQuyTrinhFlag: j['choXuongXacNhanQuyTrinh'] == true ||
           j['ChoXuongXacNhanQuyTrinh'] == true,
+      thoiDiemBatDauThucTe:
+      asDate(j['thoiDiemBatDauThucTe'] ?? j['ThoiDiemBatDauThucTe']),
     );
   }
 }
