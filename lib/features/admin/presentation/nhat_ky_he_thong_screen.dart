@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/admin_logic.dart';
+import 'quan_ly_nguoi_dung_screen.dart' show AdminGradientHeader;
 
-/// Admin — Nhật ký hệ thống: ai gọi API nào, làm gì (xem / tạo / cập nhật / xóa).
+/// Admin — Nhật ký hệ thống.
 class NhatKyHeThongScreen extends StatefulWidget {
   const NhatKyHeThongScreen({super.key});
 
@@ -17,13 +18,14 @@ class _NhatKyHeThongScreenState extends State<NhatKyHeThongScreen>
   final _searchCtrl = TextEditingController();
 
   static const _blue = Color(0xFF0B6BCB);
+  static const _bg = Color(0xFFF0F7FC);
 
   @override
   void initState() {
     super.initState();
     _anim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 450),
     );
     _ctrl.addListener(() {
       if (mounted) setState(() {});
@@ -64,14 +66,22 @@ class _NhatKyHeThongScreenState extends State<NhatKyHeThongScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FC),
+      backgroundColor: _bg,
       body: RefreshIndicator(
         color: _blue,
         onRefresh: _ctrl.tai,
         child: CustomScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics()),
           slivers: [
-            SliverToBoxAdapter(child: _header()),
+            AdminGradientHeader(
+              title: 'Nhật ký hệ thống',
+              subtitle: 'Ai gọi API · xem / tạo / cập nhật / xóa',
+              searchCtrl: _searchCtrl,
+              onSearch: _ctrl.datTuKhoa,
+              onSearchSubmit: _ctrl.tai,
+              hint: 'Tìm theo tên người / API…',
+            ),
             SliverToBoxAdapter(child: _boLocMethod()),
             if (_ctrl.dangTai)
               const SliverFillRemaining(
@@ -79,18 +89,14 @@ class _NhatKyHeThongScreenState extends State<NhatKyHeThongScreen>
             else if (_ctrl.loi != null)
               SliverFillRemaining(
                 child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_ctrl.loi!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        FilledButton(
-                            onPressed: _ctrl.tai,
-                            child: const Text('Thử lại')),
-                      ],
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_ctrl.loi!),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                          onPressed: _ctrl.tai, child: const Text('Thử lại')),
+                    ],
                   ),
                 ),
               )
@@ -102,11 +108,124 @@ class _NhatKyHeThongScreenState extends State<NhatKyHeThongScreen>
                   ),
                 )
               else
-                SliiverListNhatKy(
-                  items: _ctrl.danhSach,
-                  anim: _anim,
-                  mauMethod: _mauMethod,
-                  fmtTime: _fmtTime,
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                          (context, i) {
+                        final n = _ctrl.danhSach[i];
+                        final mau = _mauMethod(n.phuongThucHttp);
+                        return FadeTransition(
+                          opacity: _anim,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 11),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(18),
+                              border: Border(
+                                  left: BorderSide(color: mau, width: 4.5)),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: _blue.withValues(alpha: 0.06),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(14, 13, 14, 13),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 9, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: mau.withValues(alpha: 0.12),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          n.phuongThucHttp.toUpperCase(),
+                                          style: TextStyle(
+                                              color: mau,
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 11,
+                                              letterSpacing: 0.3),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 10),
+                                      Expanded(
+                                        child: Text(
+                                          n.moTa.isNotEmpty ? n.moTa : n.tenApi,
+                                          style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 14),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.person_outline_rounded,
+                                          size: 16, color: Colors.grey.shade600),
+                                      const SizedBox(width: 5),
+                                      Expanded(
+                                        child: Text(
+                                          n.tenNhanVien,
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.grey.shade800),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    n.tenApi,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: Colors.grey.shade600,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.schedule_rounded,
+                                          size: 14, color: Colors.grey.shade500),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        _fmtTime(n.thoiGian),
+                                        style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600),
+                                      ),
+                                      if (n.diaChiIp != null &&
+                                          n.diaChiIp!.isNotEmpty) ...[
+                                        const SizedBox(width: 12),
+                                        Icon(Icons.lan_outlined,
+                                            size: 14,
+                                            color: Colors.grey.shade500),
+                                        const SizedBox(width: 4),
+                                        Text(n.diaChiIp!,
+                                            style: TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey.shade600)),
+                                      ],
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      childCount: _ctrl.danhSach.length,
+                    ),
+                  ),
                 ),
           ],
         ),
@@ -114,79 +233,17 @@ class _NhatKyHeThongScreenState extends State<NhatKyHeThongScreen>
     );
   }
 
-  Widget _header() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 18, 20, 18),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF0B6BCB), Color(0xFF0284C7), Color(0xFF38BDF8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(22)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Nhật ký hệ thống',
-              style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 20)),
-          const SizedBox(height: 4),
-          Text(
-            'Ai gọi API nào · xem / tạo / cập nhật / xóa gì',
-            style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9), fontSize: 13),
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _searchCtrl,
-            onSubmitted: (v) {
-              _ctrl.datTuKhoa(v);
-              _ctrl.tai();
-            },
-            style: const TextStyle(color: Colors.white),
-            cursorColor: Colors.white,
-            decoration: InputDecoration(
-              hintText: 'Tìm theo tên người / API…',
-              hintStyle:
-              TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-              prefixIcon: Icon(Icons.search,
-                  color: Colors.white.withValues(alpha: 0.9)),
-              suffixIcon: IconButton(
-                icon: const Icon(Icons.search, color: Colors.white),
-                onPressed: () {
-                  _ctrl.datTuKhoa(_searchCtrl.text);
-                  _ctrl.tai();
-                },
-              ),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.18),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: BorderSide.none,
-              ),
-              contentPadding:
-              const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _boLocMethod() {
     final methods = [null, 'GET', 'POST', 'PUT', 'DELETE'];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
           children: methods.map((m) {
             final on = _ctrl.phuongThuc == m;
             final label = m ?? 'Tất cả';
+            final mau = m == null ? _blue : _mauMethod(m);
             return Padding(
               padding: const EdgeInsets.only(right: 8),
               child: FilterChip(
@@ -196,145 +253,15 @@ class _NhatKyHeThongScreenState extends State<NhatKyHeThongScreen>
                         fontWeight: FontWeight.w800,
                         fontSize: 12,
                         color: on ? Colors.white : Colors.grey.shade800)),
-                selectedColor: m == null ? _blue : _mauMethod(m),
+                selectedColor: mau,
                 backgroundColor: Colors.white,
+                side: BorderSide(color: on ? mau : Colors.grey.shade300),
                 onSelected: (_) => _ctrl.datPhuongThuc(m),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(20)),
               ),
             );
           }).toList(),
-        ),
-      ),
-    );
-  }
-}
-
-class SliiverListNhatKy extends StatelessWidget {
-  final List<NhatKyItem> items;
-  final AnimationController anim;
-  final Color Function(String) mauMethod;
-  final String Function(DateTime) fmtTime;
-
-  const SliiverListNhatKy({
-    super.key,
-    required this.items,
-    required this.anim,
-    required this.mauMethod,
-    required this.fmtTime,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 28),
-      sliver: SliverList(
-        delegate: SliverChildBuilderDelegate(
-              (context, i) {
-            final n = items[i];
-            final mau = mauMethod(n.phuongThucHttp);
-            return FadeTransition(
-              opacity: anim,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border(left: BorderSide(color: mau, width: 4)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0B6BCB).withValues(alpha: 0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(
-                              color: mau.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              n.phuongThucHttp.toUpperCase(),
-                              style: TextStyle(
-                                  color: mau,
-                                  fontWeight: FontWeight.w900,
-                                  fontSize: 11),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              n.moTa.isNotEmpty ? n.moTa : n.tenApi,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w800, fontSize: 14),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Icon(Icons.person_outline,
-                              size: 16, color: Colors.grey.shade600),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              n.tenNhanVien,
-                              style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.grey.shade800),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        n.tenApi,
-                        style: TextStyle(
-                            fontSize: 11.5,
-                            color: Colors.grey.shade600,
-                            fontFamily: 'monospace'),
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Icon(Icons.schedule,
-                              size: 14, color: Colors.grey.shade500),
-                          const SizedBox(width: 4),
-                          Text(
-                            fmtTime(n.thoiGian),
-                            style: TextStyle(
-                                fontSize: 12, color: Colors.grey.shade600),
-                          ),
-                          if (n.diaChiIp != null && n.diaChiIp!.isNotEmpty) ...[
-                            const SizedBox(width: 12),
-                            Icon(Icons.lan_outlined,
-                                size: 14, color: Colors.grey.shade500),
-                            const SizedBox(width: 4),
-                            Text(n.diaChiIp!,
-                                style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600)),
-                          ],
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-          childCount: items.length,
         ),
       ),
     );

@@ -121,6 +121,51 @@ class NhatKyItem {
   }
 }
 
+// ============ RULES (logic — không nhét vào screen) ============
+
+class AdminNguoiDungRules {
+  AdminNguoiDungRules._();
+
+  static const vaiTroChoPhep = {
+    'Tổ trưởng cơ điện',
+    'Xưởng',
+    'Giám đốc',
+    'Nhân viên kỹ thuật',
+  };
+
+  /// Họ tên: để trống OK; nếu có thì chỉ chữ + khoảng trắng (không số/ký tự đặc biệt/email).
+  static String? kiemTraHoTen(String? raw) {
+    final t = (raw ?? '').trim();
+    if (t.isEmpty) return null;
+    if (t.contains('@') || t.toLowerCase().contains('opc.com')) {
+      return 'Họ tên không được điền email công ty.';
+    }
+    // Chữ Unicode (có dấu) + khoảng trắng
+    final ok = RegExp(r'^[\p{L}\s]+$', unicode: true).hasMatch(t);
+    if (!ok) {
+      return 'Họ tên chỉ gồm chữ cái và khoảng trắng (không số, không ký tự đặc biệt).';
+    }
+    return null;
+  }
+
+  static String? kiemTraEmailCongTy(String? raw) {
+    final e = (raw ?? '').trim();
+    if (e.isEmpty) return 'Vui lòng nhập email công ty.';
+    if (!e.toLowerCase().endsWith('@opc.com')) {
+      return 'Email công ty phải có đuôi @opc.com.';
+    }
+    if (!e.contains('@') || e.startsWith('@')) {
+      return 'Email không hợp lệ.';
+    }
+    return null;
+  }
+
+  static String? kiemTraChucVu(String? raw) {
+    if ((raw ?? '').trim().isEmpty) return 'Vui lòng nhập chức vụ.';
+    return null;
+  }
+}
+
 // ============ SERVICE ============
 
 class AdminService {
@@ -137,6 +182,7 @@ class AdminService {
     await ApiClient.instance.get<List<dynamic>>(ApiConstants.adminVaiTro);
     return data
         .map((e) => VaiTroThongKe.fromJson(Map<String, dynamic>.from(e as Map)))
+        .where((v) => AdminNguoiDungRules.vaiTroChoPhep.contains(v.tenVaiTro))
         .toList();
   }
 
@@ -161,19 +207,18 @@ class AdminService {
     );
   }
 
+  /// Admin chỉ cập nhật email @opc.com, họ tên, chức vụ.
   static Future<void> capNhatTaiKhoan({
     required int maNguoiDung,
-    required int maVaiTro,
+    required String email,
     required String hoTen,
-    String? soDienThoai,
     required String chucVu,
   }) async {
     await ApiClient.instance.put<Map<String, dynamic>>(
       '${ApiConstants.adminUsers}/$maNguoiDung',
       {
-        'maVaiTro': maVaiTro,
+        'email': email,
         'hoTen': hoTen,
-        'soDienThoai': soDienThoai,
         'chucVu': chucVu,
       },
     );
@@ -284,17 +329,21 @@ class QuanLyNguoiDungController extends ChangeNotifier {
     required String matKhau,
     required int maVaiTro,
     required String hoTen,
-    String? soDienThoai,
     required String chucVu,
   }) async {
+    final e1 = AdminNguoiDungRules.kiemTraEmailCongTy(email);
+    if (e1 != null) return e1;
+    final e2 = AdminNguoiDungRules.kiemTraHoTen(hoTen);
+    if (e2 != null) return e2;
+    final e3 = AdminNguoiDungRules.kiemTraChucVu(chucVu);
+    if (e3 != null) return e3;
     try {
       await AdminService.taoTaiKhoan(
-        email: email,
+        email: email.trim(),
         matKhau: matKhau,
         maVaiTro: maVaiTro,
-        hoTen: hoTen,
-        soDienThoai: soDienThoai,
-        chucVu: chucVu,
+        hoTen: hoTen.trim(),
+        chucVu: chucVu.trim(),
       );
       await tai();
       return null;
@@ -307,18 +356,22 @@ class QuanLyNguoiDungController extends ChangeNotifier {
 
   Future<String?> capNhat({
     required int maNguoiDung,
-    required int maVaiTro,
+    required String email,
     required String hoTen,
-    String? soDienThoai,
     required String chucVu,
   }) async {
+    final e1 = AdminNguoiDungRules.kiemTraEmailCongTy(email);
+    if (e1 != null) return e1;
+    final e2 = AdminNguoiDungRules.kiemTraHoTen(hoTen);
+    if (e2 != null) return e2;
+    final e3 = AdminNguoiDungRules.kiemTraChucVu(chucVu);
+    if (e3 != null) return e3;
     try {
       await AdminService.capNhatTaiKhoan(
         maNguoiDung: maNguoiDung,
-        maVaiTro: maVaiTro,
-        hoTen: hoTen,
-        soDienThoai: soDienThoai,
-        chucVu: chucVu,
+        email: email.trim(),
+        hoTen: hoTen.trim(),
+        chucVu: chucVu.trim(),
       );
       await tai();
       return null;
