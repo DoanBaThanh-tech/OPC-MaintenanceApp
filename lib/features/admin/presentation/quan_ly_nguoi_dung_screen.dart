@@ -1,8 +1,10 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/admin_logic.dart';
 
-/// Admin — Quản lý người dùng (TT CĐ · Xưởng · GĐ · NVKT).
+/// Admin — Quản lý người dùng (UI hiện đại).
 class QuanLyNguoiDungScreen extends StatefulWidget {
   const QuanLyNguoiDungScreen({super.key});
 
@@ -11,24 +13,30 @@ class QuanLyNguoiDungScreen extends StatefulWidget {
 }
 
 class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   final _ctrl = QuanLyNguoiDungController();
-  late final AnimationController _anim;
+  late final AnimationController _listAnim;
+  late final AnimationController _fabAnim;
   final _searchCtrl = TextEditingController();
 
   static const _blue = Color(0xFF0B6BCB);
-  static const _bg = Color(0xFFF0F7FC);
+  static const _sky = Color(0xFF38BDF8);
+  static const _bg = Color(0xFFEEF6FC);
 
   @override
   void initState() {
     super.initState();
-    _anim = AnimationController(
+    _listAnim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 500),
+      duration: const Duration(milliseconds: 650),
     );
+    _fabAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
     _ctrl.addListener(() {
       if (mounted) setState(() {});
-      if (!_ctrl.dangTai) _anim.forward(from: 0);
+      if (!_ctrl.dangTai) _listAnim.forward(from: 0);
     });
     _ctrl.tai();
   }
@@ -36,7 +44,8 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
   @override
   void dispose() {
     _ctrl.dispose();
-    _anim.dispose();
+    _listAnim.dispose();
+    _fabAnim.dispose();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -50,7 +59,7 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
       case 'Chưa kích hoạt':
         return const Color(0xFFD97706);
       default:
-        return Colors.grey;
+        return Colors.blueGrey;
     }
   }
 
@@ -60,9 +69,8 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
         text: (sua?.hoTen == 'Chưa cập nhật') ? '' : (sua?.hoTen ?? ''));
     final emailCtrl = TextEditingController(text: sua?.email ?? '');
     final mkCtrl = TextEditingController();
-    final chucVuCtrl = TextEditingController(text: sua?.chucVu ?? '');
-    int? maVaiTro =
-    isSua ? null : (_ctrl.vaiTro.isNotEmpty ? _ctrl.vaiTro.first.maVaiTro : null);
+    int? maVaiTro = sua?.maVaiTro ??
+        (_ctrl.vaiTro.isNotEmpty ? _ctrl.vaiTro.first.maVaiTro : null);
     String? loiForm;
 
     final ok = await showModalBottomSheet<bool>(
@@ -76,42 +84,36 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
               labelText: label,
               hintText: hint,
               filled: true,
-              fillColor: _bg,
+              fillColor: const Color(0xFFF0F7FC),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,
               ),
               contentPadding:
-              const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             );
-
-            Widget field(String label, TextEditingController c,
-                {bool obscure = false,
-                  TextInputType? keyboard,
-                  String? hint}) =>
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 10),
-                  child: TextField(
-                    controller: c,
-                    obscureText: obscure,
-                    keyboardType: keyboard,
-                    decoration: dec(label: label, hint: hint),
-                  ),
-                );
 
             return Container(
               constraints: BoxConstraints(
-                maxHeight: MediaQuery.sizeOf(ctx).height * 0.88,
+                maxHeight: MediaQuery.sizeOf(ctx).height * 0.85,
               ),
               padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 12,
-                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 20,
+                left: 22,
+                right: 22,
+                top: 14,
+                bottom: MediaQuery.viewInsetsOf(ctx).bottom + 22,
               ),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [
+                  BoxShadow(
+                    color: _blue.withValues(alpha: 0.12),
+                    blurRadius: 30,
+                    offset: const Offset(0, -8),
+                  ),
+                ],
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -120,72 +122,81 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                   children: [
                     Center(
                       child: Container(
-                        width: 44,
+                        width: 48,
                         height: 5,
                         decoration: BoxDecoration(
                           color: Colors.grey.shade300,
-                          borderRadius: BorderRadius.circular(3),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
                             gradient: const LinearGradient(
-                              colors: [_blue, Color(0xFF38BDF8)],
+                              colors: [_blue, _sky],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
                             ),
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: _blue.withValues(alpha: 0.35),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
                           ),
                           child: Icon(
                             isSua
-                                ? Icons.edit_rounded
+                                ? Icons.swap_horiz_rounded
                                 : Icons.person_add_alt_1_rounded,
                             color: Colors.white,
-                            size: 22,
+                            size: 24,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 14),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
                                 isSua
-                                    ? 'Cập nhật người dùng'
+                                    ? 'Đổi vai trò'
                                     : 'Tạo tài khoản mới',
                                 style: const TextStyle(
-                                    fontWeight: FontWeight.w900, fontSize: 18),
+                                    fontWeight: FontWeight.w900, fontSize: 19),
                               ),
+                              const SizedBox(height: 2),
                               Text(
                                 isSua
-                                    ? 'Chỉ sửa họ tên · email @opc.com · chức vụ'
-                                    : 'Email @opc.com · họ tên có thể để trống',
+                                    ? 'Chỉ được chỉnh sửa vai trò'
+                                    : 'Họ tên có thể để trống nếu chưa biết',
                                 style: TextStyle(
-                                    fontSize: 12, color: Colors.grey.shade600),
+                                    fontSize: 12.5,
+                                    color: Colors.grey.shade600),
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 18),
-                    field('Họ tên', hoTenCtrl,
-                        hint: 'Chỉ chữ cái — để trống nếu chưa biết'),
-                    field('Email công ty *', emailCtrl,
-                        hint: 'vd: nguyenvana@opc.com',
-                        keyboard: TextInputType.emailAddress),
-                    if (!isSua) ...[
-                      field('Mật khẩu *', mkCtrl, obscure: true),
-                      const SizedBox(height: 4),
+                    const SizedBox(height: 22),
+                    if (isSua) ...[
+                      // Chỉ xem họ tên + email
+                      _infoChip(Icons.person_outline, sua.hoTen),
+                      const SizedBox(height: 8),
+                      _infoChip(Icons.mail_outline, sua.email),
+                      const SizedBox(height: 16),
                       Text('Vai trò *',
                           style: TextStyle(
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                               color: Colors.grey.shade700,
                               fontSize: 13)),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       DropdownButtonFormField<int>(
                         value: maVaiTro,
                         decoration: dec(),
@@ -198,50 +209,75 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                             .toList(),
                         onChanged: (v) => setModal(() => maVaiTro = v),
                       ),
-                      const SizedBox(height: 10),
-                    ] else if (sua.tenVaiTro != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          color: _bg,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.badge_outlined,
-                                size: 18, color: _blue),
-                            const SizedBox(width: 8),
-                            Text('Vai trò: ${sua.tenVaiTro}',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.w700)),
-                          ],
+                    ] else ...[
+                      TextField(
+                        controller: hoTenCtrl,
+                        decoration: dec(
+                          label: 'Họ tên (tuỳ chọn)',
+                          hint: 'Để trống nếu chưa biết tên',
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emailCtrl,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: dec(
+                          label: 'Email công ty *',
+                          hint: 'vd: nguyenvana@opc.com',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: mkCtrl,
+                        obscureText: true,
+                        decoration: dec(label: 'Mật khẩu *'),
+                      ),
+                      const SizedBox(height: 12),
+                      Text('Vai trò *',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: Colors.grey.shade700,
+                              fontSize: 13)),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int>(
+                        value: maVaiTro,
+                        decoration: dec(),
+                        items: _ctrl.vaiTro
+                            .map((v) => DropdownMenuItem(
+                          value: v.maVaiTro,
+                          child: Text(
+                              '${v.tenVaiTro} (${v.soNguoiDung})'),
+                        ))
+                            .toList(),
+                        onChanged: (v) => setModal(() => maVaiTro = v),
+                      ),
                     ],
-                    field('Chức vụ *', chucVuCtrl),
                     if (loiForm != null) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 12),
                       Text(loiForm!,
                           style: const TextStyle(
                               color: AppColors.danger,
                               fontWeight: FontWeight.w700)),
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     FilledButton(
                       style: FilledButton.styleFrom(
                         backgroundColor: _blue,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14)),
+                            borderRadius: BorderRadius.circular(16)),
+                        elevation: 3,
+                        shadowColor: _blue.withValues(alpha: 0.4),
                       ),
                       onPressed: () async {
                         if (isSua) {
+                          if (maVaiTro == null) {
+                            setModal(() => loiForm = 'Chọn vai trò.');
+                            return;
+                          }
                           final err = await _ctrl.capNhat(
                             maNguoiDung: sua.maNguoiDung,
-                            email: emailCtrl.text,
-                            hoTen: hoTenCtrl.text,
-                            chucVu: chucVuCtrl.text,
+                            maVaiTro: maVaiTro!,
                           );
                           if (err != null) {
                             setModal(() => loiForm = err);
@@ -262,7 +298,6 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                             matKhau: mkCtrl.text,
                             maVaiTro: maVaiTro!,
                             hoTen: hoTenCtrl.text,
-                            chucVu: chucVuCtrl.text,
                           );
                           if (err != null) {
                             setModal(() => loiForm = err);
@@ -272,9 +307,9 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                         if (ctx.mounted) Navigator.pop(ctx, true);
                       },
                       child: Text(
-                        isSua ? 'Lưu thay đổi' : 'Tạo tài khoản',
+                        isSua ? 'Lưu vai trò' : 'Tạo tài khoản',
                         style: const TextStyle(
-                            fontWeight: FontWeight.w900, fontSize: 15),
+                            fontWeight: FontWeight.w900, fontSize: 15.5),
                       ),
                     ),
                   ],
@@ -290,28 +325,57 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(isSua
-              ? 'Đã cập nhật người dùng'
+              ? 'Đã cập nhật vai trò'
               : 'Đã tạo tài khoản (chờ kích hoạt)'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
           shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       );
     }
   }
 
+  Widget _infoChip(IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F7FC),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: _blue),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(text,
+                style: const TextStyle(fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final fabScale = CurvedAnimation(
+      parent: _fabAnim,
+      curve: Curves.elasticOut,
+    );
+
     return Scaffold(
       backgroundColor: _bg,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _moForm(),
-        backgroundColor: _blue,
-        elevation: 6,
-        icon: const Icon(Icons.person_add_alt_1_rounded),
-        label: const Text('Thêm người dùng',
-            style: TextStyle(fontWeight: FontWeight.w900)),
+      floatingActionButton: ScaleTransition(
+        scale: fabScale,
+        child: FloatingActionButton.extended(
+          onPressed: () => _moForm(),
+          backgroundColor: _blue,
+          elevation: 8,
+          highlightElevation: 12,
+          icon: const Icon(Icons.person_add_alt_1_rounded),
+          label: const Text('Thêm người dùng',
+              style: TextStyle(fontWeight: FontWeight.w900)),
+        ),
       ),
       body: RefreshIndicator(
         color: _blue,
@@ -320,36 +384,52 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
           physics: const AlwaysScrollableScrollPhysics(
               parent: BouncingScrollPhysics()),
           slivers: [
-            AdminGradientHeader(
-              title: 'Quản lý người dùng',
-              subtitle:
-              '${_ctrl.danhSach.length} tài khoản · ${_ctrl.vaiTro.length} vai trò',
-              searchCtrl: _searchCtrl,
-              onSearch: _ctrl.datTuKhoa,
-              hint: 'Tìm tên, email, vai trò…',
-            ),
+            _buildHeader(),
             if (_ctrl.dangTai)
               const SliverFillRemaining(
                   child: Center(child: CircularProgressIndicator()))
             else if (_ctrl.loi != null)
-              SliiverError(loi: _ctrl.loi!, onRetry: _ctrl.tai)
+              SliverFillRemaining(
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(_ctrl.loi!),
+                      const SizedBox(height: 12),
+                      FilledButton(
+                          onPressed: _ctrl.tai, child: const Text('Thử lại')),
+                    ],
+                  ),
+                ),
+              )
             else ...[
                 SliverToBoxAdapter(child: _thongKeVaiTro()),
-                SliverToBoxAdapter(
+                SliiverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
                     child: _boLoc(),
                   ),
                 ),
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                  sliver: SliiverList(
+                  sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
                           (context, i) {
                         final u = _ctrl.hienThi[i];
+                        final start = (i * 0.06).clamp(0.0, 0.6);
+                        final anim = CurvedAnimation(
+                          parent: _listAnim,
+                          curve: Interval(start, 1.0, curve: Curves.easeOutCubic),
+                        );
                         return FadeTransition(
-                          opacity: _anim,
-                          child: _userCard(u),
+                          opacity: anim,
+                          child: SlideTransition(
+                            position: Tween<Offset>(
+                              begin: const Offset(0, 0.12),
+                              end: Offset.zero,
+                            ).animate(anim),
+                            child: _userCard(u),
+                          ),
                         );
                       },
                       childCount: _ctrl.hienThi.length,
@@ -357,6 +437,98 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                   ),
                 ),
               ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return SliverToBoxAdapter(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF075985), _blue, _sky],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius:
+          const BorderRadius.vertical(bottom: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: _blue.withValues(alpha: 0.35),
+              blurRadius: 22,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.groups_rounded,
+                      color: Colors.white, size: 26),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Quản lý người dùng',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 22,
+                              letterSpacing: -0.4)),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${_ctrl.danhSach.length} tài khoản · ${_ctrl.vaiTro.length} vai trò',
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: _ctrl.datTuKhoa,
+                  style: const TextStyle(color: Colors.white),
+                  cursorColor: Colors.white,
+                  decoration: InputDecoration(
+                    hintText: 'Tìm tên, email, vai trò…',
+                    hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7)),
+                    prefixIcon: Icon(Icons.search_rounded,
+                        color: Colors.white.withValues(alpha: 0.9)),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.16),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: BorderSide.none,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 14),
+                  ),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -372,19 +544,19 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
       const Color(0xFF7C3AED),
     ];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Số lượng theo vai trò',
-              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 14.5)),
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
           const SizedBox(height: 12),
           SizedBox(
-            height: 100,
+            height: 108,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _ctrl.vaiTro.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (_, i) {
                 final v = _ctrl.vaiTro[i];
                 final selected = _ctrl.locVaiTro == v.tenVaiTro;
@@ -393,27 +565,29 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                   onTap: () =>
                       _ctrl.datLocVaiTro(selected ? null : v.tenVaiTro),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
-                    width: 138,
+                    duration: const Duration(milliseconds: 280),
+                    curve: Curves.easeOutCubic,
+                    width: 142,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       gradient: selected
                           ? LinearGradient(
-                        colors: [c, c.withValues(alpha: 0.8)],
+                        colors: [c, c.withValues(alpha: 0.78)],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       )
                           : null,
                       color: selected ? null : Colors.white,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: selected ? c : c.withValues(alpha: 0.2),
-                          width: selected ? 0 : 1.5),
+                        color: selected ? c : c.withValues(alpha: 0.18),
+                        width: selected ? 0 : 1.5,
+                      ),
                       boxShadow: [
                         BoxShadow(
-                          color: c.withValues(alpha: selected ? 0.28 : 0.08),
-                          blurRadius: selected ? 16 : 10,
-                          offset: const Offset(0, 4),
+                          color: c.withValues(alpha: selected ? 0.32 : 0.1),
+                          blurRadius: selected ? 18 : 12,
+                          offset: const Offset(0, 5),
                         ),
                       ],
                     ),
@@ -436,8 +610,9 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                           '${v.soNguoiDung}',
                           style: TextStyle(
                             fontWeight: FontWeight.w900,
-                            fontSize: 26,
+                            fontSize: 28,
                             color: selected ? Colors.white : c,
+                            height: 1,
                           ),
                         ),
                       ],
@@ -485,7 +660,9 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
         backgroundColor: Colors.white,
         side: BorderSide(color: on ? _blue : Colors.grey.shade300),
         onSelected: (_) => onTap(),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        elevation: on ? 2 : 0,
+        pressElevation: 4,
       ),
     );
   }
@@ -496,20 +673,20 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border(left: BorderSide(color: mau, width: 4.5)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border(left: BorderSide(color: mau, width: 5)),
         boxShadow: [
           BoxShadow(
-            color: _blue.withValues(alpha: 0.07),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            color: _blue.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 5),
           ),
         ],
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(20),
           onTap: () => _moForm(sua: u),
           child: Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 12, 12),
@@ -519,16 +696,18 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                 Row(
                   children: [
                     Container(
-                      width: 46,
-                      height: 46,
+                      width: 50,
+                      height: 50,
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
-                            _blue.withValues(alpha: 0.15),
-                            const Color(0xFF38BDF8).withValues(alpha: 0.2),
+                            _blue.withValues(alpha: 0.18),
+                            _sky.withValues(alpha: 0.22),
                           ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
                         ),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                       alignment: Alignment.center,
                       child: Text(
@@ -536,7 +715,7 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                         style: const TextStyle(
                             color: _blue,
                             fontWeight: FontWeight.w900,
-                            fontSize: 18),
+                            fontSize: 20),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -546,8 +725,8 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                         children: [
                           Text(u.hoTen,
                               style: const TextStyle(
-                                  fontWeight: FontWeight.w900, fontSize: 15.5)),
-                          const SizedBox(height: 2),
+                                  fontWeight: FontWeight.w900, fontSize: 16)),
+                          const SizedBox(height: 3),
                           Text(u.email,
                               style: TextStyle(
                                   fontSize: 12.5, color: Colors.grey.shade600)),
@@ -556,10 +735,10 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
+                          horizontal: 11, vertical: 6),
                       decoration: BoxDecoration(
                         color: mau.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(22),
                       ),
                       child: Text(u.trangThai,
                           style: TextStyle(
@@ -570,22 +749,31 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                   ],
                 ),
                 const SizedBox(height: 12),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    _tag(Icons.badge_outlined, u.tenVaiTro ?? '—'),
-                    if (u.chucVu != null && u.chucVu!.isNotEmpty)
-                      _tag(Icons.work_outline, u.chucVu!),
-                  ],
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0F7FC),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.badge_outlined, size: 15, color: _blue),
+                      const SizedBox(width: 6),
+                      Text(u.tenVaiTro ?? '—',
+                          style: const TextStyle(
+                              fontSize: 12.5, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
                     TextButton.icon(
                       onPressed: () => _moForm(sua: u),
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Sửa',
+                      icon: const Icon(Icons.swap_horiz_rounded, size: 18),
+                      label: const Text('Đổi vai trò',
                           style: TextStyle(fontWeight: FontWeight.w700)),
                     ),
                     if (u.chuaKichHoat || u.daKhoa)
@@ -632,28 +820,9 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
       ),
     );
   }
-
-  Widget _tag(IconData icon, String text) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: _bg,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: _blue),
-          const SizedBox(width: 5),
-          Text(text,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-        ],
-      ),
-    );
-  }
 }
 
-/// Header gradient dùng chung 2 trang Admin.
+/// Header gradient dùng chung (nhật ký hệ thống).
 class AdminGradientHeader extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -680,7 +849,7 @@ class AdminGradientHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFF0B6BCB), Color(0xFF0284C7), Color(0xFF38BDF8)],
+            colors: [Color(0xFF075985), Color(0xFF0B6BCB), Color(0xFF38BDF8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -736,24 +905,5 @@ class AdminGradientHeader extends StatelessWidget {
   }
 }
 
-class SliiverError extends StatelessWidget {
-  final String loi;
-  final VoidCallback onRetry;
-  const SliiverError({super.key, required this.loi, required this.onRetry});
-  @override
-  Widget build(BuildContext context) => SliverFillRemaining(
-    child: Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(loi),
-          const SizedBox(height: 12),
-          FilledButton(onPressed: onRetry, child: const Text('Thử lại')),
-        ],
-      ),
-    ),
-  );
-}
-
-// alias
-typedef SliiverList = SliverList;
+typedef SliiverToBoxAdapter = // ignore: camel_case_types
+SliverToBoxAdapter;

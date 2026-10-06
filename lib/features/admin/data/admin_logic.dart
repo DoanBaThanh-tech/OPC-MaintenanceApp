@@ -160,10 +160,6 @@ class AdminNguoiDungRules {
     return null;
   }
 
-  static String? kiemTraChucVu(String? raw) {
-    if ((raw ?? '').trim().isEmpty) return 'Vui lòng nhập chức vụ.';
-    return null;
-  }
 }
 
 // ============ SERVICE ============
@@ -191,8 +187,6 @@ class AdminService {
     required String matKhau,
     required int maVaiTro,
     required String hoTen,
-    String? soDienThoai,
-    required String chucVu,
   }) async {
     await ApiClient.instance.post<Map<String, dynamic>>(
       ApiConstants.adminTaoTaiKhoan,
@@ -201,25 +195,19 @@ class AdminService {
         'matKhau': matKhau,
         'maVaiTro': maVaiTro,
         'hoTen': hoTen,
-        'soDienThoai': soDienThoai,
-        'chucVu': chucVu,
       },
     );
   }
 
-  /// Admin chỉ cập nhật email @opc.com, họ tên, chức vụ.
+  /// Admin chỉ đổi vai trò.
   static Future<void> capNhatTaiKhoan({
     required int maNguoiDung,
-    required String email,
-    required String hoTen,
-    required String chucVu,
+    required int maVaiTro,
   }) async {
     await ApiClient.instance.put<Map<String, dynamic>>(
       '${ApiConstants.adminUsers}/$maNguoiDung',
       {
-        'email': email,
-        'hoTen': hoTen,
-        'chucVu': chucVu,
+        'maVaiTro': maVaiTro,
       },
     );
   }
@@ -329,21 +317,17 @@ class QuanLyNguoiDungController extends ChangeNotifier {
     required String matKhau,
     required int maVaiTro,
     required String hoTen,
-    required String chucVu,
   }) async {
     final e1 = AdminNguoiDungRules.kiemTraEmailCongTy(email);
     if (e1 != null) return e1;
     final e2 = AdminNguoiDungRules.kiemTraHoTen(hoTen);
     if (e2 != null) return e2;
-    final e3 = AdminNguoiDungRules.kiemTraChucVu(chucVu);
-    if (e3 != null) return e3;
     try {
       await AdminService.taoTaiKhoan(
         email: email.trim(),
         matKhau: matKhau,
         maVaiTro: maVaiTro,
         hoTen: hoTen.trim(),
-        chucVu: chucVu.trim(),
       );
       await tai();
       return null;
@@ -356,22 +340,12 @@ class QuanLyNguoiDungController extends ChangeNotifier {
 
   Future<String?> capNhat({
     required int maNguoiDung,
-    required String email,
-    required String hoTen,
-    required String chucVu,
+    required int maVaiTro,
   }) async {
-    final e1 = AdminNguoiDungRules.kiemTraEmailCongTy(email);
-    if (e1 != null) return e1;
-    final e2 = AdminNguoiDungRules.kiemTraHoTen(hoTen);
-    if (e2 != null) return e2;
-    final e3 = AdminNguoiDungRules.kiemTraChucVu(chucVu);
-    if (e3 != null) return e3;
     try {
       await AdminService.capNhatTaiKhoan(
         maNguoiDung: maNguoiDung,
-        email: email.trim(),
-        hoTen: hoTen.trim(),
-        chucVu: chucVu.trim(),
+        maVaiTro: maVaiTro,
       );
       await tai();
       return null;
