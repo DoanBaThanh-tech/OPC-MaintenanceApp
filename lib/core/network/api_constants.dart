@@ -41,6 +41,12 @@ class ApiConstants {
   static const String inventory = "/Inventory";
   static const String system = "/system";
 
+  // ---------- Admin ----------
+  static const String adminUsers = auth;
+  static const String adminTaoTaiKhoan = '$auth/tao-tai-khoan';
+  static const String adminVaiTro = '$system/vaitro';
+  static const String adminNhatKy = '$system/nhatky';
+
   /// Danh sách nhân viên cho phân công.
   /// Backend: GET /api/WorkOrder/nhan-vien?vaiTro=...
   /// (đặt ở WorkOrder để Tổ trưởng không bị 403 từ SystemController)

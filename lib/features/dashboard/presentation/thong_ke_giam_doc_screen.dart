@@ -96,8 +96,9 @@ class _ThongKeGiamDocScreenState extends State<ThongKeGiamDocScreen>
                 SliiverPad(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: _cardBieuDo(
-                    title: 'Thiết bị bảo trì & sửa chữa theo tháng',
-                    subtitle: 'Số hồ sơ theo tháng năm ${d.nam}',
+                    title: 'Số thiết bị bảo trì & sửa chữa theo tháng',
+                    subtitle:
+                    'Số trên cột = số thiết bị (hồ sơ). Xanh = Bảo trì · Cam = Sửa chữa · Năm ${d.nam}',
                     child: AnimatedBuilder(
                       animation: _anim,
                       builder: (_, __) => _BarChartBtSc(
@@ -110,8 +111,9 @@ class _ThongKeGiamDocScreenState extends State<ThongKeGiamDocScreen>
                 SliiverPad(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: _cardBieuDo(
-                    title: 'Vật tư sử dụng theo tháng',
-                    subtitle: 'Số lượng vật tư · Chi phí (₫)',
+                    title: 'Vật tư sử dụng & chi phí theo tháng',
+                    subtitle:
+                    'Xanh lá = số lượng vật tư · Tím = tổng tiền (₫) · Năm ${d.nam}',
                     child: AnimatedBuilder(
                       animation: _anim,
                       builder: (_, __) => _BarChartVatTu(
@@ -379,20 +381,32 @@ class _ThongKeGiamDocScreenState extends State<ThongKeGiamDocScreen>
               headingRowColor:
               WidgetStatePropertyAll(const Color(0xFF0B6BCB).withValues(alpha: 0.08)),
               columns: const [
-                DataColumn(label: Text('Th')),
-                DataColumn(label: Text('BT')),
-                DataColumn(label: Text('SC')),
-                DataColumn(label: Text('SL VT')),
-                DataColumn(label: Text('Tiền VT')),
+                DataColumn(label: Text('Tháng')),
+                DataColumn(label: Text('TB bảo trì')),
+                DataColumn(label: Text('TB sửa chữa')),
+                DataColumn(label: Text('SL vật tư')),
+                DataColumn(label: Text('Tổng tiền VT')),
               ],
               rows: d.theoThang.map((t) {
                 return DataRow(cells: [
-                  DataCell(Text('T${t.thang}',
+                  DataCell(Text('Tháng ${t.thang}',
                       style: const TextStyle(fontWeight: FontWeight.w800))),
-                  DataCell(Text('${t.soBaoTri}')),
-                  DataCell(Text('${t.soSuaChua}')),
-                  DataCell(Text('${t.soLuongVatTu}')),
-                  DataCell(Text(_fmtTien(t.tongTienVatTu))),
+                  DataCell(Text('${t.soBaoTri} TB',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0B6BCB)))),
+                  DataCell(Text('${t.soSuaChua} TB',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFD97706)))),
+                  DataCell(Text('${t.soLuongVatTu}',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF059669)))),
+                  DataCell(Text(_fmtTien(t.tongTienVatTu),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF7C3AED)))),
                 ]);
               }).toList(),
             ),
@@ -414,7 +428,73 @@ class SliiverPad extends StatelessWidget {
   );
 }
 
-/// Biểu đồ cột kép: Bảo trì (xanh) + Sửa chữa (cam)
+/// Cột có số trên đầu — dễ đọc số thiết bị / vật tư
+class _CotSo extends StatelessWidget {
+  final double height;
+  final int value;
+  final String? valueLabel;
+  final List<Color> colors;
+  final String tooltip;
+
+  const _CotSo({
+    required this.height,
+    required this.value,
+    this.valueLabel,
+    required this.colors,
+    required this.tooltip,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final h = height.clamp(0.0, 140.0);
+    final label = valueLabel ?? '$value';
+    return Tooltip(
+      message: tooltip,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          // Số luôn hiện trên đầu cột
+          Text(
+            value > 0 ? label : '0',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: valueLabel != null && valueLabel!.length > 4 ? 7.5 : 9,
+              fontWeight: FontWeight.w900,
+              color: colors.first,
+              height: 1.1,
+            ),
+          ),
+          const SizedBox(height: 2),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 350),
+            width: double.infinity,
+            height: h < 4 && value > 0 ? 8 : (h < 4 ? 2 : h),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: colors,
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+              ),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(5)),
+              boxShadow: value > 0
+                  ? [
+                BoxShadow(
+                  color: colors.first.withValues(alpha: 0.25),
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                )
+              ]
+                  : null,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Biểu đồ cột kép: Bảo trì (xanh) + Sửa chữa (cam) — có số trên mỗi cột
 class _BarChartBtSc extends StatelessWidget {
   final List<ThongKeThang> data;
   final double progress;
@@ -425,69 +505,88 @@ class _BarChartBtSc extends StatelessWidget {
     final maxV = data
         .map((e) => e.soBaoTri > e.soSuaChua ? e.soBaoTri : e.soSuaChua)
         .fold<int>(1, (a, b) => a > b ? a : b);
+
     return Column(
       children: [
+        // Chú thích rõ
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF0B6BCB).withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Text(
+            'Mỗi cặp cột = 1 tháng · Số trên cột xanh = số TB bảo trì · Số trên cột cam = số TB sửa chữa',
+            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, height: 1.35),
+          ),
+        ),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 180,
+          height: 210,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: data.map((t) {
-              final hBt = (t.soBaoTri / maxV) * 150 * progress;
-              final hSc = (t.soSuaChua / maxV) * 150 * progress;
+              final hBt = (t.soBaoTri / maxV) * 140 * progress;
+              final hSc = (t.soSuaChua / maxV) * 140 * progress;
               return Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 1.5),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Tooltip(
-                              message: 'BT: ${t.soBaoTri}',
-                              child: Container(
-                                height: hBt.clamp(0, 150),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFF0B6BCB),
-                                      Color(0xFF38BDF8)
-                                    ],
-                                    begin: Alignment.bottomCenter,
-                                    end: Alignment.topCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: _CotSo(
+                                height: hBt,
+                                value: t.soBaoTri,
+                                colors: const [
+                                  Color(0xFF0B6BCB),
+                                  Color(0xFF38BDF8)
+                                ],
+                                tooltip:
+                                'Tháng ${t.thang}: ${t.soBaoTri} thiết bị bảo trì'
+                                    '${t.soBaoTriHoanThanh > 0 ? ' (HT: ${t.soBaoTriHoanThanh})' : ''}',
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Tooltip(
-                              message: 'SC: ${t.soSuaChua}',
-                              child: Container(
-                                height: hSc.clamp(0, 150),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      Color(0xFFD97706),
-                                      Color(0xFFFBBF24)
-                                    ],
-                                    begin: Alignment.bottomCenter,
-                                    end: Alignment.topCenter,
-                                  ),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
+                            const SizedBox(width: 2),
+                            Expanded(
+                              child: _CotSo(
+                                height: hSc,
+                                value: t.soSuaChua,
+                                colors: const [
+                                  Color(0xFFD97706),
+                                  Color(0xFFFBBF24)
+                                ],
+                                tooltip:
+                                'Tháng ${t.thang}: ${t.soSuaChua} thiết bị sửa chữa'
+                                    '${t.soSuaChuaHoanThanh > 0 ? ' (HT: ${t.soSuaChuaHoanThanh})' : ''}',
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      Text('T${t.thang}',
-                          style: const TextStyle(
-                              fontSize: 9, fontWeight: FontWeight.w700)),
+                      Text(
+                        'T${t.thang}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      // Dòng phụ: BT/SC dạng text nhỏ dưới tháng
+                      Text(
+                        '${t.soBaoTri}/${t.soSuaChua}',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -495,13 +594,13 @@ class _BarChartBtSc extends StatelessWidget {
             }).toList(),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _legend(const Color(0xFF0B6BCB), 'Bảo trì'),
-            const SizedBox(width: 16),
-            _legend(const Color(0xFFD97706), 'Sửa chữa'),
+            _legend(const Color(0xFF0B6BCB), 'Bảo trì (số TB)'),
+            const SizedBox(width: 18),
+            _legend(const Color(0xFFD97706), 'Sửa chữa (số TB)'),
           ],
         ),
       ],
@@ -511,17 +610,22 @@ class _BarChartBtSc extends StatelessWidget {
   Widget _legend(Color c, String t) => Row(
     children: [
       Container(
-          width: 12,
-          height: 12,
-          decoration:
-          BoxDecoration(color: c, borderRadius: BorderRadius.circular(3))),
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          color: c,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
       const SizedBox(width: 6),
-      Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+      Text(t,
+          style:
+          const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
     ],
   );
 }
 
-/// Biểu đồ cột: số lượng VT + hiển thị tiền dưới dạng chú thích
+/// Biểu đồ vật tư: SL + tiền — có số trên mỗi cột
 class _BarChartVatTu extends StatelessWidget {
   final List<ThongKeThang> data;
   final double progress;
@@ -532,61 +636,105 @@ class _BarChartVatTu extends StatelessWidget {
     required this.fmtTien,
   });
 
+  String _fmtNgan(int v) {
+    if (v >= 1000000) {
+      final m = v / 1000000;
+      return m >= 10 ? '${m.round()}tr' : '${m.toStringAsFixed(1)}tr';
+    }
+    if (v >= 1000) {
+      final k = v / 1000;
+      return k >= 10 ? '${k.round()}k' : '${k.toStringAsFixed(1)}k';
+    }
+    return '$v';
+  }
+
   @override
   Widget build(BuildContext context) {
     final maxSl =
     data.map((e) => e.soLuongVatTu).fold<int>(1, (a, b) => a > b ? a : b);
     final maxTien =
     data.map((e) => e.tongTienVatTu).fold<int>(1, (a, b) => a > b ? a : b);
+
     return Column(
       children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: const Color(0xFF059669).withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: const Text(
+            'Mỗi cặp cột = 1 tháng · Số trên cột xanh lá = số lượng VT · Số trên cột tím = chi phí (rút gọn)',
+            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, height: 1.35),
+          ),
+        ),
+        const SizedBox(height: 12),
         SizedBox(
-          height: 180,
+          height: 210,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: data.map((t) {
-              final hSl = (t.soLuongVatTu / maxSl) * 150 * progress;
-              final hTien = (t.tongTienVatTu / maxTien) * 150 * progress;
+              final hSl = (t.soLuongVatTu / maxSl) * 140 * progress;
+              final hTien = (t.tongTienVatTu / maxTien) * 140 * progress;
               return Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 2),
+                  padding: const EdgeInsets.symmetric(horizontal: 1.5),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Tooltip(
-                              message: 'SL: ${t.soLuongVatTu}',
-                              child: Container(
-                                height: hSl.clamp(0, 150),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF059669),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: _CotSo(
+                                height: hSl,
+                                value: t.soLuongVatTu,
+                                colors: const [
+                                  Color(0xFF047857),
+                                  Color(0xFF34D399)
+                                ],
+                                tooltip:
+                                'Tháng ${t.thang}: ${t.soLuongVatTu} vật tư',
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 2),
-                          Expanded(
-                            child: Tooltip(
-                              message: fmtTien(t.tongTienVatTu),
-                              child: Container(
-                                height: hTien.clamp(0, 150),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF7C3AED),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
+                            const SizedBox(width: 2),
+                            Expanded(
+                              child: _CotSo(
+                                height: hTien,
+                                value: t.tongTienVatTu,
+                                valueLabel: _fmtNgan(t.tongTienVatTu),
+                                colors: const [
+                                  Color(0xFF6D28D9),
+                                  Color(0xFFA78BFA)
+                                ],
+                                tooltip:
+                                'Tháng ${t.thang}: ${fmtTien(t.tongTienVatTu)}',
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 4),
-                      Text('T${t.thang}',
-                          style: const TextStyle(
-                              fontSize: 9, fontWeight: FontWeight.w700)),
+                      Text(
+                        'T${t.thang}',
+                        style: TextStyle(
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      Text(
+                        '${t.soLuongVatTu}/${_fmtNgan(t.tongTienVatTu)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade500,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -594,12 +742,12 @@ class _BarChartVatTu extends StatelessWidget {
             }).toList(),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _legend(const Color(0xFF059669), 'Số lượng VT'),
-            const SizedBox(width: 16),
+            const SizedBox(width: 18),
             _legend(const Color(0xFF7C3AED), 'Chi phí VT'),
           ],
         ),
@@ -610,12 +758,17 @@ class _BarChartVatTu extends StatelessWidget {
   Widget _legend(Color c, String t) => Row(
     children: [
       Container(
-          width: 12,
-          height: 12,
-          decoration:
-          BoxDecoration(color: c, borderRadius: BorderRadius.circular(3))),
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          color: c,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      ),
       const SizedBox(width: 6),
-      Text(t, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+      Text(t,
+          style:
+          const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
     ],
   );
 }

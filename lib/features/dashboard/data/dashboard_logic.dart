@@ -9,6 +9,8 @@ import '../../equipment/presentation/equipment_screens.dart';
 import '../../work_order/presentation/work_order_assign_history_screen.dart';
 import '../../work_order/presentation/ho_so_vat_tu_screens.dart';
 import '../presentation/thong_ke_giam_doc_screen.dart';
+import '../../admin/presentation/quan_ly_nguoi_dung_screen.dart';
+import '../../admin/presentation/nhat_ky_he_thong_screen.dart';
 // ============ MODEL ============
 
 /// 1 mục trong slide menu
@@ -66,13 +68,18 @@ class DashboardLogic {
       case 'Admin hệ thống':
         return [
           MenuGroup(tieuDe: 'Tài khoản', muc: [
-            MenuItemData(icon: Icons.people_alt_rounded, label: 'Quản lý người dùng', screenBuilder: () => const _ChuaLamScreen(ten: 'Quản lý người dùng')),
-            MenuItemData(icon: Icons.admin_panel_settings_rounded, label: 'Quản lý vai trò', screenBuilder: () => const _ChuaLamScreen(ten: 'Quản lý vai trò')),
+            MenuItemData(
+              icon: Icons.people_alt_rounded,
+              label: 'Quản lý người dùng',
+              screenBuilder: () => const QuanLyNguoiDungScreen(),
+            ),
           ]),
           MenuGroup(tieuDe: 'Hệ thống', muc: [
-            MenuItemData(icon: Icons.grid_view_rounded, label: 'Danh mục chức năng', screenBuilder: () => const _ChuaLamScreen(ten: 'Danh mục chức năng')),
-            MenuItemData(icon: Icons.tune_rounded, label: 'Cấu hình hệ thống', screenBuilder: () => const _ChuaLamScreen(ten: 'Cấu hình hệ thống')),
-            MenuItemData(icon: Icons.receipt_long_rounded, label: 'Nhật ký hệ thống', screenBuilder: () => const _ChuaLamScreen(ten: 'Nhật ký hệ thống')),
+            MenuItemData(
+              icon: Icons.receipt_long_rounded,
+              label: 'Nhật ký hệ thống',
+              screenBuilder: () => const NhatKyHeThongScreen(),
+            ),
           ]),
         ];
 
