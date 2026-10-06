@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/profile_logic.dart';
@@ -28,7 +29,6 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
 
   final _hoTenCtrl = TextEditingController();
   final _sdtCtrl = TextEditingController();
-  final _chucVuCtrl = TextEditingController();
   DateTime? _ngayVaoLam;
 
   String? _email;
@@ -54,7 +54,6 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
     _anim.dispose();
     _hoTenCtrl.dispose();
     _sdtCtrl.dispose();
-    _chucVuCtrl.dispose();
     super.dispose();
   }
 
@@ -70,7 +69,6 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
       _hoTenCtrl.text =
       hs.hoTen == 'Chưa cập nhật' ? '' : hs.hoTen;
       _sdtCtrl.text = hs.soDienThoai ?? '';
-      _chucVuCtrl.text = hs.chucVu ?? '';
       _ngayVaoLam = hs.ngayVaoLam;
     } on ApiException catch (e) {
       _loi = e.message;
@@ -100,7 +98,6 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
       final hs = await ProfileService.capNhat(
         hoTen: _hoTenCtrl.text,
         soDienThoai: _sdtCtrl.text,
-        chucVu: _chucVuCtrl.text,
         ngayVaoLam: _ngayVaoLam,
       );
       if (!mounted) return;
@@ -226,7 +223,7 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Chỉnh sửa họ tên, SĐT, chức vụ…',
+                            'Chỉnh sửa họ tên, số điện thoại…',
                             style: TextStyle(
                                 fontSize: 12.5,
                                 color: Colors.grey.shade600),
@@ -256,18 +253,14 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
                 const SizedBox(height: 12),
                 TextField(
                   controller: _sdtCtrl,
-                  keyboardType: TextInputType.phone,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(10),
+                  ],
                   decoration: _dec(
                     label: 'Số điện thoại',
-                    hint: 'VD: 0901234567',
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _chucVuCtrl,
-                  decoration: _dec(
-                    label: 'Chức vụ',
-                    hint: 'VD: Kỹ thuật viên',
+                    hint: 'Tối đa 10 số — VD: 0901234567',
                   ),
                 ),
                 const SizedBox(height: 12),

@@ -10,7 +10,6 @@ class HoSoCaNhan {
   final String? tenVaiTro;
   final String hoTen;
   final String? soDienThoai;
-  final String? chucVu;
   final DateTime? ngayVaoLam;
 
   const HoSoCaNhan({
@@ -19,7 +18,6 @@ class HoSoCaNhan {
     this.tenVaiTro,
     required this.hoTen,
     this.soDienThoai,
-    this.chucVu,
     this.ngayVaoLam,
   });
 
@@ -38,7 +36,6 @@ class HoSoCaNhan {
       tenVaiTro: (j['tenVaiTro'] ?? j['TenVaiTro'])?.toString(),
       hoTen: (j['hoTen'] ?? j['HoTen'])?.toString() ?? '',
       soDienThoai: (j['soDienThoai'] ?? j['SoDienThoai'])?.toString(),
-      chucVu: (j['chucVu'] ?? j['ChucVu'])?.toString(),
       ngayVaoLam: d(j['ngayVaoLam'] ?? j['NgayVaoLam']),
     );
   }
@@ -60,11 +57,15 @@ class ProfileRules {
     return null;
   }
 
+  /// Chỉ chữ số 0–9, tối đa 10 số; không chữ, ký tự đặc biệt, thập phân, số âm.
   static String? kiemTraSdt(String? raw) {
     final t = (raw ?? '').trim();
     if (t.isEmpty) return null;
-    if (!RegExp(r'^[0-9+\-\s]{8,15}$').hasMatch(t)) {
-      return 'Số điện thoại không hợp lệ (8–15 số).';
+    if (!RegExp(r'^\d+$').hasMatch(t)) {
+      return 'Số điện thoại chỉ được nhập số (không chữ, không ký tự đặc biệt).';
+    }
+    if (t.length > 10) {
+      return 'Số điện thoại tối đa 10 số.';
     }
     return null;
   }
@@ -80,13 +81,11 @@ class ProfileService {
   static Future<HoSoCaNhan> capNhat({
     required String hoTen,
     String? soDienThoai,
-    String? chucVu,
     DateTime? ngayVaoLam,
   }) async {
     final body = <String, dynamic>{
       'hoTen': hoTen.trim(),
       'soDienThoai': soDienThoai?.trim(),
-      'chucVu': chucVu?.trim(),
     };
     if (ngayVaoLam != null) {
       body['ngayVaoLam'] =
