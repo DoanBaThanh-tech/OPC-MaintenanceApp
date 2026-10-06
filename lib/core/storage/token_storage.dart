@@ -45,6 +45,10 @@ class TokenStorage {
   static Future<String?> getEmail() => _storage.read(key: _keyEmail);
   static Future<String?> getHoTen() => _storage.read(key: _keyHoTen);
 
+  static Future<void> capNhatHoTen(String hoTen) async {
+    await _storage.write(key: _keyHoTen, value: hoTen);
+  }
+
   static Future<bool> daDangNhap() async {
     final token = await getToken();
     return token != null && token.isNotEmpty;

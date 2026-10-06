@@ -3,6 +3,7 @@ import '../../../core/responsive/responsive.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../auth/data/auth_logic.dart';
 import '../../auth/presentation/auth_screens.dart';
+import '../../auth/presentation/profile_sheet.dart';
 import '../data/dashboard_logic.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -42,6 +43,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _moHoSoCaNhan() async {
+    final tenMoi = await showProfileSheet(context);
+    if (tenMoi != null && mounted) {
+      await _taiDuLieu();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Đã cập nhật thông tin cá nhân'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+    }
+  }
+
   void _chonMuc(MenuItemData muc) {
     setState(() => _dangChon = muc);
     Navigator.pop(context); // đóng slide menu sau khi chọn
@@ -74,6 +92,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               dangChon: _dangChon,
               onChon: _chonMuc,
               onDangXuat: _dangXuat,
+              onMoHoSo: _moHoSoCaNhan,
             ),
           ),
           body: _dangChon?.screenBuilder() ??
@@ -92,6 +111,7 @@ class _SlideMenuContent extends StatefulWidget {
   final MenuItemData? dangChon;
   final void Function(MenuItemData) onChon;
   final VoidCallback onDangXuat;
+  final VoidCallback onMoHoSo;
 
   const _SlideMenuContent({
     required this.phien,
@@ -99,6 +119,7 @@ class _SlideMenuContent extends StatefulWidget {
     required this.dangChon,
     required this.onChon,
     required this.onDangXuat,
+    required this.onMoHoSo,
   });
 
   @override
@@ -191,37 +212,44 @@ class _SlideMenuContentState extends State<_SlideMenuContent>
         children: [
           Row(
             children: [
-              // Avatar
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      Colors.white.withValues(alpha: 0.35),
-                      Colors.white.withValues(alpha: 0.12),
-                    ],
-                  ),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    width: 2,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+              // Avatar — bấm mở chỉnh sửa hồ sơ cá nhân
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: widget.onMoHoSo,
+                  child: Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.white.withValues(alpha: 0.35),
+                          Colors.white.withValues(alpha: 0.12),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        width: 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.15),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  _chuCai,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
+                    alignment: Alignment.center,
+                    child: Text(
+                      _chuCai,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ),

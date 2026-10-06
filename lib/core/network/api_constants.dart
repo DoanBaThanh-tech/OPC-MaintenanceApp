@@ -8,6 +8,8 @@ class ApiConstants {
 
   // Khớp route controller ASP.NET: [Route("api/[controller]")] hoặc [Route("api/system")]
   static const String auth = "/Auth";
+  /// GET/PUT hồ sơ cá nhân (user đang đăng nhập)
+  static const String hoSoCaNhan = "$auth/toi";
 
   // ---------- Equipment (Thiết bị) ----------
   /// GET /api/Equipment — danh sách (query: maChuKy, trangThai)
