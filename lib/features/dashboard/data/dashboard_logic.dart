@@ -8,6 +8,7 @@ import '../../approval/presentation/approval_screens.dart';
 import '../../equipment/presentation/equipment_screens.dart';
 import '../../work_order/presentation/work_order_assign_history_screen.dart';
 import '../../work_order/presentation/ho_so_vat_tu_screens.dart';
+import '../presentation/thong_ke_giam_doc_screen.dart';
 // ============ MODEL ============
 
 /// 1 mục trong slide menu
@@ -135,6 +136,13 @@ class DashboardLogic {
       case 'Giám đốc':
       case 'Phó giám đốc':
         return [
+          MenuGroup(tieuDe: 'Tổng quan', muc: [
+            MenuItemData(
+              icon: Icons.bar_chart_rounded,
+              label: 'Thống kê',
+              screenBuilder: () => const ThongKeGiamDocScreen(),
+            ),
+          ]),
           MenuGroup(tieuDe: 'Phê duyệt', muc: [
             MenuItemData(icon: Icons.fact_check_rounded, label: 'Duyệt hồ sơ bảo trì', screenBuilder: () => const ApprovalBaoTriListScreen()),
             MenuItemData(icon: Icons.handyman_rounded, label: 'Duyệt hồ sơ sửa chữa', screenBuilder: () => const ApprovalSuaChuaListScreen()),

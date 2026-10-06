@@ -72,8 +72,17 @@ class ChiTietHoSoSuaChuaController extends ChangeNotifier {
           vaiTro == 'Tổ trưởng kỹ thuật' ||
           vaiTro == 'Tổ trưởng';
   bool get laNvkt => vaiTro == 'Nhân viên kỹ thuật';
-  bool get laXuong =>
-      vaiTro == 'Xưởng' || vaiTro == 'Tổ trưởng sản xuất';
+  bool get laXuong {
+    final v = (vaiTro ?? '').toLowerCase().trim();
+    return v == 'xưởng' ||
+        v == 'xuong' ||
+        v.contains('xưởng') ||
+        v.contains('xuong') ||
+        v.contains('sản xuất') ||
+        v.contains('san xuat') ||
+        vaiTro == 'Xưởng' ||
+        vaiTro == 'Tổ trưởng sản xuất';
+  }
 
   Future<void> tai() async {
     dangTai = true;

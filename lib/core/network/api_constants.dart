@@ -36,6 +36,8 @@ class ApiConstants {
   static const String namDaLap = '$maintenancePlan/nam-da-lap';
 
   static const String workOrder = "/WorkOrder";
+  /// GET /api/WorkOrder/thong-ke-giam-doc?nam=
+  static const String thongKeGiamDoc = '$workOrder/thong-ke-giam-doc';
   static const String inventory = "/Inventory";
   static const String system = "/system";
 
