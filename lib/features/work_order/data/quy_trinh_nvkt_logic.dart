@@ -179,10 +179,12 @@ class QuyTrinhNvktRules {
   }
 
   /// Áp tiến độ API:
+  /// - DuocChon (Tổ trưởng chọn sẵn) → tích sẵn, **không** hiện tên
   /// - DaXong / DaCapNhat của người khác → khóa (không sửa bước người khác)
   /// - DaCapNhat của mình → đã lưu sau từ chối → khóa, nút «Cập nhật thành công»
   /// - DaXong của mình + chế độ từ chối → còn được «Lưu lại bước»
   /// - DangLam → không khóa cho người khác
+  /// Chỉ hiện tên khi NVKT đã bấm Xong (DaXong / DaCapNhat).
   static ({
   bool daChon,
   bool daXong,
@@ -195,6 +197,17 @@ class QuyTrinhNvktRules {
     required bool laCuaToi,
     String? tenNhanVien,
   }) {
+    // Tổ trưởng chọn sẵn — NVKT thấy đã tích, không hiện tên Tổ trưởng
+    if (trangThai == 'DuocChon') {
+      return (
+      daChon: true,
+      daXong: false,
+      khoaBoiNguoiKhac: false,
+      moRong: true,
+      daLuuDieuChinh: false,
+      tenHienThi: null,
+      );
+    }
     // Đã lưu điều chỉnh sau Xưởng từ chối
     if (trangThai == 'DaCapNhat') {
       return (
@@ -223,7 +236,8 @@ class QuyTrinhNvktRules {
       khoaBoiNguoiKhac: false,
       moRong: true,
       daLuuDieuChinh: false,
-      tenHienThi: tenNhanVien,
+      // Chưa Xong → không hiện tên
+      tenHienThi: null,
       );
     }
     return (

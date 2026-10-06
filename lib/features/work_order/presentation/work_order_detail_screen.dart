@@ -8,6 +8,8 @@ import '../data/models/material_usage_models.dart';
 import '../data/services/material_usage_service.dart';
 import '../data/services/work_order_service.dart';
 import 'work_order_assign_screen.dart';
+import 'widgets/to_truong_chon_buoc_quy_trinh.dart';
+import '../data/to_truong_ke_hoach_buoc_logic.dart';
 
 // ============ MÀN 3: CHI TIẾT HỒ SƠ BẢO TRÌ + PHÂN CÔNG (khi đã duyệt) ============
 
@@ -29,6 +31,9 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
   HoSoVatTuItem? _hoSoVatTu;
   bool _dangTaiQuyTrinh = false;
   String? _loiQuyTrinh;
+
+  /// Tổ trưởng đã Lưu kế hoạch bước (bắt buộc trước phân công).
+  bool _daLuuKeHoachBuoc = false;
 
   bool get _laToTruong => _controller.laToTruong;
   bool get _laNvkt => _controller.laNvkt;
@@ -964,25 +969,63 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                                 ),
                               )
                             else if ((hs.daDuyetChuaPhanCong || hs.phanCongBiTuChoi) && _laToTruong)
-                                ElevatedButton.icon(
-                                  icon: const Icon(Icons.groups_rounded),
-                                  label: Text(hs.phanCongBiTuChoi ? 'Phân công lại nhân viên khác' : 'Phân công nhân viên'),
-                                  onPressed: () async {
-                                    final ok = await Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => PhanCongBaoTriScreen(maHoSoBaoTri: hs.maHoSoBaoTri),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    if (hs.maThietBi > 0)
+                                      ToTruongChonBuocQuyTrinh(
+                                        maHoSoBaoTri: hs.maHoSoBaoTri,
+                                        maThietBi: hs.maThietBi,
+                                        loaiCongViec: 'Bảo trì',
+                                        onDaLuuChanged: (v) {
+                                          if (mounted) setState(() => _daLuuKeHoachBuoc = v);
+                                        },
                                       ),
-                                    );
-                                    if (ok == true && mounted) {
-                                      await _controller.taiChiTiet();
-                                    }
-                                  },
+                                    ElevatedButton.icon(
+                                      icon: const Icon(Icons.groups_rounded),
+                                      label: Text(hs.phanCongBiTuChoi
+                                          ? 'Phân công lại nhân viên khác'
+                                          : 'Phân công nhân viên'),
+                                      onPressed: () async {
+                                        final block =
+                                        ToTruongKeHoachBuocRules.kiemTraTruocKhiPhanCong(
+                                          daLuuKeHoach: _daLuuKeHoachBuoc,
+                                        );
+                                        if (block != null) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(block),
+                                              backgroundColor: AppColors.danger,
+                                              behavior: SnackBarBehavior.floating,
+                                            ),
+                                          );
+                                          return;
+                                        }
+                                        final ok = await Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => PhanCongBaoTriScreen(
+                                                maHoSoBaoTri: hs.maHoSoBaoTri),
+                                          ),
+                                        );
+                                        if (ok == true && mounted) {
+                                          await _controller.taiChiTiet();
+                                        }
+                                      },
+                                    ),
+                                  ],
                                 )
                               else if (hs.coTheCapNhatPhanCong && _laToTruong)
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
+                                      if (hs.maThietBi > 0)
+                                        ToTruongChonBuocQuyTrinh(
+                                          maHoSoBaoTri: hs.maHoSoBaoTri,
+                                          maThietBi: hs.maThietBi,
+                                          loaiCongViec: 'Bảo trì',
+                                          chiXem: true,
+                                        ),
                                       if ((hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien) != null) ...[
                                         Container(
                                           padding: const EdgeInsets.all(12),

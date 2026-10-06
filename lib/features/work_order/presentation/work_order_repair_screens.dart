@@ -10,6 +10,8 @@ import '../data/models/material_usage_models.dart';
 import '../data/services/material_usage_service.dart';
 import '../data/services/work_order_service.dart';
 import 'work_order_assign_screen.dart';
+import 'widgets/to_truong_chon_buoc_quy_trinh.dart';
+import '../data/to_truong_ke_hoach_buoc_logic.dart';
 
 // Theme xanh dương (đồng bộ AppColors) — hiện đại, nhiều hiệu ứng
 const _scPrimary = AppColors.primary; // #0068A9
@@ -1248,6 +1250,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
   HoSoVatTuItem? _hoSoVatTu;
   bool _dangTaiQuyTrinh = false;
   String? _loiQuyTrinh;
+  bool _daLuuKeHoachBuoc = false;
 
   bool get _laToTruong => _ctrl.laToTruong;
   bool get _laNvkt => _ctrl.laNvkt;
@@ -1539,7 +1542,17 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                   ],
                   const SizedBox(height: 22),
                   if (_laToTruong &&
-                      (hs.choPhanCong || hs.coTheCapNhatPhanCong))
+                      (hs.choPhanCong || hs.coTheCapNhatPhanCong)) ...[
+                    if (hs.maThietBi > 0)
+                      ToTruongChonBuocQuyTrinh(
+                        maHoSoSuaChua: hs.maHoSoSuaChua,
+                        maThietBi: hs.maThietBi,
+                        loaiCongViec: 'Sửa chữa',
+                        chiXem: hs.coTheCapNhatPhanCong,
+                        onDaLuuChanged: (v) {
+                          if (mounted) setState(() => _daLuuKeHoachBuoc = v);
+                        },
+                      ),
                     _gradientBtn(
                       icon: hs.coTheCapNhatPhanCong
                           ? Icons.manage_accounts_rounded
@@ -1548,6 +1561,22 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                           ? 'Cập nhật phân công'
                           : 'Phân công nhân viên',
                       onTap: () async {
+                        if (!hs.coTheCapNhatPhanCong) {
+                          final block =
+                          ToTruongKeHoachBuocRules.kiemTraTruocKhiPhanCong(
+                            daLuuKeHoach: _daLuuKeHoachBuoc,
+                          );
+                          if (block != null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(block),
+                                backgroundColor: AppColors.danger,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                            return;
+                          }
+                        }
                         final ok = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -1561,6 +1590,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                         if (ok == true) _load();
                       },
                     ),
+                  ],
                   if (_laNvkt && hs.dangThucHien) ...[
                     const SizedBox(height: 10),
                     SizedBox(

@@ -201,8 +201,17 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
           laCuaToi: laCuaToi,
           tenNhanVien: tenNv,
         );
+        // Tổ trưởng chọn sẵn — tích sẵn, không hiện tên
+        if (tt == 'DuocChon') {
+          b.daChon = true;
+          b.daXong = false;
+          b.khoaBoiNguoiKhac = false;
+          b.moRong = true;
+          b.daLuuDieuChinh = false;
+          b.tenNguoiGiu = null;
+        }
         // DaXong / DaCapNhat / DangLam của mình
-        if (tt == 'DaXong' ||
+        else if (tt == 'DaXong' ||
             tt == 'DaCapNhat' ||
             (tt == 'DangLam' && laCuaToi)) {
           b.daChon = ap.daChon;
@@ -212,6 +221,8 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
           b.daLuuDieuChinh = ap.daLuuDieuChinh;
           if (ap.tenHienThi != null && ap.tenHienThi!.isNotEmpty) {
             b.tenNguoiGiu = ap.tenHienThi;
+          } else if (tt == 'DangLam') {
+            b.tenNguoiGiu = null;
           }
         }
         if (tt == 'DaXong' || tt == 'DaCapNhat') {
