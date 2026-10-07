@@ -684,6 +684,162 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         ],
                       ),
 
+                      // Nhân viên được phân công (luôn hiện khi có)
+                      if ((hs.tenNhanVienThucHiens ?? '').trim().isNotEmpty ||
+                          hs.maNhanVienThucHiens.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _cardBox(
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.people_alt_rounded,
+                                    size: 18, color: _btPrimary),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Nhân viên được phân công',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: _btPrimary.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${hs.maNhanVienThucHiens.isNotEmpty ? hs.maNhanVienThucHiens.length : (hs.tenNhanVienThucHiens!.split(',').where((e) => e.trim().isNotEmpty).length)} người',
+                                    style: const TextStyle(
+                                      color: _btPrimary,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              (hs.tenNhanVienThucHiens ??
+                                  hs.tenNhanVienThucHien ??
+                                  '—')
+                                  .trim(),
+                              style: const TextStyle(
+                                fontSize: 14,
+                                height: 1.4,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0F172A),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      // Quy trình đã chọn lúc tạo hồ sơ
+                      if (hs.danhSachBuocQuyTrinh.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        _cardBox(
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.account_tree_rounded,
+                                    size: 18, color: _btPrimary),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Quy trình thực hiện',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            ...hs.danhSachBuocQuyTrinh.map((b) {
+                              final tt = (b.trangThai ?? '').trim();
+                              final chip = tt == 'DaXong' || tt == 'DaCapNhat'
+                                  ? 'Đã xong'
+                                  : tt == 'DangLam'
+                                  ? 'Đang làm'
+                                  : tt == 'DuocChon'
+                                  ? 'Đã chọn'
+                                  : (tt.isEmpty ? null : tt);
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: _btPrimary.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${b.soBuoc}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          color: _btPrimary,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            b.moTaBuoc.isEmpty
+                                                ? 'Bước ${b.soBuoc}'
+                                                : b.moTaBuoc,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 13.5,
+                                              height: 1.3,
+                                            ),
+                                          ),
+                                          if (chip != null ||
+                                              (b.tenNhanVien ?? '')
+                                                  .trim()
+                                                  .isNotEmpty)
+                                            Padding(
+                                              padding:
+                                              const EdgeInsets.only(top: 2),
+                                              child: Text(
+                                                [
+                                                  if (chip != null) chip,
+                                                  if ((b.tenNhanVien ?? '')
+                                                      .trim()
+                                                      .isNotEmpty)
+                                                    b.tenNhanVien!.trim(),
+                                                ].join(' · '),
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                        ),
+                      ],
+
                       // Chỉ hiện khi hồ sơ Đã hoàn thành — danh sách NV đã bảo trì thiết bị
                       if (hs.daHoanThanh) ...[
                         const SizedBox(height: 12),
@@ -973,15 +1129,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                                   crossAxisAlignment: CrossAxisAlignment.stretch,
                                   children: [
                                     if (hs.maThietBi > 0)
-                                      ToTruongChonBuocQuyTrinh(
-                                        maHoSoBaoTri: hs.maHoSoBaoTri,
-                                        maThietBi: hs.maThietBi,
-                                        loaiCongViec: 'Bảo trì',
-                                        nvktDaTienHanh: hs.daBatDauQuyTrinh,
-                                        onDaLuuChanged: (v) {
-                                          if (mounted) setState(() => _daLuuKeHoachBuoc = v);
-                                        },
-                                      ),
+                                    // Quy trình chọn lúc tạo hồ sơ — không chỉnh ở chi tiết
+                                      const SizedBox.shrink(),
                                     ElevatedButton.icon(
                                       icon: const Icon(Icons.groups_rounded),
                                       label: Text(hs.phanCongBiTuChoi
@@ -1021,13 +1170,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                                     crossAxisAlignment: CrossAxisAlignment.stretch,
                                     children: [
                                       if (hs.maThietBi > 0)
-                                        ToTruongChonBuocQuyTrinh(
-                                          maHoSoBaoTri: hs.maHoSoBaoTri,
-                                          maThietBi: hs.maThietBi,
-                                          loaiCongViec: 'Bảo trì',
-                                          chiXem: true,
-                                          nvktDaTienHanh: hs.daBatDauQuyTrinh,
-                                        ),
+                                      // Quy trình chọn lúc tạo hồ sơ — không chỉnh ở chi tiết
+                                        const SizedBox.shrink(),
                                       if ((hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien) != null) ...[
                                         Container(
                                           padding: const EdgeInsets.all(12),
@@ -1589,12 +1733,29 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
               const SizedBox(height: 8),
               InkWell(
                 onTap: () async {
-                  // Xưởng chỉ chọn ngày trong đúng tháng kế hoạch (không đổi tháng)
+                  // Xưởng: trong tháng kế hoạch + sau ngày hiện tại
                   final goc = _xuongCtrl.ngayDuKienGoc ??
                       _ngayDuKienXuong ??
                       DateTime.now();
-                  final firstOfRange = DateTime(goc.year, goc.month, 1);
+                  final now = DateTime.now();
+                  final ngayMai = DateTime(now.year, now.month, now.day)
+                      .add(const Duration(days: 1));
+                  var firstOfRange = DateTime(goc.year, goc.month, 1);
                   final lastOfRange = DateTime(goc.year, goc.month + 1, 0);
+                  if (ngayMai.isAfter(firstOfRange)) firstOfRange = ngayMai;
+                  if (firstOfRange.isAfter(lastOfRange)) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Không còn ngày hợp lệ trong tháng ${goc.month}/${goc.year} '
+                              '(phải sau ngày hiện tại).',
+                        ),
+                        backgroundColor: Colors.red.shade700,
+                      ),
+                    );
+                    return;
+                  }
                   var initial = _ngayDuKienXuong ?? firstOfRange;
                   if (initial.isBefore(firstOfRange)) initial = firstOfRange;
                   if (initial.isAfter(lastOfRange)) initial = lastOfRange;
@@ -1604,7 +1765,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                     firstDate: firstOfRange,
                     lastDate: lastOfRange,
                     helpText:
-                    'Chỉ ngày trong tháng ${goc.month}/${goc.year} (tháng do Tổ trưởng lập)',
+                    'Tháng ${goc.month}/${goc.year} — sau ngày hiện tại',
                     cancelText: 'Hủy',
                     confirmText: 'Chọn',
                   );
@@ -1845,10 +2006,27 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
   }
 
   Future<void> _chonNgay() async {
-    // Xưởng chỉ chọn ngày trong đúng tháng kế hoạch
+    // Xưởng: trong tháng kế hoạch + sau ngày hiện tại
     final goc = widget.hoSo.ngayDuKienBaoTri ?? _ngayDuKien ?? DateTime.now();
-    final firstOfRange = DateTime(goc.year, goc.month, 1);
+    final now = DateTime.now();
+    final ngayMai =
+    DateTime(now.year, now.month, now.day).add(const Duration(days: 1));
+    var firstOfRange = DateTime(goc.year, goc.month, 1);
     final lastOfRange = DateTime(goc.year, goc.month + 1, 0);
+    if (ngayMai.isAfter(firstOfRange)) firstOfRange = ngayMai;
+    if (firstOfRange.isAfter(lastOfRange)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Không còn ngày hợp lệ trong tháng ${goc.month}/${goc.year} '
+                '(phải sau ngày hiện tại).',
+          ),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+      return;
+    }
     var initial = _ngayDuKien ?? firstOfRange;
     if (initial.isBefore(firstOfRange)) initial = firstOfRange;
     if (initial.isAfter(lastOfRange)) initial = lastOfRange;
@@ -1857,7 +2035,7 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
       initialDate: initial,
       firstDate: firstOfRange,
       lastDate: lastOfRange,
-      helpText: 'Chỉ ngày trong tháng ${goc.month}/${goc.year}',
+      helpText: 'Tháng ${goc.month}/${goc.year} — sau ngày hiện tại',
       cancelText: 'Hủy',
       confirmText: 'Chọn',
     );

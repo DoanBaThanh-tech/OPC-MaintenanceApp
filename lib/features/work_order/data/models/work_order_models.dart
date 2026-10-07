@@ -39,6 +39,26 @@ class NhanVienRutGon {
 
 
 
+/// Bước quy trình gắn hồ sơ (chọn lúc tạo / tiến độ NVKT).
+class BuocQuyTrinhHs {
+  final int soBuoc;
+  final String moTaBuoc;
+  final String? trangThai;
+  final String? tenNhanVien;
+  BuocQuyTrinhHs({
+    required this.soBuoc,
+    required this.moTaBuoc,
+    this.trangThai,
+    this.tenNhanVien,
+  });
+  factory BuocQuyTrinhHs.fromJson(Map<String, dynamic> j) => BuocQuyTrinhHs(
+    soBuoc: (j['soBuoc'] as num?)?.toInt() ?? (j['SoBuoc'] as num?)?.toInt() ?? 0,
+    moTaBuoc: (j['moTaBuoc'] ?? j['MoTaBuoc'] ?? '').toString(),
+    trangThai: (j['trangThai'] ?? j['TrangThai'])?.toString(),
+    tenNhanVien: (j['tenNhanVien'] ?? j['TenNhanVien'])?.toString(),
+  );
+}
+
 class HoSoBaoTri {
   final int maHoSoBaoTri;
   final int maThietBi;
@@ -73,6 +93,8 @@ class HoSoBaoTri {
   final bool? choXuongXacNhanQuyTrinhFlag;
   /// Thời điểm NVKT lần đầu bấm «Tiến hành quy trình».
   final DateTime? thoiDiemBatDauThucTe;
+  /// Các bước quy trình đã chọn khi tạo / Tổ trưởng tích.
+  final List<BuocQuyTrinhHs> danhSachBuocQuyTrinh;
 
   HoSoBaoTri({
     required this.maHoSoBaoTri,
@@ -103,6 +125,7 @@ class HoSoBaoTri {
     this.rowVersion,
     this.choXuongXacNhanQuyTrinhFlag,
     this.thoiDiemBatDauThucTe,
+    this.danhSachBuocQuyTrinh = const [],
   });
 
   /// Xưởng còn được chỉnh sửa / gửi GĐ (chưa gửi Giám đốc).
@@ -176,6 +199,16 @@ class HoSoBaoTri {
     final fromDs = parseMaNvList(j['danhSachNhanVienPhanCong'] ?? j['DanhSachNhanVienPhanCong']);
     final maNvs = maList.isNotEmpty ? maList : fromDs;
 
+    final rawBuoc = j['danhSachBuocQuyTrinh'] ?? j['DanhSachBuocQuyTrinh'];
+    final dsBuoc = <BuocQuyTrinhHs>[];
+    if (rawBuoc is List) {
+      for (final e in rawBuoc) {
+        if (e is Map) {
+          dsBuoc.add(BuocQuyTrinhHs.fromJson(Map<String, dynamic>.from(e)));
+        }
+      }
+    }
+
     final maHtList = parseMaNvList(j['maNhanVienHoanThanhs'] ?? j['MaNhanVienHoanThanhs']);
     final fromHtDs = parseMaNvList(
         j['danhSachNhanVienHoanThanh'] ?? j['DanhSachNhanVienHoanThanh']);
@@ -213,6 +246,7 @@ class HoSoBaoTri {
           j['ChoXuongXacNhanQuyTrinh'] == true,
       thoiDiemBatDauThucTe:
       asDate(j['thoiDiemBatDauThucTe'] ?? j['ThoiDiemBatDauThucTe']),
+      danhSachBuocQuyTrinh: dsBuoc,
     );
   }
 }

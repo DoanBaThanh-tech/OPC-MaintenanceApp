@@ -3,8 +3,8 @@ class QuyTrinhNvktRules {
 
   /// Được sửa số lượng / thêm / xóa vật tư trong bước.
   /// - Khóa khi người khác đã Xong
-  /// - Khóa khi đã Xong (trừ đang chờ điều chỉnh sau Xưởng từ chối)
-  /// - Khóa ngay sau khi đã bấm "Lưu lại bước" ([daLuuDieuChinh])
+  /// - Sau Xong: khóa đến khi bấm «Cập nhật» ([dangMoCapNhat])
+  /// - Sau Xưởng từ chối: khóa khi đã «Lưu lại bước» ([daLuuDieuChinh])
   static bool coTheSuaVatTu({
     required bool daChon,
     required bool daXong,
@@ -12,26 +12,30 @@ class QuyTrinhNvktRules {
     required bool cheDoCapNhat,
     required bool dangXuLy,
     bool daLuuDieuChinh = false,
+    bool dangMoCapNhat = false,
   }) {
     if (dangXuLy) return false;
     if (khoaBoiNguoiKhac) return false;
-    if (daLuuDieuChinh) return false;
-    if (daXong && !cheDoCapNhat) return false;
-    return daChon;
+    if (cheDoCapNhat && daLuuDieuChinh) return false;
+    if (!daChon) return false;
+    // Đã Xong bình thường → chỉ sửa khi đang mở cập nhật
+    if (daXong && !cheDoCapNhat && !dangMoCapNhat) return false;
+    return true;
   }
 
-  /// Được tích checkbox — chặn khi người khác đã Xong hoặc đã lưu điều chỉnh.
+  /// Checkbox: khóa khi người khác Xong / đã lưu sau từ chối / đã Xong chưa mở cập nhật.
   static bool coTheDoiCheckbox({
     required bool daXong,
     required bool khoaBoiNguoiKhac,
     required bool cheDoCapNhat,
     required bool dangXuLy,
     bool daLuuDieuChinh = false,
+    bool dangMoCapNhat = false,
   }) {
     if (dangXuLy) return false;
     if (khoaBoiNguoiKhac) return false;
-    if (daLuuDieuChinh) return false;
-    if (daXong && !cheDoCapNhat) return false;
+    if (cheDoCapNhat && daLuuDieuChinh) return false;
+    if (daXong && !cheDoCapNhat && !dangMoCapNhat) return false;
     return true;
   }
 
@@ -39,12 +43,14 @@ class QuyTrinhNvktRules {
     required bool daXong,
     required bool cheDoCapNhat,
     bool daLuuDieuChinh = false,
+    bool dangMoCapNhat = false,
   }) {
-    if (daLuuDieuChinh) return false;
-    if (daXong && !cheDoCapNhat) return false;
+    if (cheDoCapNhat && daLuuDieuChinh) return false;
+    if (daXong && !cheDoCapNhat && !dangMoCapNhat) return false;
     return true;
   }
 
+  /// Nút luôn bấm được (trừ khóa người khác / đã lưu sau từ chối).
   static bool coTheBamXong({
     required bool daXong,
     required bool khoaBoiNguoiKhac,
@@ -53,8 +59,7 @@ class QuyTrinhNvktRules {
     bool daLuuDieuChinh = false,
   }) {
     if (dangXuLy || khoaBoiNguoiKhac) return false;
-    if (daLuuDieuChinh) return false;
-    if (daXong && !cheDoCapNhat) return false;
+    if (cheDoCapNhat && daLuuDieuChinh) return false;
     return true;
   }
 
@@ -118,19 +123,22 @@ class QuyTrinhNvktRules {
         .toList();
   }
 
-  /// Nhãn nút theo đúng hoàn cảnh:
-  /// - Quy trình mới: «Xong» → sau khi bấm: «Đã xong bước»
-  /// - Xưởng từ chối (cheDoCapNhat): «Lưu lại bước» → sau khi lưu: «Cập nhật thành công»
+  /// Nhãn nút:
+  /// - Lần đầu: «Xong»
+  /// - Đã xong (khóa): «Cập nhật» → mở khóa
+  /// - Đang mở sửa: «Lưu cập nhật» → khóa lại
+  /// - Xưởng từ chối: «Lưu lại bước» → «Cập nhật thành công»
   static String nhanNutXong({
     required bool daXong,
     required bool cheDoCapNhat,
     bool daLuuDieuChinh = false,
+    bool dangMoCapNhat = false,
   }) {
-    // Chỉ dùng «Cập nhật thành công» khi đang điều chỉnh sau từ chối và đã lưu
     if (cheDoCapNhat && daLuuDieuChinh) return 'Cập nhật thành công';
-    if (!daXong) return 'Xong';
-    if (cheDoCapNhat) return 'Lưu lại bước';
-    return 'Đã xong bước';
+    if (cheDoCapNhat) return daXong ? 'Lưu lại bước' : 'Xong';
+    if (daXong && dangMoCapNhat) return 'Lưu cập nhật';
+    if (daXong) return 'Cập nhật';
+    return 'Xong';
   }
 
   /// Tiêu đề: "Bước 2 · Đã xong · Trần Thị Mai"
@@ -142,8 +150,12 @@ class QuyTrinhNvktRules {
   }) {
     final ten = (tenNguoiThucHien ?? '').trim();
     if (daXong) {
-      if (ten.isNotEmpty) return 'Bước $soBuoc · Đã xong · $ten';
-      return 'Bước $soBuoc · Đã xong';
+      if (ten.isNotEmpty) return 'Bước $soBuoc · Đã lưu · $ten';
+      return 'Bước $soBuoc · Đã lưu';
+    }
+    if (dangLam) {
+      if (ten.isNotEmpty) return 'Bước $soBuoc · Đang làm · $ten';
+      return 'Bước $soBuoc · Đang làm';
     }
     return 'Bước $soBuoc';
   }
@@ -155,11 +167,14 @@ class QuyTrinhNvktRules {
     String? tenNguoiGiu,
   }) {
     if (!daXong || cheDoCapNhat) return null;
-    final ten = (tenNguoiGiu ?? '').trim();
-    if (ten.isNotEmpty) {
-      return 'Do $ten thực hiện — chỉ xem, không chỉnh sửa (trừ khi Xưởng từ chối).';
+    if (khoaBoiNguoiKhac) {
+      final ten = (tenNguoiGiu ?? '').trim();
+      if (ten.isNotEmpty) {
+        return 'Do $ten thực hiện — chỉ xem.';
+      }
+      return 'Bước đã hoàn thành bởi người khác — chỉ xem.';
     }
-    return 'Đã xong bước — không chỉnh số lượng / thêm vật tư (trừ khi Xưởng từ chối).';
+    return 'Đã khóa bước — bấm «Cập nhật» để mở sửa, rồi «Lưu cập nhật» để khóa lại.';
   }
 
   static String goiYChuaChonBuoc({
@@ -175,7 +190,7 @@ class QuyTrinhNvktRules {
           : 'Bước đã hoàn thành bởi người khác — chỉ xem.';
     }
     return 'Tích chọn bước → chọn vật tư → bấm Xong. '
-        'Chỉ khi đã Xong, NV khác mới không sửa được bước đó.';
+        'Nháp được lưu tự động. Sau Xong bấm Cập nhật để sửa tiếp.';
   }
 
   /// Áp tiến độ API:

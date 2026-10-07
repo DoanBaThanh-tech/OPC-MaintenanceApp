@@ -4,6 +4,8 @@ import '../../../core/network/api_exception.dart';
 import '../data/xuong_quy_trinh_logic.dart';
 import '../data/models/work_order_models.dart';
 import '../data/models/material_usage_models.dart';
+import '../data/services/work_order_service.dart';
+import '../data/services/material_usage_service.dart';
 
 /// Trang **Quy trình** của Xưởng — nhận quy trình NVKT đã bấm Xong.
 /// Tab Bảo trì / Sửa chữa; chi tiết: bước + vật tư + Xác nhận / Từ chối.
@@ -214,6 +216,7 @@ class _XuongQuyTrinhScreenState extends State<XuongQuyTrinhScreen>
             onTap: () => _moChiTiet(
               laBaoTri: true,
               maHoSo: hs.maHoSoBaoTri,
+              maThietBi: hs.maThietBi,
               tenThietBi: hs.tenThietBi,
               noiDung: hs.noiDungCongViec,
             ),
@@ -245,6 +248,7 @@ class _XuongQuyTrinhScreenState extends State<XuongQuyTrinhScreen>
             onTap: () => _moChiTiet(
               laBaoTri: false,
               maHoSo: hs.maHoSoSuaChua,
+              maThietBi: hs.maThietBi,
               tenThietBi: hs.tenThietBi,
               noiDung: hs.moTaHuHong,
             ),
@@ -382,6 +386,7 @@ class _XuongQuyTrinhScreenState extends State<XuongQuyTrinhScreen>
   Future<void> _moChiTiet({
     required bool laBaoTri,
     required int maHoSo,
+    required int maThietBi,
     required String tenThietBi,
     String? noiDung,
   }) async {
@@ -391,6 +396,7 @@ class _XuongQuyTrinhScreenState extends State<XuongQuyTrinhScreen>
         builder: (_) => XuongQuyTrinhChiTietScreen(
           laBaoTri: laBaoTri,
           maHoSo: maHoSo,
+          maThietBi: maThietBi,
           tenThietBi: tenThietBi,
           noiDungHoSo: noiDung,
           controller: _ctrl,
@@ -406,6 +412,7 @@ class _XuongQuyTrinhScreenState extends State<XuongQuyTrinhScreen>
 class XuongQuyTrinhChiTietScreen extends StatefulWidget {
   final bool laBaoTri;
   final int maHoSo;
+  final int maThietBi;
   final String tenThietBi;
   final String? noiDungHoSo;
   final XuongQuyTrinhController controller;
@@ -414,6 +421,7 @@ class XuongQuyTrinhChiTietScreen extends StatefulWidget {
     super.key,
     required this.laBaoTri,
     required this.maHoSo,
+    required this.maThietBi,
     required this.tenThietBi,
     this.noiDungHoSo,
     required this.controller,
@@ -431,6 +439,8 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
   static const _bg = Color(0xFFF0F7FC);
 
   HoSoVatTuItem? _hsVt;
+  /// Toàn bộ bước quy trình (kể cả chưa tích) + trạng thái NVKT.
+  List<_BuocXuongView> _dsBuocFull = [];
   bool _dangTai = true;
   bool _dangXuLy = false;
   String? _loi;
@@ -447,13 +457,97 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
       _loi = null;
     });
     try {
-      final hs = await widget.controller.layQuyTrinhVatTu(
-        maHoSoBaoTri: widget.laBaoTri ? widget.maHoSo : null,
-        maHoSoSuaChua: widget.laBaoTri ? null : widget.maHoSo,
-      );
+      final loai = widget.laBaoTri ? 'Bảo trì' : 'Sửa chữa';
+      final results = await Future.wait([
+        widget.controller.layQuyTrinhVatTu(
+          maHoSoBaoTri: widget.laBaoTri ? widget.maHoSo : null,
+          maHoSoSuaChua: widget.laBaoTri ? null : widget.maHoSo,
+        ),
+        WorkOrderService.layTienDoBuoc(
+          maHoSoBaoTri: widget.laBaoTri ? widget.maHoSo : null,
+          maHoSoSuaChua: widget.laBaoTri ? null : widget.maHoSo,
+        ),
+        widget.maThietBi > 0
+            ? MaterialUsageService.layQuyTrinhThietBi(
+          maThietBi: widget.maThietBi,
+          loaiCongViec: loai,
+        )
+            : Future.value(<BuocQuyTrinh>[]),
+      ]);
+      final hs = results[0] as HoSoVatTuItem?;
+      final tienDo = results[1] as List<Map<String, dynamic>>;
+      final mau = results[2] as List<BuocQuyTrinh>;
+
+      // Map vật tư theo bước từ hồ sơ VT
+      final vtTheoBuoc = <int, List<ChiTietVatTuSuDung>>{};
+      if (hs != null) {
+        for (final c in hs.chiTiet) {
+          vtTheoBuoc.putIfAbsent(c.soBuoc, () => []).add(c);
+        }
+      }
+
+      // Map tiến độ NVKT theo bước
+      final tdTheoBuoc = <int, Map<String, dynamic>>{};
+      for (final row in tienDo) {
+        final so = (row['soBuoc'] as num?)?.toInt() ??
+            (row['SoBuoc'] as num?)?.toInt();
+        if (so == null) continue;
+        tdTheoBuoc[so] = row;
+      }
+
+      // Hợp nhất: ưu tiên mẫu 10 bước thiết bị, bổ sung bước chỉ có trong tiến độ/VT
+      final soBuocSet = <int>{};
+      for (final b in mau) {
+        soBuocSet.add(b.soBuoc);
+      }
+      soBuocSet.addAll(tdTheoBuoc.keys);
+      soBuocSet.addAll(vtTheoBuoc.keys);
+      final sorted = soBuocSet.toList()..sort();
+
+      final views = <_BuocXuongView>[];
+      for (final so in sorted) {
+        String? mauB;
+        for (final e in mau) {
+          if (e.soBuoc == so) {
+            mauB = e.moTa;
+            break;
+          }
+        }
+        final td = tdTheoBuoc[so];
+        final moTaTd = (td?['moTaBuoc'] ?? td?['MoTaBuoc'])?.toString();
+        final tt = (td?['trangThai'] ?? td?['TrangThai'])?.toString() ?? '';
+        final tenNv = (td?['tenNhanVien'] ?? td?['TenNhanVien'])?.toString();
+        final moTaVt = vtTheoBuoc[so]
+            ?.map((e) => e.moTaBuoc.trim())
+            .where((s) => s.isNotEmpty)
+            .toSet()
+            .join(' · ');
+        final daThucHien = tt == 'DaXong' ||
+            tt == 'DaCapNhat' ||
+            (vtTheoBuoc[so]?.any((c) => c.soLuong > 0) ?? false);
+        final daChon = daThucHien ||
+            tt == 'DangLam' ||
+            tt == 'DuocChon' ||
+            (vtTheoBuoc.containsKey(so));
+        views.add(_BuocXuongView(
+          soBuoc: so,
+          moTa: (moTaTd != null && moTaTd.isNotEmpty)
+              ? moTaTd
+              : (moTaVt != null && moTaVt.isNotEmpty)
+              ? moTaVt
+              : (mauB ?? 'Bước $so'),
+          trangThai: tt,
+          tenNhanVien: tenNv,
+          daThucHien: daThucHien,
+          daChon: daChon,
+          vatTu: vtTheoBuoc[so] ?? const [],
+        ));
+      }
+
       if (!mounted) return;
       setState(() {
         _hsVt = hs;
+        _dsBuocFull = views;
         _dangTai = false;
       });
     } catch (e) {
@@ -802,23 +896,23 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
   }
 
   Widget _buildBuocVatTu() {
-    final hs = _hsVt;
-    if (hs == null || hs.chiTiet.isEmpty) {
+    if (_dsBuocFull.isEmpty) {
       return _sectionCard(
         'Quy trình thực hiện',
         Text(
-          'Chưa có dữ liệu bước/vật tư (NVKT có thể không dùng vật tư).',
+          'Chưa có dữ liệu quy trình cho hồ sơ này.',
           style: TextStyle(
               color: Colors.grey.shade600, fontStyle: FontStyle.italic),
         ),
       );
     }
 
-    final map = <int, List<ChiTietVatTuSuDung>>{};
-    for (final c in hs.chiTiet) {
-      map.putIfAbsent(c.soBuoc, () => []).add(c);
-    }
-    final keys = map.keys.toList()..sort();
+    final soDaLam = _dsBuocFull.where((e) => e.daThucHien).length;
+    final soVt = _dsBuocFull.fold<int>(
+        0,
+            (a, b) =>
+        a +
+            b.vatTu.where((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0).length);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -827,14 +921,14 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
             style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
         const SizedBox(height: 4),
         Text(
-          '${keys.length} bước · ${hs.chiTiet.length} dòng vật tư',
+          '${_dsBuocFull.length} bước (đủ quy trình) · $soDaLam đã làm · $soVt dòng vật tư',
           style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
         ),
         const SizedBox(height: 12),
-        for (final k in keys)
+        for (final b in _dsBuocFull)
           TweenAnimationBuilder<double>(
             tween: Tween(begin: 0, end: 1),
-            duration: Duration(milliseconds: 280 + k * 40),
+            duration: Duration(milliseconds: 240 + b.soBuoc * 35),
             curve: Curves.easeOutCubic,
             builder: (context, t, child) => Opacity(
               opacity: t,
@@ -847,16 +941,24 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: b.daThucHien
+                    ? Colors.white
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFBAE6FD)),
-                boxShadow: [
+                border: Border.all(
+                  color: b.daThucHien
+                      ? const Color(0xFFBAE6FD)
+                      : Colors.grey.shade200,
+                ),
+                boxShadow: b.daThucHien
+                    ? [
                   BoxShadow(
                     color: _blue.withValues(alpha: 0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
-                ],
+                ]
+                    : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -868,63 +970,100 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
                         height: 30,
                         alignment: Alignment.center,
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                              colors: [_blue, _blueSoft]),
+                          gradient: b.daThucHien
+                              ? const LinearGradient(
+                              colors: [_blue, _blueSoft])
+                              : null,
+                          color: b.daThucHien ? null : Colors.grey.shade300,
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
-                          '$k',
-                          style: const TextStyle(
-                              color: Colors.white,
+                          '${b.soBuoc}',
+                          style: TextStyle(
+                              color: b.daThucHien
+                                  ? Colors.white
+                                  : Colors.grey.shade700,
                               fontWeight: FontWeight.w900,
                               fontSize: 13),
                         ),
                       ),
                       const SizedBox(width: 10),
-                      Text('Bước $k',
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w800, fontSize: 14.5)),
-                    ],
-                  ),
-                  if (map[k]!
-                      .any((e) => e.moTaBuoc.trim().isNotEmpty)) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      map[k]!
-                          .map((e) => e.moTaBuoc.trim())
-                          .where((s) => s.isNotEmpty)
-                          .toSet()
-                          .join(' · '),
-                      style: TextStyle(
-                          color: Colors.grey.shade800,
-                          height: 1.35,
-                          fontSize: 13),
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  for (final c in map[k]!)
-                    if (c.tenVatTu.isNotEmpty && c.soLuong > 0)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 4),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.inventory_2_outlined,
-                                size: 16, color: _blue),
-                            const SizedBox(width: 6),
-                            Expanded(
-                              child: Text(
-                                '${c.tenVatTu} × ${c.soLuong}',
-                                style: const TextStyle(fontSize: 13),
-                              ),
-                            ),
-                            Text(
-                              _fmtTien(c.thanhTien),
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w700, fontSize: 12.5),
-                            ),
-                          ],
+                      Expanded(
+                        child: Text(
+                          b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
+                            color: b.daThucHien
+                                ? const Color(0xFF0F172A)
+                                : Colors.grey.shade600,
+                          ),
                         ),
                       ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: b.daThucHien
+                              ? const Color(0xFFD1FAE5)
+                              : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          b.daThucHien
+                              ? 'Đã thực hiện'
+                              : (b.daChon ? 'Đã chọn / nháp' : 'Không làm'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: b.daThucHien
+                                ? const Color(0xFF047857)
+                                : Colors.grey.shade600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if ((b.tenNhanVien ?? '').trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'NVKT: ${b.tenNhanVien}',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
+                  if (b.vatTu.any((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0)) ...[
+                    const SizedBox(height: 8),
+                    for (final c in b.vatTu)
+                      if (c.tenVatTu.isNotEmpty && c.soLuong > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.inventory_2_outlined,
+                                  size: 16, color: _blue),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  '${c.tenVatTu} × ${c.soLuong}',
+                                  style: const TextStyle(
+                                      fontSize: 13, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                  ] else if (!b.daThucHien) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'Không có vật tư — bước không được NVKT hoàn thành.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -932,4 +1071,23 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
       ],
     );
   }
+}
+
+class _BuocXuongView {
+  final int soBuoc;
+  final String moTa;
+  final String trangThai;
+  final String? tenNhanVien;
+  final bool daThucHien;
+  final bool daChon;
+  final List<ChiTietVatTuSuDung> vatTu;
+  _BuocXuongView({
+    required this.soBuoc,
+    required this.moTa,
+    required this.trangThai,
+    this.tenNhanVien,
+    required this.daThucHien,
+    required this.daChon,
+    required this.vatTu,
+  });
 }
