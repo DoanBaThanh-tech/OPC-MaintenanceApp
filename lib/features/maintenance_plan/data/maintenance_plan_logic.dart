@@ -272,6 +272,7 @@ class MaintenancePlanService {
     int? thoiGianDuKien,
     TimeOfDay? gioBatDau,
     TimeOfDay? gioKetThuc,
+    List<Map<String, dynamic>>? danhSachBuoc,
   }) async {
     String fmtGio(TimeOfDay t) =>
         '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
@@ -285,6 +286,7 @@ class MaintenancePlanService {
         'thoiGianDuKien': thoiGianDuKien,
       if (gioBatDau != null) 'gioBatDauDuKien': fmtGio(gioBatDau),
       if (gioKetThuc != null) 'gioKetThucDuKien': fmtGio(gioKetThuc),
+      if (danhSachBuoc != null) 'danhSachBuoc': danhSachBuoc,
     });
   }
 

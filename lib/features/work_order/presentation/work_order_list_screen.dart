@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/work_order_logic.dart';
 import 'work_order_detail_screen.dart';
-import 'work_order_create_screen.dart';
 
 /// Danh sách hồ sơ bảo trì — đồng bộ UI/hiệu ứng với hồ sơ sửa chữa.
 const _btBg = Color(0xFFF0F6FB);
@@ -198,21 +197,6 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
     final top = MediaQuery.paddingOf(context).top;
     return Scaffold(
       backgroundColor: _btBg,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          final ok = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const TaoHoSoBaoTriThuCongScreen(),
-            ),
-          );
-          if (ok == true && mounted) _controller.taiDanhSach();
-        },
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Tạo hồ sơ',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
-      ),
       body: Column(
         children: [
           // ===== Header gradient (giống SC) =====

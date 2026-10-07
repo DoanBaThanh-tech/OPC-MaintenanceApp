@@ -4,6 +4,7 @@ import 'package:flutter/material.dart' show TimeOfDay;
 import '../../../core/network/api_exception.dart';
 import '../../equipment/data/equipment_logic.dart';
 import 'services/work_order_service.dart';
+import '../../maintenance_plan/data/maintenance_plan_logic.dart';
 import 'work_order_validators.dart';
 
 // Logic cho work_order_create_screen.dart
@@ -275,18 +276,22 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
 }
 
 /// Tạo hồ sơ bảo trì thủ công (thiết bị mới / không qua hàng chờ).
+/// Gọi ThemThietBiVaoNam → hiện đúng tháng trên kế hoạch + chặn trùng tháng với lập nhanh.
 class CreateWorkOrderBaoTriThuCongController extends ChangeNotifier {
   List<NhomThietBiTheoDanhMuc> nhoms = [];
   String? danhMucChon;
   ThietBiModel? thietBiChon;
+  DateTime? ngayDuKien;
   bool dangTai = true;
   bool dangLuu = false;
   String? loi;
+  String? loiNgay;
 
   List<ThietBiModel> get dsThietBiTheoDanhMuc {
     if (danhMucChon == null) return const [];
     final match = nhoms.where((n) => n.tenDanhMuc == danhMucChon);
     if (match.isEmpty) return const [];
+    // Chỉ thiết bị đang Sản xuất mới lập BT được
     return match.first.danhSach
         .where((t) => t.tinhTrangHienTai == TrangThaiThietBi.sanXuat)
         .toList();
@@ -297,9 +302,8 @@ class CreateWorkOrderBaoTriThuCongController extends ChangeNotifier {
     loi = null;
     notifyListeners();
     try {
-      nhoms = await EquipmentService.layTheoDanhMuc(
-        trangThai: TrangThaiThietBi.sanXuat,
-      );
+      // Không lọc trạng thái ở API → đủ danh mục; lọc Sản xuất khi chọn thiết bị
+      nhoms = await EquipmentService.layTheoDanhMuc();
     } catch (e) {
       loi = 'Không tải được danh mục thiết bị: $e';
       nhoms = [];
@@ -320,13 +324,40 @@ class CreateWorkOrderBaoTriThuCongController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Ràng buộc ngày dự kiến: bắt buộc, sau hôm nay, năm 4 số hợp lệ.
+  String? kiemTraNgay(DateTime? d) {
+    if (d == null) return 'Vui lòng chọn ngày dự kiến bảo trì.';
+    final now = DateTime.now();
+    final homNay = DateTime(now.year, now.month, now.day);
+    final chon = DateTime(d.year, d.month, d.day);
+    if (!chon.isAfter(homNay)) {
+      return 'Ngày dự kiến phải sau ngày hôm nay.';
+    }
+    if (d.year < 2000 || d.year > 2100) {
+      return 'Năm dự kiến không hợp lệ.';
+    }
+    return null;
+  }
+
+  void chonNgay(DateTime? d) {
+    ngayDuKien = d;
+    loiNgay = kiemTraNgay(d);
+    notifyListeners();
+  }
+
   Future<bool> luu({
     required String noiDungCongViec,
     List<Map<String, dynamic>>? danhSachBuoc,
   }) async {
     loi = null;
+    loiNgay = kiemTraNgay(ngayDuKien);
     if (thietBiChon == null) {
       loi = 'Vui lòng chọn thiết bị';
+      notifyListeners();
+      return false;
+    }
+    if (loiNgay != null) {
+      loi = loiNgay;
       notifyListeners();
       return false;
     }
@@ -338,11 +369,13 @@ class CreateWorkOrderBaoTriThuCongController extends ChangeNotifier {
     dangLuu = true;
     notifyListeners();
     try {
-      await WorkOrderService.taoHoSoBaoTri(
+      final ngay = ngayDuKien!;
+      // Tạo KH chi tiết + HS BT → hiện đúng tháng trên kế hoạch; trùng tháng bị API chặn
+      await MaintenancePlanService.themThietBiVaoNam(
+        nam: ngay.year,
         maThietBi: thietBiChon!.maThietBi,
+        ngay: ngay,
         noiDungCongViec: noiDungCongViec.trim(),
-        thoiGianDuKien: null,
-        guiDuyet: true,
         danhSachBuoc: danhSachBuoc,
       );
       return true;

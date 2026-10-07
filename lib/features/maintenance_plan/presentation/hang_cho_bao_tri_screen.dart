@@ -125,6 +125,49 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
                           padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                           child: _LoiBanner(text: _controller.loi!),
                         ),
+                      // Quy trình + nội dung — dưới tháng/năm, tách khỏi nút tạo
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            ToTruongChonQuyTrinhTao(
+                              loaiCongViec: 'Bảo trì',
+                              controller: _qtCtrl,
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: _noiDungCtrl,
+                              maxLines: 2,
+                              decoration: InputDecoration(
+                                labelText: 'Nội dung công việc',
+                                hintText: 'Mô tả bảo trì định kỳ...',
+                                prefixIcon: const Icon(
+                                    Icons.notes_rounded,
+                                    size: 20),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade200),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: BorderSide(
+                                      color: Colors.grey.shade200),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                  borderSide: const BorderSide(
+                                      color: Color(0xFF0B6BCB), width: 1.5),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Expanded(child: _buildDanhSach()),
                       _buildThanhTao(),
                     ],
@@ -549,36 +592,18 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            ToTruongChonQuyTrinhTao(
-              loaiCongViec: 'Bảo trì',
-              controller: _qtCtrl,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _noiDungCtrl,
-              maxLines: 2,
-              decoration: InputDecoration(
-                labelText: 'Nội dung công việc (chung)',
-                hintText: 'Mô tả bảo trì định kỳ...',
-                filled: true,
-                fillColor: const Color(0xFFF8FBFE),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
+            if (soChon > 0)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Đã chọn $soChon thiết bị',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey.shade600,
+                  ),
                 ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide(color: Colors.grey.shade200),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide:
-                  const BorderSide(color: Color(0xFF0B6BCB), width: 1.5),
-                ),
-                isDense: true,
               ),
-            ),
-            const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               height: 50,

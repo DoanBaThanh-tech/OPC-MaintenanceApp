@@ -1,6 +1,8 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../work_order/presentation/work_order_create_screen.dart';
 import '../data/maintenance_plan_logic.dart';
 import 'hang_cho_bao_tri_screen.dart';
 
@@ -21,19 +23,215 @@ class MaintenancePlanListScreen extends StatefulWidget {
   State<MaintenancePlanListScreen> createState() => _MaintenancePlanListScreenState();
 }
 
-class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen> {
+class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen>
+    with SingleTickerProviderStateMixin {
   final _controller = MaintenancePlanListController();
+  late final AnimationController _fabAnim;
+  bool _fabMo = false;
 
   @override
   void initState() {
     super.initState();
+    _fabAnim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+    );
     _controller.taiDanhSach();
   }
 
   @override
   void dispose() {
+    _fabAnim.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  void _doiFab() {
+    setState(() => _fabMo = !_fabMo);
+    if (_fabMo) {
+      _fabAnim.forward();
+    } else {
+      _fabAnim.reverse();
+    }
+  }
+
+  Future<void> _moThuCong() async {
+    if (_fabMo) _doiFab();
+    final ok = await Navigator.push<bool>(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (_, a, __) => const TaoHoSoBaoTriThuCongScreen(),
+        transitionsBuilder: (_, a, __, child) =>
+            FadeTransition(opacity: a, child: child),
+      ),
+    );
+    if (ok == true && mounted) _controller.taiDanhSach();
+  }
+
+
+  Widget _buildSpeedDial() {
+    final items = <Map<String, dynamic>>[
+      {
+        'icon': Icons.playlist_add_check_rounded,
+        'label': 'Lập nhanh',
+        'color': const Color(0xFF0B6BCB),
+        'onTap': () async {
+          if (_fabMo) _doiFab();
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) =>
+                  HangChoBaoTriScreen(namBanDau: _controller.namDangChon),
+            ),
+          );
+          if (mounted) _controller.taiDanhSach();
+        },
+      },
+      {
+        'icon': Icons.handyman_rounded,
+        'label': 'Thủ công',
+        'color': const Color(0xFF0284C7),
+        'onTap': _moThuCong,
+      },
+      {
+        'icon': Icons.calendar_month_rounded,
+        'label': 'Theo năm',
+        'color': const Color(0xFF059669),
+        'onTap': () async {
+          if (_fabMo) _doiFab();
+          final namMoi = await showDialogLapKeHoachNam(
+            context,
+            namDaCo: List<int>.from(_controller.danhSachNam),
+          );
+          if (namMoi != null && mounted) {
+            await _controller.sauKhiTaoNam(namMoi);
+          }
+        },
+      },
+    ];
+
+    const radius = 100.0;
+
+    return SizedBox(
+      width: 210,
+      height: 210,
+      child: AnimatedBuilder(
+        animation: _fabAnim,
+        builder: (_, __) {
+          final tAnim =
+          Curves.easeOutBack.transform(_fabAnim.value.clamp(0.0, 1.0));
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              for (var i = 0; i < items.length; i++)
+                Builder(builder: (context) {
+                  final ang = (-math.pi / 2) - (i * (math.pi / 4));
+                  final x = radius * tAnim * math.cos(ang);
+                  final y = radius * tAnim * math.sin(ang);
+                  final color = items[i]['color'] as Color;
+                  return Positioned(
+                    right: 6 - x,
+                    bottom: 6 - y,
+                    child: Opacity(
+                      opacity: tAnim.clamp(0.0, 1.0),
+                      child: Transform.scale(
+                        scale: 0.5 + 0.5 * tAnim,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Material(
+                              color: color,
+                              shape: const CircleBorder(),
+                              elevation: 6,
+                              child: InkWell(
+                                customBorder: const CircleBorder(),
+                                onTap: items[i]['onTap'] as VoidCallback,
+                                child: SizedBox(
+                                  width: 50,
+                                  height: 50,
+                                  child: Icon(items[i]['icon'] as IconData,
+                                      color: Colors.white, size: 22),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color:
+                                    Colors.black.withValues(alpha: 0.08),
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                items[i]['label'] as String,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: color,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: GestureDetector(
+                  onTap: _doiFab,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 280),
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: _fabMo
+                            ? [
+                          const Color(0xFF64748B),
+                          const Color(0xFF475569)
+                        ]
+                            : [
+                          const Color(0xFF0B6BCB),
+                          const Color(0xFF0284C7)
+                        ],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color:
+                          const Color(0xFF0B6BCB).withValues(alpha: 0.4),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: AnimatedRotation(
+                      turns: _fabMo ? 0.125 : 0,
+                      duration: const Duration(milliseconds: 280),
+                      child: Icon(
+                        _fabMo ? Icons.close_rounded : Icons.add_rounded,
+                        color: Colors.white,
+                        size: 30,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   Future<void> _moMenuTaoKeHoach() async {
@@ -114,32 +312,8 @@ class _MaintenancePlanListScreenState extends State<MaintenancePlanListScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7FC),
-      floatingActionButton: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(18),
-          gradient: const LinearGradient(
-            colors: [Color(0xFF0B6BCB), Color(0xFF0284C7)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0B6BCB).withValues(alpha: 0.4),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
-            ),
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          highlightElevation: 0,
-          onPressed: _moMenuTaoKeHoach,
-          icon: const Icon(Icons.add_rounded, color: Colors.white),
-          label: const Text(
-            'Lập kế hoạch',
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
-          ),
-        ),
-      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+      floatingActionButton: _buildSpeedDial(),
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {

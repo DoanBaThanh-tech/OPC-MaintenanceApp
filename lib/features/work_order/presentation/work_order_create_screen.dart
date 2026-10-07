@@ -240,15 +240,25 @@ class TaoHoSoBaoTriThuCongScreen extends StatefulWidget {
       _TaoHoSoBaoTriThuCongScreenState();
 }
 
-class _TaoHoSoBaoTriThuCongScreenState extends State<TaoHoSoBaoTriThuCongScreen> {
+class _TaoHoSoBaoTriThuCongScreenState extends State<TaoHoSoBaoTriThuCongScreen>
+    with SingleTickerProviderStateMixin {
+  static const _blue = Color(0xFF0B6BCB);
+  static const _sky = Color(0xFF38BDF8);
+  static const _bg = Color(0xFFF0F7FC);
+
   final _ctrl = CreateWorkOrderBaoTriThuCongController();
   final _qtCtrl = ToTruongQuyTrinhTaoController(loaiCongViec: 'Bảo trì');
   final _noiDung = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  late final AnimationController _anim;
 
   @override
   void initState() {
     super.initState();
+    _anim = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    )..forward();
     _ctrl.khoiTao();
     _ctrl.addListener(() {
       if (mounted) setState(() {});
@@ -257,10 +267,33 @@ class _TaoHoSoBaoTriThuCongScreenState extends State<TaoHoSoBaoTriThuCongScreen>
 
   @override
   void dispose() {
+    _anim.dispose();
     _ctrl.dispose();
     _qtCtrl.dispose();
     _noiDung.dispose();
     super.dispose();
+  }
+
+  String _fmt(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/'
+          '${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  Future<void> _chonNgay() async {
+    final now = DateTime.now();
+    final first = now.add(const Duration(days: 1));
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _ctrl.ngayDuKien ?? first,
+      firstDate: first,
+      lastDate: DateTime(now.year + 5, 12, 31),
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: const ColorScheme.light(primary: _blue),
+        ),
+        child: child!,
+      ),
+    );
+    if (picked != null) _ctrl.chonNgay(picked);
   }
 
   Future<void> _gui() async {
@@ -281,7 +314,8 @@ class _TaoHoSoBaoTriThuCongScreenState extends State<TaoHoSoBaoTriThuCongScreen>
     if (!mounted) return;
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Đã tạo hồ sơ bảo trì và gửi xưởng (Chờ duyệt).'),
+        content: Text(
+            'Đã tạo hồ sơ bảo trì — hiện trên kế hoạch đúng tháng đã chọn.'),
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ));
@@ -295,120 +329,205 @@ class _TaoHoSoBaoTriThuCongScreenState extends State<TaoHoSoBaoTriThuCongScreen>
     }
   }
 
+  InputDecoration _dec(String label, {String? error}) => InputDecoration(
+    labelText: label,
+    errorText: error,
+    filled: true,
+    fillColor: Colors.white,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide.none,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: BorderSide(color: Colors.grey.shade200),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(16),
+      borderSide: const BorderSide(color: _blue, width: 1.5),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) {
+    final fade = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic);
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F6FB),
-      appBar: AppBar(
-        title: const Text('Tạo hồ sơ bảo trì'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Color(0xFF004E80), Color(0xFF0068A9), Color(0xFF0EA5E9)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+      backgroundColor: _bg,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 120,
+            pinned: true,
+            backgroundColor: _blue,
+            foregroundColor: Colors.white,
+            flexibleSpace: FlexibleSpaceBar(
+              title: const Text('Lập BT thủ công',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF004E80), _blue, _sky],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-      ),
-      body: _ctrl.dangTai
-          ? const Center(child: CircularProgressIndicator())
-          : Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            Text(
-              'Dùng cho thiết bị mới hoặc chưa có trong hàng chờ / kế hoạch. '
-                  'Thiết bị đã có lịch bảo trì nên dùng «Lập kế hoạch».',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.35),
-            ),
-            const SizedBox(height: 16),
-            DropdownButtonFormField<String>(
-              value: _ctrl.danhMucChon,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: 'Danh mục thiết bị *',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
+          SliverToBoxAdapter(
+            child: FadeTransition(
+              opacity: fade,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.04),
+                  end: Offset.zero,
+                ).animate(fade),
+                child: _ctrl.dangTai
+                    ? const Padding(
+                  padding: EdgeInsets.all(48),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+                    : Form(
+                  key: _formKey,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: [
+                              _blue.withValues(alpha: 0.1),
+                              _sky.withValues(alpha: 0.08),
+                            ]),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                                color: _blue.withValues(alpha: 0.15)),
+                          ),
+                          child: Text(
+                            'Dành cho thiết bị mới hoặc chưa có trong hàng chờ. '
+                                'Sau khi tạo, hồ sơ hiện đúng tháng trên kế hoạch. '
+                                'Lập nhanh không tạo lại cùng thiết bị trong cùng tháng.',
+                            style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey.shade800,
+                                height: 1.35),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          value: _ctrl.danhMucChon,
+                          isExpanded: true,
+                          decoration: _dec(
+                              'Danh mục thiết bị * (${_ctrl.nhoms.length})'),
+                          items: _ctrl.nhoms
+                              .map((n) => DropdownMenuItem(
+                            value: n.tenDanhMuc,
+                            child: Text(n.tenDanhMuc,
+                                overflow: TextOverflow.ellipsis),
+                          ))
+                              .toList(),
+                          onChanged: _ctrl.chonDanhMuc,
+                          validator: (v) =>
+                          v == null ? 'Chọn danh mục' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<ThietBiModel>(
+                          value: _ctrl.thietBiChon,
+                          isExpanded: true,
+                          decoration: _dec(
+                              'Thiết bị * (đang Sản xuất)'),
+                          items: _ctrl.dsThietBiTheoDanhMuc
+                              .map((tb) => DropdownMenuItem(
+                            value: tb,
+                            child: Text(tb.tenThietBi,
+                                overflow: TextOverflow.ellipsis),
+                          ))
+                              .toList(),
+                          onChanged: _ctrl.chonThietBi,
+                          validator: (v) =>
+                          v == null ? 'Chọn thiết bị' : null,
+                        ),
+                        const SizedBox(height: 12),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: _chonNgay,
+                          child: InputDecorator(
+                            decoration: _dec(
+                              'Ngày dự kiến bảo trì *',
+                              error: _ctrl.loiNgay,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.event_rounded,
+                                    color: _blue, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _ctrl.ngayDuKien == null
+                                        ? 'Chọn ngày (sau hôm nay)'
+                                        : _fmt(_ctrl.ngayDuKien!),
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: _ctrl.ngayDuKien == null
+                                          ? Colors.grey.shade500
+                                          : Colors.grey.shade900,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ToTruongChonQuyTrinhTao(
+                          loaiCongViec: 'Bảo trì',
+                          controller: _qtCtrl,
+                        ),
+                        const SizedBox(height: 16),
+                        TextFormField(
+                          controller: _noiDung,
+                          maxLines: 4,
+                          decoration: _dec('Nội dung công việc *'),
+                          validator: (v) =>
+                          (v == null || v.trim().isEmpty)
+                              ? 'Nhập nội dung công việc'
+                              : null,
+                        ),
+                        const SizedBox(height: 28),
+                        FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _blue,
+                            padding:
+                            const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16)),
+                            elevation: 2,
+                          ),
+                          onPressed: _ctrl.dangLuu ? null : _gui,
+                          child: _ctrl.dangLuu
+                              ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white),
+                          )
+                              : const Text('Tạo hồ sơ & gửi xưởng',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
-              items: _ctrl.nhoms
-                  .map((n) => DropdownMenuItem(
-                value: n.tenDanhMuc,
-                child: Text(n.tenDanhMuc,
-                    overflow: TextOverflow.ellipsis),
-              ))
-                  .toList(),
-              onChanged: _ctrl.chonDanhMuc,
-              validator: (v) =>
-              v == null ? 'Chọn danh mục' : null,
             ),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<ThietBiModel>(
-              value: _ctrl.thietBiChon,
-              isExpanded: true,
-              decoration: InputDecoration(
-                labelText: 'Thiết bị *',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              items: _ctrl.dsThietBiTheoDanhMuc
-                  .map((t) => DropdownMenuItem(
-                value: t,
-                child: Text(t.tenThietBi,
-                    overflow: TextOverflow.ellipsis),
-              ))
-                  .toList(),
-              onChanged: _ctrl.chonThietBi,
-              validator: (v) => v == null ? 'Chọn thiết bị' : null,
-            ),
-            const SizedBox(height: 16),
-            ToTruongChonQuyTrinhTao(
-              loaiCongViec: 'Bảo trì',
-              controller: _qtCtrl,
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
-              controller: _noiDung,
-              maxLines: 4,
-              decoration: InputDecoration(
-                labelText: 'Nội dung công việc *',
-                filled: true,
-                fillColor: Colors.white,
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              validator: (v) => (v == null || v.trim().isEmpty)
-                  ? 'Nhập nội dung công việc'
-                  : null,
-            ),
-            const SizedBox(height: 24),
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
-              ),
-              onPressed: _ctrl.dangLuu ? null : _gui,
-              child: _ctrl.dangLuu
-                  ? const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.white),
-              )
-                  : const Text('Gửi bảo trì',
-                  style: TextStyle(fontWeight: FontWeight.w900)),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
