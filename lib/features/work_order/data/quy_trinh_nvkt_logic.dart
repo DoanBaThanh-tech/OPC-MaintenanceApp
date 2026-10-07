@@ -3,8 +3,7 @@ class QuyTrinhNvktRules {
 
   /// Được sửa số lượng / thêm / xóa vật tư trong bước.
   /// - Khóa khi người khác đã Xong
-  /// - Sau Xong: khóa đến khi bấm «Cập nhật» ([dangMoCapNhat])
-  /// - Sau Xưởng từ chối: khóa khi đã «Lưu lại bước» ([daLuuDieuChinh])
+  /// - Sau Xong / sau từ chối: khóa đến khi bấm «Cập nhật» ([dangMoCapNhat])
   static bool coTheSuaVatTu({
     required bool daChon,
     required bool daXong,
@@ -16,14 +15,14 @@ class QuyTrinhNvktRules {
   }) {
     if (dangXuLy) return false;
     if (khoaBoiNguoiKhac) return false;
-    if (cheDoCapNhat && daLuuDieuChinh) return false;
     if (!daChon) return false;
-    // Đã Xong bình thường → chỉ sửa khi đang mở cập nhật
-    if (daXong && !cheDoCapNhat && !dangMoCapNhat) return false;
+    // Đã Xong → chỉ sửa khi đang mở cập nhật (cả quy trình mới & sau từ chối)
+    if (daXong && !dangMoCapNhat) return false;
     return true;
   }
 
-  /// Checkbox: khóa khi người khác Xong / đã lưu sau từ chối / đã Xong chưa mở cập nhật.
+  /// Checkbox: khóa khi người khác Xong / đã Xong chưa mở cập nhật.
+  /// Khi đang mở cập nhật được bỏ tích để hủy bước.
   static bool coTheDoiCheckbox({
     required bool daXong,
     required bool khoaBoiNguoiKhac,
@@ -34,8 +33,7 @@ class QuyTrinhNvktRules {
   }) {
     if (dangXuLy) return false;
     if (khoaBoiNguoiKhac) return false;
-    if (cheDoCapNhat && daLuuDieuChinh) return false;
-    if (daXong && !cheDoCapNhat && !dangMoCapNhat) return false;
+    if (daXong && !dangMoCapNhat) return false;
     return true;
   }
 
@@ -45,12 +43,12 @@ class QuyTrinhNvktRules {
     bool daLuuDieuChinh = false,
     bool dangMoCapNhat = false,
   }) {
-    if (cheDoCapNhat && daLuuDieuChinh) return false;
-    if (daXong && !cheDoCapNhat && !dangMoCapNhat) return false;
+    // Chỉ bỏ tích khi đang mở khóa cập nhật (hoặc chưa Xong)
+    if (daXong && !dangMoCapNhat) return false;
     return true;
   }
 
-  /// Nút luôn bấm được (trừ khóa người khác / đã lưu sau từ chối).
+  /// Nút: luôn bấm được trừ khóa người khác / đang xử lý.
   static bool coTheBamXong({
     required bool daXong,
     required bool khoaBoiNguoiKhac,
@@ -59,7 +57,6 @@ class QuyTrinhNvktRules {
     bool daLuuDieuChinh = false,
   }) {
     if (dangXuLy || khoaBoiNguoiKhac) return false;
-    if (cheDoCapNhat && daLuuDieuChinh) return false;
     return true;
   }
 
@@ -123,19 +120,16 @@ class QuyTrinhNvktRules {
         .toList();
   }
 
-  /// Nhãn nút:
+  /// Nhãn nút (quy trình mới + sau Xưởng từ chối giống nhau):
   /// - Lần đầu: «Xong»
   /// - Đã xong (khóa): «Cập nhật» → mở khóa
-  /// - Đang mở sửa: «Lưu cập nhật» → khóa lại
-  /// - Xưởng từ chối: «Lưu lại bước» → «Cập nhật thành công»
+  /// - Đang mở sửa: «Lưu cập nhật» → khóa lại (hoặc bỏ tích rồi lưu = hủy bước)
   static String nhanNutXong({
     required bool daXong,
     required bool cheDoCapNhat,
     bool daLuuDieuChinh = false,
     bool dangMoCapNhat = false,
   }) {
-    if (cheDoCapNhat && daLuuDieuChinh) return 'Cập nhật thành công';
-    if (cheDoCapNhat) return daXong ? 'Lưu lại bước' : 'Xong';
     if (daXong && dangMoCapNhat) return 'Lưu cập nhật';
     if (daXong) return 'Cập nhật';
     return 'Xong';
@@ -194,12 +188,9 @@ class QuyTrinhNvktRules {
   }
 
   /// Áp tiến độ API:
-  /// - DuocChon (Tổ trưởng chọn sẵn) → tích sẵn, **không** hiện tên
-  /// - DaXong / DaCapNhat của người khác → khóa (không sửa bước người khác)
-  /// - DaCapNhat của mình → đã lưu sau từ chối → khóa, nút «Cập nhật thành công»
-  /// - DaXong của mình + chế độ từ chối → còn được «Lưu lại bước»
-  /// - DangLam → không khóa cho người khác
-  /// Chỉ hiện tên khi NVKT đã bấm Xong (DaXong / DaCapNhat).
+  /// - DuocChon: chỉ khi quy trình mới (screen bỏ qua khi cheDoCapNhat)
+  /// - DaXong / DaCapNhat → đã xong, khóa đến khi bấm Cập nhật
+  /// - DangLam của mình → đang làm
   static ({
   bool daChon,
   bool daXong,
@@ -211,9 +202,20 @@ class QuyTrinhNvktRules {
     required String trangThai,
     required bool laCuaToi,
     String? tenNhanVien,
+    bool boQuaDuocChon = false,
   }) {
-    // Tổ trưởng chọn sẵn — NVKT thấy đã tích, không hiện tên Tổ trưởng
+    // Tổ trưởng chọn sẵn — bỏ qua khi cập nhật sau từ chối
     if (trangThai == 'DuocChon') {
+      if (boQuaDuocChon) {
+        return (
+        daChon: false,
+        daXong: false,
+        khoaBoiNguoiKhac: false,
+        moRong: false,
+        daLuuDieuChinh: false,
+        tenHienThi: null,
+        );
+      }
       return (
       daChon: true,
       daXong: false,
@@ -223,14 +225,14 @@ class QuyTrinhNvktRules {
       tenHienThi: null,
       );
     }
-    // Đã lưu điều chỉnh sau Xưởng từ chối
+    // Đã lưu sau Xưởng từ chối — coi như đã Xong, khóa đến Cập nhật
     if (trangThai == 'DaCapNhat') {
       return (
       daChon: true,
       daXong: true,
       khoaBoiNguoiKhac: !laCuaToi,
       moRong: true,
-      daLuuDieuChinh: true,
+      daLuuDieuChinh: false,
       tenHienThi: tenNhanVien,
       );
     }

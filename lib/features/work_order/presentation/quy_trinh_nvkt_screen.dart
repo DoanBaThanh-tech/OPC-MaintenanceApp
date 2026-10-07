@@ -201,25 +201,36 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
           trangThai: tt,
           laCuaToi: laCuaToi,
           tenNhanVien: tenNv,
+          // Sau Xưởng từ chối: không hiện bước tổ trưởng chọn sẵn
+          boQuaDuocChon: _cheDoCapNhat,
         );
-        // Tổ trưởng chọn sẵn — tích sẵn, không hiện tên
         if (tt == 'DuocChon') {
-          b.daChon = true;
-          b.daXong = false;
-          b.khoaBoiNguoiKhac = false;
-          b.moRong = true;
-          b.daLuuDieuChinh = false;
-          b.tenNguoiGiu = null;
-        }
-        // DaXong / DaCapNhat / DangLam của mình
-        else if (tt == 'DaXong' ||
+          if (_cheDoCapNhat) {
+            // Không áp bước tổ trưởng — để trống như bước chưa chọn
+            b.daChon = false;
+            b.daXong = false;
+            b.khoaBoiNguoiKhac = false;
+            b.moRong = false;
+            b.daLuuDieuChinh = false;
+            b.dangMoCapNhat = false;
+            b.tenNguoiGiu = null;
+          } else {
+            b.daChon = true;
+            b.daXong = false;
+            b.khoaBoiNguoiKhac = false;
+            b.moRong = true;
+            b.daLuuDieuChinh = false;
+            b.tenNguoiGiu = null;
+          }
+        } else if (tt == 'DaXong' ||
             tt == 'DaCapNhat' ||
             (tt == 'DangLam' && laCuaToi)) {
           b.daChon = ap.daChon;
           b.daXong = ap.daXong;
           b.khoaBoiNguoiKhac = ap.khoaBoiNguoiKhac;
           b.moRong = ap.moRong;
-          b.daLuuDieuChinh = ap.daLuuDieuChinh;
+          b.daLuuDieuChinh = false;
+          b.dangMoCapNhat = false;
           if (ap.tenHienThi != null && ap.tenHienThi!.isNotEmpty) {
             b.tenNguoiGiu = ap.tenHienThi;
           } else if (tt == 'DangLam') {
@@ -414,21 +425,67 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
       );
       setState(() {
         b.daXong = true;
+        b.daChon = true;
         b.moRong = true;
         b.khoaBoiNguoiKhac = false;
         b.tenNguoiGiu = _tenToi;
-        b.dangMoCapNhat = false; // khóa lại sau lưu
-        if (_cheDoCapNhat) b.daLuuDieuChinh = true;
+        b.dangMoCapNhat = false; // khóa lại — bấm Cập nhật để mở lại
+        b.daLuuDieuChinh = false;
       });
       if (mounted) {
-        final msg = _cheDoCapNhat
-            ? 'Cập nhật thành công bước ${b.soBuoc} — đã khóa.'
-            : (daXongTruoc
-            ? 'Đã cập nhật bước ${b.soBuoc}.'
-            : 'Đã lưu bước ${b.soBuoc}. Bấm «Cập nhật» nếu cần sửa vật tư.');
+        final msg = daXongTruoc
+            ? 'Đã lưu cập nhật bước ${b.soBuoc} — đã khóa.'
+            : 'Đã lưu bước ${b.soBuoc}. Bấm «Cập nhật» nếu cần sửa hoặc bỏ bước.';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(msg),
+            backgroundColor: AppColors.success,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } on ApiException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
+  /// Bỏ bước đã Xong (sau Cập nhật → bỏ tích → Lưu cập nhật) → về trạng thái chưa chọn.
+  Future<void> _luuBoBuoc(_BuocState b) async {
+    final y = widget.yeuCau;
+    if (y.maHoSo == null) return;
+    try {
+      await WorkOrderService.luuTienDoBuoc(
+        maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+        maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+        soBuoc: b.soBuoc,
+        moTaBuoc: b.moTaCtrl.text.trim().isEmpty
+            ? 'Bước ${b.soBuoc}'
+            : b.moTaCtrl.text.trim(),
+        trangThai: 'BoChon',
+        jsonVatTu: '[]',
+      );
+      setState(() {
+        for (final v in b.vatTu) {
+          v.dispose();
+        }
+        b.vatTu.clear();
+        b.daChon = false;
+        b.daXong = false;
+        b.moRong = false;
+        b.dangMoCapNhat = false;
+        b.daLuuDieuChinh = false;
+        b.khoaBoiNguoiKhac = false;
+        b.tenNguoiGiu = null;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Đã bỏ bước ${b.soBuoc} — về trạng thái chưa chọn.'),
             backgroundColor: AppColors.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -1854,23 +1911,25 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                           )
                               ? null
                               : () {
-                            // Đã Xong + chưa mở → chỉ mở khóa (Cập nhật)
-                            if (b.daXong &&
-                                !b.dangMoCapNhat &&
-                                !_cheDoCapNhat) {
+                            // Đã Xong + chưa mở → mở khóa (Cập nhật) — cả sau từ chối
+                            if (b.daXong && !b.dangMoCapNhat) {
                               setState(() {
                                 b.dangMoCapNhat = true;
                                 b.moRong = true;
+                                b.daLuuDieuChinh = false;
                               });
+                              return;
+                            }
+                            // Đang mở cập nhật + đã bỏ tích → hủy bước về trạng thái ban đầu
+                            if (b.dangMoCapNhat && !b.daChon) {
+                              _luuBoBuoc(b);
                               return;
                             }
                             // Xong lần đầu hoặc Lưu cập nhật
                             _luuBuocDaXong(b);
                           },
                           style: FilledButton.styleFrom(
-                            backgroundColor: b.daLuuDieuChinh
-                                ? AppColors.success
-                                : b.dangMoCapNhat
+                            backgroundColor: b.dangMoCapNhat
                                 ? const Color(0xFF059669)
                                 : b.daXong
                                 ? const Color(0xFF0284C7)
@@ -1882,9 +1941,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                             ),
                           ),
                           icon: Icon(
-                            b.daLuuDieuChinh
-                                ? Icons.verified_rounded
-                                : b.dangMoCapNhat
+                            b.dangMoCapNhat
                                 ? Icons.save_rounded
                                 : b.daXong
                                 ? Icons.edit_rounded

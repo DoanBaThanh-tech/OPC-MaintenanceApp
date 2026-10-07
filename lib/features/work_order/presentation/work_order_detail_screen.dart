@@ -27,8 +27,9 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
   final _noiDungXuongCtrl = TextEditingController();
   final _thoiGianXuongCtrl = TextEditingController();
 
-  /// Quy trình / vật tư NVKT đã gửi (hiển thị dưới thông tin hồ sơ khi Đang thực hiện).
+  /// Quy trình / vật tư NVKT đã gửi (một khối — thay bản tổ trưởng chọn khi đã gửi Xưởng).
   HoSoVatTuItem? _hoSoVatTu;
+  List<_BuocQtDetailView> _dsBuocFull = [];
   bool _dangTaiQuyTrinh = false;
   String? _loiQuyTrinh;
 
@@ -56,13 +57,9 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
       if (!mounted) return;
       setState(() {});
       final hs = _controller.hoSo;
-      // Xưởng: xem quy trình khi Đang thực hiện / chờ duyệt / đã xong
-      // Tổ trưởng & vai trò khác: chỉ khi Đã hoàn thành
-      if (hs != null &&
-          (hs.daHoanThanh ||
-              (_laXuong &&
-                  (hs.choXacNhanKetQua || hs.dangThucHien)))) {
-        _taiQuyTrinhVatTu();
+      // NVKT đã gửi / từ chối / hoàn thành → tải quy trình mới nhất (đủ bước) cho Xưởng + Tổ trưởng
+      if (hs != null && _canhBaoCanTaiQuyTrinhNvkt(hs)) {
+        _taiQuyTrinhVatTu(hs);
       }
     });
     _xuongCtrl.addListener(() {
@@ -70,18 +67,107 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     });
   }
 
-  Future<void> _taiQuyTrinhVatTu() async {
+  bool _canhBaoCanTaiQuyTrinhNvkt(HoSoBaoTri hs) =>
+      hs.daHoanThanh ||
+          hs.choXacNhanKetQua ||
+          (hs.dangThucHien &&
+              (hs.trangThaiPhanCong == 'Chờ xác nhận' ||
+                  hs.trangThaiPhanCong == 'Từ chối' ||
+                  hs.trangThaiPhanCong == 'Hoàn thành'));
+
+  /// Đã có quy trình NVKT gửi → chỉ 1 khối mới nhất (không hiện bản tổ trưởng chọn lúc tạo).
+  bool _daCoQuyTrinhNvktGui(HoSoBaoTri hs) => _canhBaoCanTaiQuyTrinhNvkt(hs);
+
+  Future<void> _taiQuyTrinhVatTu([HoSoBaoTri? hsHint]) async {
     setState(() {
       _dangTaiQuyTrinh = true;
       _loiQuyTrinh = null;
     });
     try {
-      final hs = await MaterialUsageService.layHoSoTheoCongViec(
-        maHoSoBaoTri: widget.maHoSoBaoTri,
-      );
+      final hs = hsHint ?? _controller.hoSo;
+      final maTb = hs?.maThietBi ?? 0;
+      final results = await Future.wait([
+        MaterialUsageService.layHoSoTheoCongViec(
+          maHoSoBaoTri: widget.maHoSoBaoTri,
+        ),
+        WorkOrderService.layTienDoBuoc(maHoSoBaoTri: widget.maHoSoBaoTri),
+        maTb > 0
+            ? MaterialUsageService.layQuyTrinhThietBi(
+          maThietBi: maTb,
+          loaiCongViec: 'Bảo trì',
+        )
+            : Future.value(<BuocQuyTrinh>[]),
+      ]);
+      final hsVt = results[0] as HoSoVatTuItem?;
+      final tienDo = results[1] as List<Map<String, dynamic>>;
+      final mau = results[2] as List<BuocQuyTrinh>;
+
+      final vtTheoBuoc = <int, List<ChiTietVatTuSuDung>>{};
+      if (hsVt != null) {
+        for (final c in hsVt.chiTiet) {
+          vtTheoBuoc.putIfAbsent(c.soBuoc, () => []).add(c);
+        }
+      }
+      final tdTheoBuoc = <int, Map<String, dynamic>>{};
+      for (final row in tienDo) {
+        final so = (row['soBuoc'] as num?)?.toInt() ??
+            (row['SoBuoc'] as num?)?.toInt();
+        if (so == null) continue;
+        tdTheoBuoc[so] = row;
+      }
+
+      final soBuocSet = <int>{};
+      for (final b in mau) {
+        soBuocSet.add(b.soBuoc);
+      }
+      soBuocSet.addAll(tdTheoBuoc.keys);
+      soBuocSet.addAll(vtTheoBuoc.keys);
+      final sorted = soBuocSet.toList()..sort();
+
+      final views = <_BuocQtDetailView>[];
+      for (final so in sorted) {
+        String? mauB;
+        for (final e in mau) {
+          if (e.soBuoc == so) {
+            mauB = e.moTa;
+            break;
+          }
+        }
+        final td = tdTheoBuoc[so];
+        final moTaTd = (td?['moTaBuoc'] ?? td?['MoTaBuoc'])?.toString();
+        final tt = (td?['trangThai'] ?? td?['TrangThai'])?.toString() ?? '';
+        final tenNv = (td?['tenNhanVien'] ?? td?['TenNhanVien'])?.toString();
+        final moTaVt = vtTheoBuoc[so]
+            ?.map((e) => e.moTaBuoc.trim())
+            .where((s) => s.isNotEmpty)
+            .toSet()
+            .join(' · ');
+        final daThucHien = tt == 'DaXong' ||
+            tt == 'DaCapNhat' ||
+            (vtTheoBuoc[so]?.any((c) => c.soLuong > 0) ?? false);
+        final daChon = daThucHien ||
+            tt == 'DangLam' ||
+            tt == 'DuocChon' ||
+            vtTheoBuoc.containsKey(so);
+        views.add(_BuocQtDetailView(
+          soBuoc: so,
+          moTa: (moTaTd != null && moTaTd.isNotEmpty)
+              ? moTaTd
+              : (moTaVt != null && moTaVt.isNotEmpty)
+              ? moTaVt
+              : (mauB ?? 'Bước $so'),
+          trangThai: tt,
+          tenNhanVien: tenNv,
+          daThucHien: daThucHien,
+          daChon: daChon,
+          vatTu: vtTheoBuoc[so] ?? const [],
+        ));
+      }
+
       if (!mounted) return;
       setState(() {
-        _hoSoVatTu = hs;
+        _hoSoVatTu = hsVt;
+        _dsBuocFull = views;
         _dangTaiQuyTrinh = false;
       });
     } catch (e) {
@@ -739,8 +825,9 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         ),
                       ],
 
-                      // Quy trình đã chọn lúc tạo hồ sơ
-                      if (hs.danhSachBuocQuyTrinh.isNotEmpty) ...[
+                      // Bản tổ trưởng chọn lúc tạo — ẩn khi NVKT đã gửi (thay bằng khối mới nhất)
+                      if (hs.danhSachBuocQuyTrinh.isNotEmpty &&
+                          !_daCoQuyTrinhNvktGui(hs)) ...[
                         const SizedBox(height: 12),
                         _cardBox(
                           children: [
@@ -1091,15 +1178,15 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                             ),
                           ],
                         )
-                      // Xưởng — Đang thực hiện: quy trình + duyệt; Đã hoàn thành: xem lại
+                      // Xưởng — quy trình + nút Xác nhận/Từ chối
                       else if (_laXuong &&
                           (hs.choXacNhanKetQua ||
                               hs.dangThucHien ||
                               hs.daHoanThanh))
                         _buildXuongQuyTrinhVaDuyet(hs)
-                      // Tổ trưởng (và vai trò khác): chỉ xem quy trình khi Đã hoàn thành
-                      else if (!_laXuong && hs.daHoanThanh)
-                          _buildQuyTrinhChiXemKhiHoanThanh(hs)
+                      // Tổ trưởng / khác: xem quy trình mới nhất — không nút duyệt
+                      else if (!_laXuong && _daCoQuyTrinhNvktGui(hs))
+                          _buildQuyTrinhChiXemToTruong(hs)
                         // Xưởng: còn chỉnh sửa/gửi HOẶC đã gửi → chỉ hiện chờ GĐ
                         else if (_laXuong && hs.choXuong)
                             _buildXuongActions(hs)
@@ -1280,45 +1367,63 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     );
   }
 
-  /// Tổ trưởng / vai trò khác: chỉ xem quy trình khi hồ sơ Đã hoàn thành
-  /// (không hiện ở tab Đang thực hiện — chỉ Xưởng được xem lúc đó).
-  Widget _buildQuyTrinhChiXemKhiHoanThanh(HoSoBaoTri hs) {
+  /// Tổ trưởng / vai trò khác: xem quy trình NVKT gửi (đủ bước) — không nút Xác nhận/Từ chối.
+  Widget _buildQuyTrinhChiXemToTruong(HoSoBaoTri hs) {
+    final nhanTt = _nhanTrangThaiQuyTrinh(hs);
+    final mauTt = _mauTrangThaiQuyTrinh(nhanTt);
+    final String banner;
+    final Color bannerBg;
+    final Color bannerBd;
+    if (hs.daHoanThanh) {
+      banner =
+      'Xưởng đã xác nhận — hồ sơ Đã hoàn thành. Quy trình bên dưới là bản NVKT đã gửi (chỉ xem).';
+      bannerBg = AppColors.success.withValues(alpha: 0.1);
+      bannerBd = AppColors.success.withValues(alpha: 0.35);
+    } else if (hs.trangThaiPhanCong == 'Từ chối') {
+      banner =
+      'Xưởng đã từ chối quy trình. Đang chờ NVKT cập nhật gửi lại. Tổ trưởng chỉ xem — không duyệt.';
+      bannerBg = AppColors.danger.withValues(alpha: 0.08);
+      bannerBd = AppColors.danger.withValues(alpha: 0.3);
+    } else {
+      banner =
+      'NVKT đã gửi quy trình (đủ bước, kể cả bước không làm). Đã thay bản tổ trưởng chọn lúc tạo. Chỉ Xưởng được Xác nhận / Từ chối.';
+      bannerBg = AppColors.primary.withValues(alpha: 0.08);
+      bannerBd = AppColors.primary.withValues(alpha: 0.3);
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.success.withValues(alpha: 0.1),
+            color: bannerBg,
             borderRadius: BorderRadius.circular(14),
-            border:
-            Border.all(color: AppColors.success.withValues(alpha: 0.35)),
+            border: Border.all(color: bannerBd),
           ),
-          child: const Text(
-            'Xưởng đã xác nhận — hồ sơ Đã hoàn thành. Quy trình / vật tư bên dưới (chỉ xem).',
-            style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
+          child: Text(
+            banner,
+            style: const TextStyle(fontWeight: FontWeight.w600, height: 1.35),
           ),
         ),
         const SizedBox(height: 12),
         Row(
           children: [
             const Text(
-              'Quy trình',
+              'Quy trình thực hiện',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
             ),
             const Spacer(),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.12),
+                color: mauTt.withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: AppColors.success.withValues(alpha: 0.45)),
+                border: Border.all(color: mauTt.withValues(alpha: 0.45)),
               ),
-              child: const Text(
-                'Xác nhận',
+              child: Text(
+                nhanTt,
                 style: TextStyle(
-                  color: AppColors.success,
+                  color: mauTt,
                   fontWeight: FontWeight.w800,
                   fontSize: 12,
                 ),
@@ -1547,7 +1652,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
     );
   }
 
-  /// Hiển thị quy trình bảo trì / vật tư ngay dưới thông tin hồ sơ.
+  /// Hiển thị quy trình đủ bước (mẫu + tiến độ NVKT + vật tư) — một khối duy nhất.
   Widget _buildQuyTrinhDuoiThongTin() {
     if (_dangTaiQuyTrinh) {
       return const Padding(
@@ -1561,28 +1666,30 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
         const SizedBox(height: 8),
         Text(_loiQuyTrinh!, style: TextStyle(color: Colors.grey.shade700)),
-        TextButton(onPressed: _taiQuyTrinhVatTu, child: const Text('Thử lại')),
+        TextButton(
+            onPressed: () => _taiQuyTrinhVatTu(),
+            child: const Text('Thử lại')),
       ]);
     }
-    final hsVt = _hoSoVatTu;
-    if (hsVt == null || hsVt.chiTiet.isEmpty) {
+    if (_dsBuocFull.isEmpty) {
       return _cardBox(children: [
         const Text('Quy trình bảo trì',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
         const SizedBox(height: 8),
         Text(
-          'Chưa có dữ liệu bước/vật tư (có thể không dùng vật tư).',
+          'Chưa có dữ liệu bước/vật tư.',
           style: TextStyle(
               color: Colors.grey.shade600, fontStyle: FontStyle.italic),
         ),
       ]);
     }
 
-    final map = <int, List<ChiTietVatTuSuDung>>{};
-    for (final c in hsVt.chiTiet) {
-      map.putIfAbsent(c.soBuoc, () => []).add(c);
-    }
-    final keys = map.keys.toList()..sort();
+    final soDaLam = _dsBuocFull.where((e) => e.daThucHien).length;
+    final soVt = _dsBuocFull.fold<int>(
+        0,
+            (a, b) =>
+        a +
+            b.vatTu.where((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0).length);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1593,14 +1700,15 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
               Icon(Icons.account_tree_rounded,
                   size: 18, color: AppColors.primary.withValues(alpha: 0.9)),
               const SizedBox(width: 8),
-              const Text('Quy trình bảo trì',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      color: Color(0xFF0F172A))),
-              const Spacer(),
+              const Expanded(
+                child: Text('Quy trình bảo trì',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: Color(0xFF0F172A))),
+              ),
               Text(
-                '${keys.length} bước',
+                '${_dsBuocFull.length} bước · $soDaLam đã làm · $soVt VT',
                 style: TextStyle(
                     color: Colors.grey.shade600,
                     fontWeight: FontWeight.w600,
@@ -1610,14 +1718,18 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
           ),
         ]),
         const SizedBox(height: 8),
-        for (final k in keys)
+        for (final b in _dsBuocFull)
           Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: b.daThucHien ? Colors.white : const Color(0xFFF8FAFC),
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFBAE6FD)),
+              border: Border.all(
+                color: b.daThucHien
+                    ? const Color(0xFFBAE6FD)
+                    : Colors.grey.shade200,
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1629,56 +1741,98 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                       height: 28,
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
-                        color: AppColors.primary,
+                        color: b.daThucHien
+                            ? AppColors.primary
+                            : Colors.grey.shade300,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
-                        '$k',
-                        style: const TextStyle(
-                            color: Colors.white,
+                        '${b.soBuoc}',
+                        style: TextStyle(
+                            color: b.daThucHien
+                                ? Colors.white
+                                : Colors.grey.shade700,
                             fontWeight: FontWeight.w900,
                             fontSize: 12),
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Text('Bước $k',
-                        style: const TextStyle(
-                            fontWeight: FontWeight.w800, fontSize: 14)),
-                  ],
-                ),
-                if (map[k]!.any((e) => e.moTaBuoc.trim().isNotEmpty)) ...[
-                  const SizedBox(height: 6),
-                  Text(
-                    map[k]!
-                        .map((e) => e.moTaBuoc.trim())
-                        .where((s) => s.isNotEmpty)
-                        .toSet()
-                        .join(' · '),
-                    style: TextStyle(
-                        color: Colors.grey.shade800,
-                        height: 1.35,
-                        fontSize: 13),
-                  ),
-                ],
-                const SizedBox(height: 6),
-                for (final c in map[k]!)
-                  if (c.tenVatTu.isNotEmpty && c.soLuong > 0)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 3),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.inventory_2_outlined,
-                              size: 15, color: Color(0xFF0068A9)),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(
-                              '${c.tenVatTu} × ${c.soLuong}',
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ),
-                        ],
+                    Expanded(
+                      child: Text(
+                        b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: b.daThucHien
+                              ? const Color(0xFF0F172A)
+                              : Colors.grey.shade600,
+                        ),
                       ),
                     ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: b.daThucHien
+                            ? const Color(0xFFD1FAE5)
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        b.daThucHien
+                            ? 'Đã thực hiện'
+                            : (b.daChon ? 'Đã chọn / nháp' : 'Không làm'),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: b.daThucHien
+                              ? const Color(0xFF047857)
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                if ((b.tenNhanVien ?? '').trim().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'NVKT: ${b.tenNhanVien}',
+                    style:
+                    TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+                if (b.vatTu
+                    .any((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0)) ...[
+                  const SizedBox(height: 8),
+                  for (final c in b.vatTu)
+                    if (c.tenVatTu.isNotEmpty && c.soLuong > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 3),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.inventory_2_outlined,
+                                size: 15, color: Color(0xFF0068A9)),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                '${c.tenVatTu} × ${c.soLuong}',
+                                style: const TextStyle(fontSize: 13),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                ] else if (!b.daThucHien) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Không có vật tư — bước không được NVKT hoàn thành.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontStyle: FontStyle.italic,
+                      color: Colors.grey.shade500,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -2722,4 +2876,23 @@ class _SuaHoSoBiTuChoiScreenState extends State<SuaHoSoBiTuChoiScreen> {
       ),
     );
   }
+}
+
+class _BuocQtDetailView {
+  final int soBuoc;
+  final String moTa;
+  final String trangThai;
+  final String? tenNhanVien;
+  final bool daThucHien;
+  final bool daChon;
+  final List<ChiTietVatTuSuDung> vatTu;
+  _BuocQtDetailView({
+    required this.soBuoc,
+    required this.moTa,
+    required this.trangThai,
+    this.tenNhanVien,
+    required this.daThucHien,
+    required this.daChon,
+    required this.vatTu,
+  });
 }

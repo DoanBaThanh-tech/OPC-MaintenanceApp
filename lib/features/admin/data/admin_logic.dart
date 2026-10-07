@@ -89,6 +89,10 @@ class NhatKyItem {
   final DateTime thoiGian;
   final String? diaChiIp;
   final String moTa;
+  final int? statusCode;
+  final String? queryString;
+  final String loaiHanhDong; // Read / Create / Update / Delete
+  final String? chiTiet;
 
   const NhatKyItem({
     required this.maNhatKy,
@@ -99,24 +103,77 @@ class NhatKyItem {
     required this.thoiGian,
     this.diaChiIp,
     required this.moTa,
+    this.statusCode,
+    this.queryString,
+    required this.loaiHanhDong,
+    this.chiTiet,
   });
+
+  String get loaiLabel {
+    switch (loaiHanhDong.toUpperCase()) {
+      case 'READ':
+      case 'GET':
+        return 'Read';
+      case 'CREATE':
+      case 'POST':
+        return 'Create';
+      case 'UPDATE':
+      case 'PUT':
+      case 'PATCH':
+        return 'Update';
+      case 'DELETE':
+        return 'Delete';
+      default:
+        return loaiHanhDong.isEmpty ? phuongThucHttp : loaiHanhDong;
+    }
+  }
 
   factory NhatKyItem.fromJson(Map<String, dynamic> j) {
     int n(dynamic v) => (v as num?)?.toInt() ?? 0;
+    int? nN(dynamic v) => (v as num?)?.toInt();
+    final method =
+        (j['phuongThucHttp'] ?? j['PhuongThucHttp'])?.toString() ?? '';
+    final loaiRaw =
+        (j['loaiHanhDong'] ?? j['LoaiHanhDong'])?.toString() ?? '';
+    String loai;
+    if (loaiRaw.isNotEmpty) {
+      loai = loaiRaw;
+    } else {
+      switch (method.toUpperCase()) {
+        case 'GET':
+          loai = 'Read';
+          break;
+        case 'POST':
+          loai = 'Create';
+          break;
+        case 'PUT':
+        case 'PATCH':
+          loai = 'Update';
+          break;
+        case 'DELETE':
+          loai = 'Delete';
+          break;
+        default:
+          loai = method;
+      }
+    }
     return NhatKyItem(
       maNhatKy: n(j['maNhatKy'] ?? j['MaNhatKy']),
       maNhanVien: n(j['maNhanVien'] ?? j['MaNhanVien']),
       tenNhanVien:
       (j['tenNhanVien'] ?? j['TenNhanVien'])?.toString() ?? '—',
       tenApi: (j['tenApi'] ?? j['TenApi'])?.toString() ?? '',
-      phuongThucHttp:
-      (j['phuongThucHttp'] ?? j['PhuongThucHttp'])?.toString() ?? '',
+      phuongThucHttp: method,
       thoiGian: DateTime.tryParse(
           (j['thoiGianTruyCap'] ?? j['ThoiGianTruyCap'])?.toString() ??
               '') ??
           DateTime.now(),
       diaChiIp: (j['diaChiIp'] ?? j['DiaChiIp'])?.toString(),
       moTa: (j['moTa'] ?? j['MoTa'])?.toString() ?? '',
+      statusCode: nN(j['statusCode'] ?? j['StatusCode']),
+      queryString: (j['queryString'] ?? j['QueryString'])?.toString(),
+      loaiHanhDong: loai,
+      chiTiet: (j['chiTiet'] ?? j['ChiTiet'])?.toString(),
     );
   }
 }
@@ -384,12 +441,28 @@ class QuanLyNguoiDungController extends ChangeNotifier {
 class NhatKyController extends ChangeNotifier {
   List<NhatKyItem> danhSach = [];
   bool dangTai = true;
+  bool dangTaiNgam = false;
   String? loi;
   String tuKhoa = '';
   String? phuongThuc; // GET/POST/PUT/DELETE
+  String? loaiHanhDong; // Read/Create/Update/Delete
+  bool live = true;
 
-  Future<void> tai() async {
-    dangTai = true;
+  List<NhatKyItem> get danhSachLoc {
+    if (loaiHanhDong == null || loaiHanhDong!.isEmpty) return danhSach;
+    final key = loaiHanhDong!.toLowerCase();
+    return danhSach.where((e) => e.loaiLabel.toLowerCase() == key).toList();
+  }
+
+  int demLoai(String loai) =>
+      danhSach.where((e) => e.loaiLabel.toLowerCase() == loai.toLowerCase()).length;
+
+  Future<void> tai({bool ngam = false}) async {
+    if (ngam) {
+      dangTaiNgam = true;
+    } else {
+      dangTai = true;
+    }
     loi = null;
     notifyListeners();
     try {
@@ -403,6 +476,7 @@ class NhatKyController extends ChangeNotifier {
       loi = '$e';
     } finally {
       dangTai = false;
+      dangTaiNgam = false;
       notifyListeners();
     }
   }
@@ -414,5 +488,15 @@ class NhatKyController extends ChangeNotifier {
   void datPhuongThuc(String? m) {
     phuongThuc = m;
     tai();
+  }
+
+  void datLoaiHanhDong(String? loai) {
+    loaiHanhDong = loai;
+    notifyListeners();
+  }
+
+  void doiLive(bool v) {
+    live = v;
+    notifyListeners();
   }
 }
