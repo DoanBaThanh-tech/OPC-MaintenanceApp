@@ -407,22 +407,185 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
   Future<void> _themVatTu(int buocIdx) async {
     final b = _buoc[buocIdx];
     if (!_coTheSuaVatTu(b)) return;
-    // Trong cùng bước: ẩn vật tư đã chọn — tăng số lượng thay vì chọn lại.
-    // Sang bước khác: danh sách hiện đủ lại (exclude chỉ theo bước hiện tại).
     final daChon = b.vatTu
         .map((e) => e.maVatTu)
         .whereType<int>()
         .toSet();
-    final vt = await _chonVatTu(excludeMa: daChon);
-    if (vt == null) return;
+    final listVt = await _chonNhieuVatTu(excludeMa: daChon, daChonMa: daChon);
+    if (listVt == null || listVt.isEmpty) return;
     setState(() {
-      b.vatTu.add(_VatTuDongState(
-        maVatTu: vt.maVatTu,
-        tenVatTu: vt.tenVatTu,
-        soLuong: 1,
-        donGia: vt.donGia,
-      ));
+      for (final vt in listVt) {
+        b.vatTu.add(_VatTuDongState(
+          maVatTu: vt.maVatTu,
+          tenVatTu: vt.tenVatTu,
+          soLuong: 1,
+          donGia: vt.donGia,
+        ));
+      }
     });
+  }
+
+
+  /// Chọn nhiều vật tư một lúc; vật tư đã chọn trong bước hiện badge «Đã chọn».
+  Future<List<VatTuOption>?> _chonNhieuVatTu({
+    Set<int> excludeMa = const {},
+    Set<int> daChonMa = const {},
+  }) async {
+    if (_dsVatTu.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chưa có danh sách vật tư')),
+      );
+      return null;
+    }
+    final selected = <int>{};
+    return showModalBottomSheet<List<VatTuOption>>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final filter = TextEditingController();
+        var list = List<VatTuOption>.from(_dsVatTu);
+        return StatefulBuilder(
+          builder: (ctx, setModal) {
+            return Container(
+              height: MediaQuery.sizeOf(ctx).height * 0.78,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  const SizedBox(height: 10),
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(20, 14, 20, 8),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Chọn nhiều vật tư',
+                        style: TextStyle(fontWeight: FontWeight.w900, fontSize: 18),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: TextField(
+                      controller: filter,
+                      decoration: InputDecoration(
+                        hintText: 'Tìm theo tên hoặc mã…',
+                        prefixIcon: const Icon(Icons.search_rounded, color: _blue),
+                        filled: true,
+                        fillColor: const Color(0xFFF0F9FF),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                      onChanged: (v) {
+                        final q = v.trim().toLowerCase();
+                        setModal(() {
+                          list = _dsVatTu
+                              .where((e) =>
+                          e.tenVatTu.toLowerCase().contains(q) ||
+                              e.maVatTu.toString().contains(q))
+                              .toList();
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+                      itemCount: list.length,
+                      itemBuilder: (_, i) {
+                        final e = list[i];
+                        final daCo = daChonMa.contains(e.maVatTu);
+                        final dangChon = selected.contains(e.maVatTu);
+                        return CheckboxListTile(
+                          value: dangChon || daCo,
+                          onChanged: daCo
+                              ? null
+                              : (v) {
+                            setModal(() {
+                              if (v == true) {
+                                selected.add(e.maVatTu);
+                              } else {
+                                selected.remove(e.maVatTu);
+                              }
+                            });
+                          },
+                          title: Text(e.tenVatTu,
+                              style: const TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: Text(
+                            daCo
+                                ? 'Đã chọn trong bước này — chỉnh số lượng trên dòng có sẵn'
+                                : 'Mã ${e.maVatTu}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: daCo ? Colors.orange.shade800 : Colors.grey.shade600,
+                            ),
+                          ),
+                          secondary: daCo
+                              ? Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.orange.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Text('Đã chọn',
+                                style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    fontSize: 11,
+                                    color: Colors.orange)),
+                          )
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _blue,
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed: selected.isEmpty
+                            ? null
+                            : () {
+                          final out = _dsVatTu
+                              .where((e) => selected.contains(e.maVatTu))
+                              .toList();
+                          Navigator.pop(ctx, out);
+                        },
+                        child: Text(
+                          selected.isEmpty
+                              ? 'Chọn ít nhất 1 vật tư'
+                              : 'Thêm ${selected.length} vật tư',
+                          style: const TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   Future<VatTuOption?> _chonVatTu({Set<int> excludeMa = const {}}) async {

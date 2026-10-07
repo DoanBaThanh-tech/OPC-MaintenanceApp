@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/work_order_logic.dart';
+import '../data/to_truong_quy_trinh_tao_logic.dart';
+import 'widgets/to_truong_chon_quy_trinh_tao.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/network/api_exception.dart';
 
@@ -24,23 +26,35 @@ class CreateWorkOrderBaoTriScreen extends StatefulWidget {
 
 class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScreen> {
   final _controller = CreateWorkOrderBaoTriController();
+  final _qtCtrl = ToTruongQuyTrinhTaoController(loaiCongViec: 'Bảo trì');
   final _formKey = GlobalKey<FormState>();
   final _noiDungController = TextEditingController();
 
   @override
   void dispose() {
     _controller.dispose();
+    _qtCtrl.dispose();
     _noiDungController.dispose();
     super.dispose();
   }
 
   Future<void> _luu(bool guiDuyet) async {
     if (!_formKey.currentState!.validate()) return;
+    final errQt = _qtCtrl.validate();
+    if (errQt != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errQt),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
     final ok = await _controller.luu(
       maChiTietKeHoach: widget.maChiTietKeHoach,
       maThietBi: widget.maThietBi,
       noiDungCongViec: _noiDungController.text.trim(),
       guiDuyet: guiDuyet,
+      danhSachBuoc: _qtCtrl.payloadBuoc(),
     );
     if (ok && mounted) Navigator.pop(context, true);
   }
@@ -142,6 +156,11 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
                           ),
                         ),
                         const SizedBox(height: 20),
+                        ToTruongChonQuyTrinhTao(
+                          loaiCongViec: 'Bảo trì',
+                          controller: _qtCtrl,
+                        ),
+                        const SizedBox(height: 16),
                         const Text('Nội dung công việc', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
                         const SizedBox(height: 8),
                         TextFormField(

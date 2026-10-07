@@ -38,6 +38,7 @@ class WorkOrderService {
     required String noiDungCongViec,
     required String? thoiGianDuKien,
     required bool guiDuyet,
+    List<Map<String, dynamic>>? danhSachBuoc,
   }) async {
     await ApiClient.instance.post<Map<String, dynamic>>('${ApiConstants.workOrder}/bao-tri', {
       'maChiTietKeHoach': maChiTietKeHoach,
@@ -45,6 +46,7 @@ class WorkOrderService {
       'noiDungCongViec': noiDungCongViec,
       'thoiGianDuKien': thoiGianDuKien,
       'guiDuyet': guiDuyet,
+      if (danhSachBuoc != null) 'danhSachBuoc': danhSachBuoc,
     });
   }
 

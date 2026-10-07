@@ -19,6 +19,7 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
     required int maThietBi,
     required String noiDungCongViec,
     required bool guiDuyet,
+    List<Map<String, dynamic>>? danhSachBuoc,
   }) async {
     dangLuu = true;
     loi = null;
@@ -30,6 +31,7 @@ class CreateWorkOrderBaoTriController extends ChangeNotifier {
         noiDungCongViec: noiDungCongViec,
         thoiGianDuKien: null,
         guiDuyet: guiDuyet,
+        danhSachBuoc: danhSachBuoc,
       );
       return true;
     } on ApiException catch (e) {
