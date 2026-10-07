@@ -12,6 +12,8 @@ import '../data/services/work_order_service.dart';
 import 'work_order_assign_screen.dart';
 import 'widgets/to_truong_chon_buoc_quy_trinh.dart';
 import '../data/to_truong_ke_hoach_buoc_logic.dart';
+import '../data/to_truong_quy_trinh_tao_logic.dart';
+import 'widgets/to_truong_chon_quy_trinh_tao.dart';
 
 // Theme xanh dương (đồng bộ AppColors) — hiện đại, nhiều hiệu ứng
 const _scPrimary = AppColors.primary; // #0068A9
@@ -651,6 +653,7 @@ class TaoHoSoSuaChuaScreen extends StatefulWidget {
 class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
     with TickerProviderStateMixin {
   final _ctrl = CreateHoSoSuaChuaController();
+  final _qtCtrl = ToTruongQuyTrinhTaoController(loaiCongViec: 'Sửa chữa');
   final _moTaCtrl = TextEditingController();
   final _phuongAnCtrl = TextEditingController();
   final _thoiGianCtrl = TextEditingController();
@@ -678,6 +681,7 @@ class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
     _anim.dispose();
     _pulse.dispose();
     _ctrl.dispose();
+    _qtCtrl.dispose();
     _moTaCtrl.dispose();
     _phuongAnCtrl.dispose();
     _thoiGianCtrl.dispose();
@@ -685,9 +689,19 @@ class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
   }
 
   Future<void> _gui() async {
+    final errQt = _qtCtrl.validate();
+    if (errQt != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errQt),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
     final ok = await _ctrl.gui(
       moTaHuHong: _moTaCtrl.text,
       phuongAnSuaChua: _phuongAnCtrl.text,
+      danhSachBuoc: _qtCtrl.payloadBuoc(),
     );
     if (!mounted) return;
     if (ok) {
@@ -1091,6 +1105,11 @@ class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
                         ),
                       const SizedBox(height: 16),
 
+                      ToTruongChonQuyTrinhTao(
+                        loaiCongViec: 'Sửa chữa',
+                        controller: _qtCtrl,
+                      ),
+                      const SizedBox(height: 16),
                       _sectionLabel('Mô tả hư hỏng *',
                           icon: Icons.description_outlined),
                       TextField(
@@ -1544,16 +1563,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                   if (_laToTruong &&
                       (hs.choPhanCong || hs.coTheCapNhatPhanCong)) ...[
                     if (hs.maThietBi > 0)
-                      ToTruongChonBuocQuyTrinh(
-                        maHoSoSuaChua: hs.maHoSoSuaChua,
-                        maThietBi: hs.maThietBi,
-                        loaiCongViec: 'Sửa chữa',
-                        chiXem: hs.coTheCapNhatPhanCong,
-                        // Khóa cứng khi API tiến độ có bước NVKT (DangLam/DaXong…)
-                        onDaLuuChanged: (v) {
-                          if (mounted) setState(() => _daLuuKeHoachBuoc = v);
-                        },
-                      ),
+                      const SizedBox.shrink(),
                     _gradientBtn(
                       icon: hs.coTheCapNhatPhanCong
                           ? Icons.manage_accounts_rounded

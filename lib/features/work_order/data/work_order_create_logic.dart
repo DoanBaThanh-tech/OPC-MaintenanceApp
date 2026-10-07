@@ -229,6 +229,7 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
   Future<bool> gui({
     required String moTaHuHong,
     String? phuongAnSuaChua,
+    List<Map<String, dynamic>>? danhSachBuoc,
   }) async {
     loi = null;
     loiMoTa = null;
@@ -257,6 +258,7 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
         gioBatDauDuKien: null,
         gioKetThucDuKien: null,
         guiDuyet: true,
+        danhSachBuoc: danhSachBuoc,
       );
       return true;
     } on ApiException catch (e) {
@@ -267,6 +269,91 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
       return false;
     } finally {
       dangGui = false;
+      notifyListeners();
+    }
+  }
+}
+
+/// Tạo hồ sơ bảo trì thủ công (thiết bị mới / không qua hàng chờ).
+class CreateWorkOrderBaoTriThuCongController extends ChangeNotifier {
+  List<NhomThietBiTheoDanhMuc> nhoms = [];
+  String? danhMucChon;
+  ThietBiModel? thietBiChon;
+  bool dangTai = true;
+  bool dangLuu = false;
+  String? loi;
+
+  List<ThietBiModel> get dsThietBiTheoDanhMuc {
+    if (danhMucChon == null) return const [];
+    final match = nhoms.where((n) => n.tenDanhMuc == danhMucChon);
+    if (match.isEmpty) return const [];
+    return match.first.danhSach
+        .where((t) => t.tinhTrangHienTai == TrangThaiThietBi.sanXuat)
+        .toList();
+  }
+
+  Future<void> khoiTao() async {
+    dangTai = true;
+    loi = null;
+    notifyListeners();
+    try {
+      nhoms = await EquipmentService.layTheoDanhMuc(
+        trangThai: TrangThaiThietBi.sanXuat,
+      );
+    } catch (e) {
+      loi = 'Không tải được danh mục thiết bị: $e';
+      nhoms = [];
+    } finally {
+      dangTai = false;
+      notifyListeners();
+    }
+  }
+
+  void chonDanhMuc(String? v) {
+    danhMucChon = v;
+    thietBiChon = null;
+    notifyListeners();
+  }
+
+  void chonThietBi(ThietBiModel? v) {
+    thietBiChon = v;
+    notifyListeners();
+  }
+
+  Future<bool> luu({
+    required String noiDungCongViec,
+    List<Map<String, dynamic>>? danhSachBuoc,
+  }) async {
+    loi = null;
+    if (thietBiChon == null) {
+      loi = 'Vui lòng chọn thiết bị';
+      notifyListeners();
+      return false;
+    }
+    if (noiDungCongViec.trim().isEmpty) {
+      loi = 'Vui lòng nhập nội dung công việc';
+      notifyListeners();
+      return false;
+    }
+    dangLuu = true;
+    notifyListeners();
+    try {
+      await WorkOrderService.taoHoSoBaoTri(
+        maThietBi: thietBiChon!.maThietBi,
+        noiDungCongViec: noiDungCongViec.trim(),
+        thoiGianDuKien: null,
+        guiDuyet: true,
+        danhSachBuoc: danhSachBuoc,
+      );
+      return true;
+    } on ApiException catch (e) {
+      loi = e.message;
+      return false;
+    } catch (e) {
+      loi = '$e';
+      return false;
+    } finally {
+      dangLuu = false;
       notifyListeners();
     }
   }

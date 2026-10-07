@@ -33,7 +33,7 @@ class WorkOrderService {
 
   /// MaNhanVienTao KHÔNG gửi lên — server tự lấy từ JWT Claims.
   static Future<void> taoHoSoBaoTri({
-    required int maChiTietKeHoach,
+    int? maChiTietKeHoach,
     required int maThietBi,
     required String noiDungCongViec,
     required String? thoiGianDuKien,
@@ -41,7 +41,7 @@ class WorkOrderService {
     List<Map<String, dynamic>>? danhSachBuoc,
   }) async {
     await ApiClient.instance.post<Map<String, dynamic>>('${ApiConstants.workOrder}/bao-tri', {
-      'maChiTietKeHoach': maChiTietKeHoach,
+      if (maChiTietKeHoach != null) 'maChiTietKeHoach': maChiTietKeHoach,
       'maThietBi': maThietBi,
       'noiDungCongViec': noiDungCongViec,
       'thoiGianDuKien': thoiGianDuKien,
@@ -290,6 +290,7 @@ class WorkOrderService {
     String? gioBatDauDuKien,
     String? gioKetThucDuKien,
     bool guiDuyet = true,
+    List<Map<String, dynamic>>? danhSachBuoc,
   }) async {
     await ApiClient.instance.post<Map<String, dynamic>>(
       '${ApiConstants.workOrder}/sua-chua',
@@ -301,6 +302,7 @@ class WorkOrderService {
         if (gioBatDauDuKien != null) 'gioBatDauDuKien': gioBatDauDuKien,
         if (gioKetThucDuKien != null) 'gioKetThucDuKien': gioKetThucDuKien,
         'guiDuyet': guiDuyet,
+        if (danhSachBuoc != null) 'danhSachBuoc': danhSachBuoc,
       },
     );
   }

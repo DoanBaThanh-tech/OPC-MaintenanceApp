@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/maintenance_plan_logic.dart';
+import '../../work_order/data/to_truong_quy_trinh_tao_logic.dart';
+import '../../work_order/presentation/widgets/to_truong_chon_quy_trinh_tao.dart';
 
 /// Lập kế hoạch — thiết bị đến hạn / trễ hạn, tạo HS hàng loạt gửi xưởng.
 class HangChoBaoTriScreen extends StatefulWidget {
@@ -15,6 +17,7 @@ class HangChoBaoTriScreen extends StatefulWidget {
 class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
     with SingleTickerProviderStateMixin {
   final _controller = HangChoDenHanController();
+  final _qtCtrl = ToTruongQuyTrinhTaoController(loaiCongViec: 'Bảo trì');
   final _noiDungCtrl = TextEditingController(
     text: 'Bảo trì định kỳ theo chu kỳ đề xuất',
   );
@@ -57,6 +60,7 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
   void dispose() {
     _fadeCtrl.dispose();
     _noiDungCtrl.dispose();
+    _qtCtrl.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -68,7 +72,18 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
   }
 
   Future<void> _taoHangLoat() async {
-    final ok = await _controller.taoHangLoat(_noiDungCtrl.text);
+    final errQt = _qtCtrl.validate();
+    if (errQt != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errQt),
+        backgroundColor: Colors.red.shade700,
+      ));
+      return;
+    }
+    final ok = await _controller.taoHangLoat(
+      _noiDungCtrl.text,
+      danhSachBuoc: _qtCtrl.payloadBuoc(),
+    );
     if (!mounted) return;
     if (ok) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -534,6 +549,11 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ToTruongChonQuyTrinhTao(
+              loaiCongViec: 'Bảo trì',
+              controller: _qtCtrl,
+            ),
+            const SizedBox(height: 12),
             TextField(
               controller: _noiDungCtrl,
               maxLines: 2,

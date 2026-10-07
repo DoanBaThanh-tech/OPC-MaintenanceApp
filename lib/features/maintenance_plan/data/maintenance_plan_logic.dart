@@ -307,6 +307,7 @@ class MaintenancePlanService {
     required int thang,
     required List<int> danhSachMaThietBi,
     required String noiDungCongViec,
+    List<Map<String, dynamic>>? danhSachBuoc,
   }) async {
     final res = await ApiClient.instance.post<Map<String, dynamic>>(
       ApiConstants.taoHangLoatBaoTri,
@@ -315,6 +316,7 @@ class MaintenancePlanService {
         'thang': thang,
         'danhSachMaThietBi': danhSachMaThietBi,
         'noiDungCongViec': noiDungCongViec,
+        if (danhSachBuoc != null) 'danhSachBuoc': danhSachBuoc,
       },
     );
     return res['message']?.toString() ??
@@ -403,7 +405,7 @@ class HangChoDenHanController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> taoHangLoat(String noiDung) async {
+  Future<bool> taoHangLoat(String noiDung, {List<Map<String, dynamic>>? danhSachBuoc}) async {
     final nd = noiDung.trim();
     if (nd.isEmpty) {
       loi = 'Vui lòng nhập nội dung công việc.';
@@ -425,6 +427,7 @@ class HangChoDenHanController extends ChangeNotifier {
         thang: thang,
         danhSachMaThietBi: daChon.toList(),
         noiDungCongViec: nd,
+        danhSachBuoc: danhSachBuoc,
       );
       daChon.clear();
       await tai();

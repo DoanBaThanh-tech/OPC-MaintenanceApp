@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/work_order_logic.dart';
+import '../../equipment/data/equipment_logic.dart';
 import '../data/to_truong_quy_trinh_tao_logic.dart';
 import 'widgets/to_truong_chon_quy_trinh_tao.dart';
 import '../../../core/storage/token_storage.dart';
@@ -223,6 +224,190 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
               ),
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+// ============ TẠO HỒ SƠ BẢO TRÌ THỦ CÔNG (thiết bị mới) ============
+
+class TaoHoSoBaoTriThuCongScreen extends StatefulWidget {
+  const TaoHoSoBaoTriThuCongScreen({super.key});
+
+  @override
+  State<TaoHoSoBaoTriThuCongScreen> createState() =>
+      _TaoHoSoBaoTriThuCongScreenState();
+}
+
+class _TaoHoSoBaoTriThuCongScreenState extends State<TaoHoSoBaoTriThuCongScreen> {
+  final _ctrl = CreateWorkOrderBaoTriThuCongController();
+  final _qtCtrl = ToTruongQuyTrinhTaoController(loaiCongViec: 'Bảo trì');
+  final _noiDung = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.khoiTao();
+    _ctrl.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    _qtCtrl.dispose();
+    _noiDung.dispose();
+    super.dispose();
+  }
+
+  Future<void> _gui() async {
+    if (!_formKey.currentState!.validate()) return;
+    final errQt = _qtCtrl.validate();
+    if (errQt != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(errQt),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    final ok = await _ctrl.luu(
+      noiDungCongViec: _noiDung.text,
+      danhSachBuoc: _qtCtrl.payloadBuoc(),
+    );
+    if (!mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Đã tạo hồ sơ bảo trì và gửi xưởng (Chờ duyệt).'),
+        backgroundColor: AppColors.success,
+        behavior: SnackBarBehavior.floating,
+      ));
+      Navigator.pop(context, true);
+    } else if (_ctrl.loi != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(_ctrl.loi!),
+        backgroundColor: AppColors.danger,
+        behavior: SnackBarBehavior.floating,
+      ));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF0F6FB),
+      appBar: AppBar(
+        title: const Text('Tạo hồ sơ bảo trì'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Color(0xFF004E80), Color(0xFF0068A9), Color(0xFF0EA5E9)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+        ),
+      ),
+      body: _ctrl.dangTai
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(
+              'Dùng cho thiết bị mới hoặc chưa có trong hàng chờ / kế hoạch. '
+                  'Thiết bị đã có lịch bảo trì nên dùng «Lập kế hoạch».',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.35),
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _ctrl.danhMucChon,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: 'Danh mục thiết bị *',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              items: _ctrl.nhoms
+                  .map((n) => DropdownMenuItem(
+                value: n.tenDanhMuc,
+                child: Text(n.tenDanhMuc,
+                    overflow: TextOverflow.ellipsis),
+              ))
+                  .toList(),
+              onChanged: _ctrl.chonDanhMuc,
+              validator: (v) =>
+              v == null ? 'Chọn danh mục' : null,
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<ThietBiModel>(
+              value: _ctrl.thietBiChon,
+              isExpanded: true,
+              decoration: InputDecoration(
+                labelText: 'Thiết bị *',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              items: _ctrl.dsThietBiTheoDanhMuc
+                  .map((t) => DropdownMenuItem(
+                value: t,
+                child: Text(t.tenThietBi,
+                    overflow: TextOverflow.ellipsis),
+              ))
+                  .toList(),
+              onChanged: _ctrl.chonThietBi,
+              validator: (v) => v == null ? 'Chọn thiết bị' : null,
+            ),
+            const SizedBox(height: 16),
+            ToTruongChonQuyTrinhTao(
+              loaiCongViec: 'Bảo trì',
+              controller: _qtCtrl,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _noiDung,
+              maxLines: 4,
+              decoration: InputDecoration(
+                labelText: 'Nội dung công việc *',
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty)
+                  ? 'Nhập nội dung công việc'
+                  : null,
+            ),
+            const SizedBox(height: 24),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: _ctrl.dangLuu ? null : _gui,
+              child: _ctrl.dangLuu
+                  ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+                  : const Text('Gửi bảo trì',
+                  style: TextStyle(fontWeight: FontWeight.w900)),
+            ),
+          ],
         ),
       ),
     );
