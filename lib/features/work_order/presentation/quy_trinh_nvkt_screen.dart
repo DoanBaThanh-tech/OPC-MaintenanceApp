@@ -124,8 +124,9 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         }
       }
 
-      // Hồ sơ vật tư đã gửi (sau hoàn thành) — ưu tiên khôi phục
-      if (hoSoCu != null && hoSoCu.chiTiet.isNotEmpty) {
+      // Hồ sơ vật tư đã gửi — chỉ khôi phục khi quy trình mới.
+      // Trang cập nhật sau từ chối: chỉ lấy từ tiến độ DaXong/DaCapNhat (tránh bước chỉ tích nháp).
+      if (!_cheDoCapNhat && hoSoCu != null && hoSoCu.chiTiet.isNotEmpty) {
         _maHoSoVatTu = hoSoCu.maHoSoVatTu;
         final byBuoc = <int, List<ChiTietVatTuSuDung>>{};
         for (final c in hoSoCu.chiTiet) {
@@ -150,6 +151,8 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
             ));
           }
         }
+      } else if (_cheDoCapNhat && hoSoCu != null) {
+        _maHoSoVatTu = hoSoCu.maHoSoVatTu;
       }
 
       // Tiến độ bước đã lưu (back app / crash) + khóa bước người khác
@@ -222,9 +225,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
             b.daLuuDieuChinh = false;
             b.tenNguoiGiu = null;
           }
-        } else if (tt == 'DaXong' ||
-            tt == 'DaCapNhat' ||
-            (tt == 'DangLam' && laCuaToi)) {
+        } else if (tt == 'DaXong' || tt == 'DaCapNhat') {
           b.daChon = ap.daChon;
           b.daXong = ap.daXong;
           b.khoaBoiNguoiKhac = ap.khoaBoiNguoiKhac;
@@ -233,14 +234,30 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
           b.dangMoCapNhat = false;
           if (ap.tenHienThi != null && ap.tenHienThi!.isNotEmpty) {
             b.tenNguoiGiu = ap.tenHienThi;
-          } else if (tt == 'DangLam') {
+          }
+        } else if (tt == 'DangLam' && laCuaToi) {
+          // Trang cập nhật sau từ chối: không khôi phục nháp chưa Xong
+          if (_cheDoCapNhat) {
+            b.daChon = false;
+            b.daXong = false;
+            b.khoaBoiNguoiKhac = false;
+            b.moRong = false;
+            b.tenNguoiGiu = null;
+            b.dangMoCapNhat = false;
+          } else {
+            b.daChon = ap.daChon;
+            b.daXong = ap.daXong;
+            b.khoaBoiNguoiKhac = ap.khoaBoiNguoiKhac;
+            b.moRong = ap.moRong;
+            b.daLuuDieuChinh = false;
+            b.dangMoCapNhat = false;
             b.tenNguoiGiu = null;
           }
         }
-        // Khôi phục vật tư từ server: DaXong / DaCapNhat / DangLam (nháp của mình)
+        // Khôi phục vật tư: đã Xong / đã cập nhật; nháp DangLam chỉ quy trình mới
         final canRestoreVt = tt == 'DaXong' ||
             tt == 'DaCapNhat' ||
-            (tt == 'DangLam' && laCuaToi);
+            (!_cheDoCapNhat && tt == 'DangLam' && laCuaToi);
         if (tt == 'DaXong' || tt == 'DaCapNhat') {
           b.tenNguoiGiu = tenNv;
         }
@@ -323,8 +340,10 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
     }
   }
 
-  /// Lưu nháp (DangLam + vật tư) — giữ dữ liệu khi back / văng app trước khi Xong.
+  /// Lưu nháp (DangLam + vật tư) — chỉ quy trình mới.
+  /// Trang cập nhật sau từ chối: **không** lưu nháp tích chọn (back ra phải mất tích nếu chưa Xong).
   Future<void> _luuNhapBuoc(_BuocState b, {bool silent = true}) async {
+    if (_cheDoCapNhat) return;
     final y = widget.yeuCau;
     if (y.maHoSo == null) return;
     if (b.khoaBoiNguoiKhac) return;
@@ -453,8 +472,8 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
     }
   }
 
-  /// Bỏ bước đã Xong (sau Cập nhật → bỏ tích → Lưu cập nhật) → về trạng thái chưa chọn.
-  Future<void> _luuBoBuoc(_BuocState b) async {
+  /// Bỏ bước → server BoChon + UI trắng (không tích, không VT, không xanh).
+  Future<void> _luuBoBuoc(_BuocState b, {bool silent = false}) async {
     final y = widget.yeuCau;
     if (y.maHoSo == null) return;
     try {
@@ -468,6 +487,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         trangThai: 'BoChon',
         jsonVatTu: '[]',
       );
+      if (!mounted) return;
       setState(() {
         for (final v in b.vatTu) {
           v.dispose();
@@ -481,7 +501,7 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         b.khoaBoiNguoiKhac = false;
         b.tenNguoiGiu = null;
       });
-      if (mounted) {
+      if (!silent && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -973,16 +993,22 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: AppColors.success.withValues(alpha: 0.12),
+                color: (_cheDoCapNhat ? const Color(0xFF059669) : AppColors.success)
+                    .withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.send_rounded, color: AppColors.success),
+              child: Icon(
+                Icons.send_rounded,
+                color: _cheDoCapNhat
+                    ? const Color(0xFF059669)
+                    : AppColors.success,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 _cheDoCapNhat
-                    ? 'Gửi lại quy trình?'
+                    ? 'Bạn có cần chỉnh sửa gì nữa không'
                     : 'Hoàn thành quy trình?',
                 style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17),
               ),
@@ -991,23 +1017,59 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
         ),
         content: Text(
           _cheDoCapNhat
-              ? 'Quy trình đã chỉnh sẽ được gửi lại Xưởng để xác nhận.'
+              ? 'Nếu đã chỉnh xong, bấm «Gửi xưởng» để gửi lại quy trình. Bấm «Hủy» để ở lại chỉnh tiếp.'
               : 'Gửi ${buocGui.length} bước đã hoàn thành (kèm vật tư) về Xưởng xác nhận. Không bắt buộc làm đủ mọi bước.',
           style: TextStyle(color: Colors.grey.shade700, height: 1.4),
         ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Hủy')),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: _blue,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+          if (_cheDoCapNhat) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger, width: 1.4),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: const Text('Hủy',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF059669),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: const Text('Gửi xưởng',
+                        style: TextStyle(fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ],
             ),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hoàn thành quy trình'),
-          ),
+          ] else ...[
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Hủy')),
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: _blue,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: () => Navigator.pop(ctx, true),
+              child: const Text('Hoàn thành quy trình'),
+            ),
+          ],
         ],
       ),
     );
@@ -1656,13 +1718,26 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
                         )) {
                           return;
                         }
+                        final canBoServer = b.daXong || _cheDoCapNhat;
+                        // Về trạng thái trắng ngay: bỏ tích + xóa VT + hết xanh
                         setState(() {
+                          for (final v in b.vatTu) {
+                            v.dispose();
+                          }
+                          b.vatTu.clear();
                           b.daChon = false;
-                          b.moRong = false;
                           b.daXong = false;
+                          b.moRong = false;
+                          b.dangMoCapNhat = false;
+                          b.daLuuDieuChinh = false;
+                          b.tenNguoiGiu = null;
                         });
-                        // Bỏ tích → lưu lại trạng thái DangLam (hoặc rỗng)
-                        await _luuNhapBuoc(b);
+                        // Lưu server ngay để back vào lại không còn tích
+                        if (canBoServer) {
+                          await _luuBoBuoc(b, silent: true);
+                        } else {
+                          await _luuNhapBuoc(b);
+                        }
                       }
                     },
                   ),
@@ -1728,17 +1803,49 @@ class _QuyTrinhNvktScreenState extends State<QuyTrinhNvktScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    b.moTaCtrl.text.trim().isEmpty
-                        ? 'Bước ${b.soBuoc}'
-                        : b.moTaCtrl.text.trim(),
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      height: 1.35,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade800,
+                  // Nội dung bước: NVKT chỉnh khi đã tích (và không bị khóa người khác / chưa mở nếu đã Xong)
+                  if (b.daChon &&
+                      !b.khoaBoiNguoiKhac &&
+                      (!b.daXong || b.dangMoCapNhat))
+                    TextField(
+                      controller: b.moTaCtrl,
+                      maxLines: 2,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        labelText: 'Nội dung bước ${b.soBuoc}',
+                        hintText: 'Chỉnh nội dung nếu mẫu tổ trưởng chưa hợp lý',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                      ),
+                      onChanged: (_) {
+                        // nháp — quy trình mới lưu; sau từ chối chỉ khi Xong
+                        if (!_cheDoCapNhat) {
+                          _luuNhapBuoc(b);
+                        }
+                      },
+                    )
+                  else
+                    Text(
+                      b.moTaCtrl.text.trim().isEmpty
+                          ? 'Bước ${b.soBuoc}'
+                          : b.moTaCtrl.text.trim(),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
+                      ),
                     ),
-                  ),
                   if (b.daChon) ...[
                     const SizedBox(height: 12),
                     ...List.generate(b.vatTu.length, (j) {

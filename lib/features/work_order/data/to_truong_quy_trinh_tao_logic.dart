@@ -59,6 +59,8 @@ class ToTruongQuyTrinhTaoController extends ChangeNotifier {
   QuyTrinhOption? dangChon;
   List<BuocQuyTrinh> buoc = [];
   final Set<int> daTich = {};
+  /// Nội dung bước tổ trưởng chỉnh (soBuoc → mô tả).
+  final Map<int, String> moTaSua = {};
   bool dangTaiDs = true;
   bool dangTaiBuoc = false;
   String? loi;
@@ -90,6 +92,7 @@ class ToTruongQuyTrinhTaoController extends ChangeNotifier {
     dangChon = opt;
     buoc = [];
     daTich.clear();
+    moTaSua.clear();
     if (opt == null) {
       notifyListeners();
       return;
@@ -102,10 +105,13 @@ class ToTruongQuyTrinhTaoController extends ChangeNotifier {
         maThietBi: opt.maThietBi,
         loaiCongViec: opt.loaiCongViec,
       );
-      // Mặc định tích hết — Tổ trưởng bỏ bớt nếu cần
+      // Mặc định tích hết — Tổ trưởng bỏ bớt / sửa nội dung nếu cần
       daTich
         ..clear()
         ..addAll(buoc.map((b) => b.soBuoc));
+      moTaSua
+        ..clear()
+        ..addEntries(buoc.map((b) => MapEntry(b.soBuoc, b.moTa)));
     } on ApiException catch (e) {
       loi = e.message;
     } catch (e) {
@@ -119,20 +125,39 @@ class ToTruongQuyTrinhTaoController extends ChangeNotifier {
   void doiTich(int soBuoc, bool? v) {
     if (v == true) {
       daTich.add(soBuoc);
+      if (!moTaSua.containsKey(soBuoc)) {
+        final goc = buoc.where((b) => b.soBuoc == soBuoc).map((b) => b.moTa);
+        moTaSua[soBuoc] = goc.isEmpty ? '' : goc.first;
+      }
     } else {
       daTich.remove(soBuoc);
     }
     notifyListeners();
   }
 
-  /// Payload gửi kèm tạo hồ sơ.
+  void capNhatMoTaBuoc(int soBuoc, String moTa) {
+    moTaSua[soBuoc] = moTa;
+    // không notify mỗi ký tự — caller setState nếu cần
+  }
+
+  String moTaHienThi(int soBuoc) {
+    if (moTaSua.containsKey(soBuoc)) return moTaSua[soBuoc] ?? '';
+    for (final b in buoc) {
+      if (b.soBuoc == soBuoc) return b.moTa;
+    }
+    return '';
+  }
+
+  /// Payload gửi kèm tạo hồ sơ (kèm nội dung bước đã chỉnh).
   List<Map<String, dynamic>>? payloadBuoc() {
     if (dangChon == null || daTich.isEmpty) return null;
     return buoc
         .where((b) => daTich.contains(b.soBuoc))
         .map((b) => {
       'soBuoc': b.soBuoc,
-      'moTaBuoc': b.moTa,
+      'moTaBuoc': moTaHienThi(b.soBuoc).trim().isEmpty
+          ? (b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa)
+          : moTaHienThi(b.soBuoc).trim(),
     })
         .toList();
   }

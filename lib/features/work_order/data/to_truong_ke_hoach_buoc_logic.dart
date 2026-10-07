@@ -6,7 +6,7 @@ import '../../../core/network/api_exception.dart';
 import 'models/material_usage_models.dart';
 import 'services/material_usage_service.dart';
 
-/// Ràng buộc: Tổ trưởng phải chọn ≥1 bước và Lưu trước khi phân công.
+/// Ràng buộc phân công: đã có bước (lúc tạo hồ sơ hoặc Lưu kế hoạch).
 class ToTruongKeHoachBuocRules {
   ToTruongKeHoachBuocRules._();
 
@@ -18,8 +18,9 @@ class ToTruongKeHoachBuocRules {
   }
 
   static String? kiemTraTruocKhiPhanCong({required bool daLuuKeHoach}) {
+    // daLuuKeHoach = true nếu đã Lưu ở chi tiết HOẶC đã chọn bước lúc tạo hồ sơ
     if (!daLuuKeHoach) {
-      return 'Vui lòng chọn và Lưu các bước quy trình trước khi phân công nhân viên.';
+      return 'Hồ sơ chưa có bước quy trình. Vui lòng tạo lại hồ sơ và chọn quy trình.';
     }
     return null;
   }

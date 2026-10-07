@@ -770,21 +770,31 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         ],
                       ),
 
-                      // Nhân viên được phân công (luôn hiện khi có)
+                      // Phân công xong → «Nhân viên được phân công»; hoàn thành → «Nhân viên đã bảo trì»
                       if ((hs.tenNhanVienThucHiens ?? '').trim().isNotEmpty ||
-                          hs.maNhanVienThucHiens.isNotEmpty) ...[
+                          hs.maNhanVienThucHiens.isNotEmpty ||
+                          (hs.tenNhanVienHoanThanhs ?? '').trim().isNotEmpty) ...[
                         const SizedBox(height: 12),
                         _cardBox(
                           children: [
                             Row(
                               children: [
-                                const Icon(Icons.people_alt_rounded,
-                                    size: 18, color: _btPrimary),
+                                Icon(
+                                  hs.daHoanThanh
+                                      ? Icons.verified_rounded
+                                      : Icons.people_alt_rounded,
+                                  size: 18,
+                                  color: hs.daHoanThanh
+                                      ? AppColors.success
+                                      : _btPrimary,
+                                ),
                                 const SizedBox(width: 8),
-                                const Expanded(
+                                Expanded(
                                   child: Text(
-                                    'Nhân viên được phân công',
-                                    style: TextStyle(
+                                    hs.daHoanThanh
+                                        ? 'Nhân viên đã bảo trì'
+                                        : 'Nhân viên được phân công',
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.w800,
                                       fontSize: 13.5,
                                     ),
@@ -794,13 +804,25 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: _btPrimary.withValues(alpha: 0.12),
+                                    color: (hs.daHoanThanh
+                                        ? AppColors.success
+                                        : _btPrimary)
+                                        .withValues(alpha: 0.12),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    '${hs.maNhanVienThucHiens.isNotEmpty ? hs.maNhanVienThucHiens.length : (hs.tenNhanVienThucHiens!.split(',').where((e) => e.trim().isNotEmpty).length)} người',
-                                    style: const TextStyle(
-                                      color: _btPrimary,
+                                    '${(hs.daHoanThanh && hs.maNhanVienHoanThanhs.isNotEmpty)
+                                        ? hs.maNhanVienHoanThanhs.length
+                                        : (hs.maNhanVienThucHiens.isNotEmpty
+                                        ? hs.maNhanVienThucHiens.length
+                                        : (hs.tenNhanVienThucHiens ?? hs.tenNhanVienHoanThanhs ?? '')
+                                        .split(',')
+                                        .where((e) => e.trim().isNotEmpty)
+                                        .length)} người',
+                                    style: TextStyle(
+                                      color: hs.daHoanThanh
+                                          ? AppColors.success
+                                          : _btPrimary,
                                       fontWeight: FontWeight.w800,
                                       fontSize: 12,
                                     ),
@@ -810,8 +832,12 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                             ),
                             const SizedBox(height: 10),
                             Text(
-                              (hs.tenNhanVienThucHiens ??
-                                  hs.tenNhanVienThucHien ??
+                              ((hs.daHoanThanh
+                                  ? (hs.tenNhanVienHoanThanhs ??
+                                  hs.tenNhanVienThucHiens ??
+                                  hs.tenNhanVienThucHien)
+                                  : (hs.tenNhanVienThucHiens ??
+                                  hs.tenNhanVienThucHien)) ??
                                   '—')
                                   .trim(),
                               style: const TextStyle(
@@ -927,131 +953,6 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                         ),
                       ],
 
-                      // Chỉ hiện khi hồ sơ Đã hoàn thành — danh sách NV đã bảo trì thiết bị
-                      if (hs.daHoanThanh) ...[
-                        const SizedBox(height: 12),
-                        _cardBox(
-                          children: [
-                            Row(
-                              children: [
-                                Icon(Icons.groups_rounded,
-                                    size: 18,
-                                    color: AppColors.success.withValues(alpha: 0.95)),
-                                const SizedBox(width: 8),
-                                const Expanded(
-                                  child: Text(
-                                    'Nhân viên đã bảo trì',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w800,
-                                      fontSize: 14,
-                                      color: Color(0xFF0F172A),
-                                    ),
-                                  ),
-                                ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.success.withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Text(
-                                    hs.maNhanVienHoanThanhs.isEmpty
-                                        ? '0 người'
-                                        : '${hs.maNhanVienHoanThanhs.length} người',
-                                    style: const TextStyle(
-                                      color: AppColors.success,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 11,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            if (hs.tenNhanVienHoanThanhs != null &&
-                                hs.tenNhanVienHoanThanhs!.trim().isNotEmpty)
-                              ...hs.tenNhanVienHoanThanhs!
-                                  .split(',')
-                                  .map((s) => s.trim())
-                                  .where((s) => s.isNotEmpty)
-                                  .map(
-                                    (ten) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8),
-                                  child: Row(
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 16,
-                                        backgroundColor: AppColors.success
-                                            .withValues(alpha: 0.15),
-                                        child: Text(
-                                          ten[0].toUpperCase(),
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            color: AppColors.success,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Text(
-                                          ten,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w600,
-                                            fontSize: 13.5,
-                                            color: Color(0xFF0F172A),
-                                          ),
-                                        ),
-                                      ),
-                                      const Icon(Icons.check_circle_rounded,
-                                          size: 18, color: AppColors.success),
-                                    ],
-                                  ),
-                                ),
-                              )
-                            else if (hs.tenNhanVienThucHien != null &&
-                                hs.tenNhanVienThucHien!.trim().isNotEmpty)
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 16,
-                                    backgroundColor:
-                                    AppColors.success.withValues(alpha: 0.15),
-                                    child: Text(
-                                      hs.tenNhanVienThucHien![0].toUpperCase(),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.success,
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      hs.tenNhanVienThucHien!,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                        fontSize: 13.5,
-                                      ),
-                                    ),
-                                  ),
-                                  const Icon(Icons.check_circle_rounded,
-                                      size: 18, color: AppColors.success),
-                                ],
-                              )
-                            else
-                              Text(
-                                'Chưa có thông tin nhân viên thực hiện',
-                                style: TextStyle(
-                                  color: Colors.grey.shade600,
-                                  fontSize: 13,
-                                ),
-                              ),
-                          ],
-                        ),
-                      ],
 
                       // Lý do từ chối hồ sơ (GĐ từ chối duyệt)
                       if (hs.biTuChoi && hs.lyDoTuChoi != null) ...[
@@ -1224,9 +1125,13 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                                           ? 'Phân công lại nhân viên khác'
                                           : 'Phân công nhân viên'),
                                       onPressed: () async {
+                                        // Bước đã lưu lúc tạo hồ sơ (danhSachBuocQuyTrinh) → được phân công
+                                        final daCoBuocLucTao =
+                                            hs.danhSachBuocQuyTrinh.isNotEmpty;
                                         final block =
                                         ToTruongKeHoachBuocRules.kiemTraTruocKhiPhanCong(
-                                          daLuuKeHoach: _daLuuKeHoachBuoc,
+                                          daLuuKeHoach:
+                                          _daLuuKeHoachBuoc || daCoBuocLucTao,
                                         );
                                         if (block != null) {
                                           ScaffoldMessenger.of(context).showSnackBar(

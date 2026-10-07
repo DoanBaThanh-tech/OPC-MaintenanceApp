@@ -196,56 +196,124 @@ class _ToTruongChonQuyTrinhTaoState extends State<ToTruongChonQuyTrinhTao> {
               ],
             ),
             const SizedBox(height: 6),
-            // Chip gọn — không chiếm cả trang
+            Text(
+              'Tích chọn bước và chỉnh nội dung nếu cần (không bắt buộc giữ nguyên mẫu).',
+              style: TextStyle(
+                  fontSize: 12, color: Colors.grey.shade600, height: 1.3),
+            ),
+            const SizedBox(height: 8),
             ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 160),
+              constraints: const BoxConstraints(maxHeight: 280),
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                child: Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                child: Column(
                   children: _c.buoc.map((b) {
                     final chon = _c.daTich.contains(b.soBuoc);
-                    return FilterChip(
-                      selected: chon,
-                      showCheckmark: false,
-                      avatar: CircleAvatar(
-                        radius: 10,
-                        backgroundColor: chon
-                            ? Colors.white.withValues(alpha: 0.9)
-                            : _blue.withValues(alpha: 0.12),
-                        child: Text(
-                          '${b.soBuoc}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            color: chon ? _blue : Colors.grey.shade700,
-                          ),
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.fromLTRB(8, 6, 12, 8),
+                      decoration: BoxDecoration(
+                        color: chon
+                            ? _blue.withValues(alpha: 0.06)
+                            : const Color(0xFFF8FBFE),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: chon
+                              ? _blue.withValues(alpha: 0.35)
+                              : Colors.grey.shade200,
                         ),
                       ),
-                      label: Text(
-                        b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: chon,
+                                activeColor: _blue,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(5)),
+                                onChanged: (v) {
+                                  HapticFeedback.selectionClick();
+                                  _c.doiTich(b.soBuoc, v);
+                                },
+                              ),
+                              Container(
+                                width: 26,
+                                height: 26,
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: chon ? _blue : Colors.grey.shade300,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  '${b.soBuoc}',
+                                  style: TextStyle(
+                                    color: chon
+                                        ? Colors.white
+                                        : Colors.grey.shade700,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  chon
+                                      ? 'Đã chọn — có thể sửa nội dung bên dưới'
+                                      : 'Chưa chọn',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: chon
+                                        ? _blue
+                                        : Colors.grey.shade600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (chon) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(left: 8, right: 4),
+                              child: TextFormField(
+                                key: ValueKey('moTa-${b.soBuoc}-${_c.dangChon?.maThietBi}'),
+                                initialValue: _c.moTaHienThi(b.soBuoc),
+                                onChanged: (v) =>
+                                    _c.capNhatMoTaBuoc(b.soBuoc, v),
+                                maxLines: 2,
+                                style: const TextStyle(
+                                    fontSize: 13.5, fontWeight: FontWeight.w600),
+                                decoration: InputDecoration(
+                                  isDense: true,
+                                  labelText: 'Nội dung bước ${b.soBuoc}',
+                                  hintText: 'Chỉnh nội dung bảo trì/sửa chữa…',
+                                  filled: true,
+                                  fillColor: Colors.white,
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 10),
+                                ),
+                              ),
+                            ),
+                          ] else
+                            Padding(
+                              padding:
+                              const EdgeInsets.only(left: 12, bottom: 4),
+                              child: Text(
+                                b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    fontSize: 13, color: Colors.grey.shade700),
+                              ),
+                            ),
+                        ],
                       ),
-                      labelStyle: TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        color: chon ? Colors.white : const Color(0xFF0F172A),
-                      ),
-                      selectedColor: _blue,
-                      backgroundColor: const Color(0xFFF8FBFE),
-                      side: BorderSide(
-                        color: chon
-                            ? _blue
-                            : Colors.grey.shade200,
-                      ),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20)),
-                      onSelected: (v) {
-                        HapticFeedback.selectionClick();
-                        _c.doiTich(b.soBuoc, v);
-                      },
                     );
                   }).toList(),
                 ),
