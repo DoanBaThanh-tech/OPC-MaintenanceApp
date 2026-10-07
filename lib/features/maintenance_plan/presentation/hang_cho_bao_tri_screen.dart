@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../data/maintenance_plan_logic.dart';
 import '../../work_order/data/to_truong_quy_trinh_tao_logic.dart';
 import '../../work_order/presentation/widgets/to_truong_chon_quy_trinh_tao.dart';
 
-/// Lập kế hoạch — thiết bị đến hạn / trễ hạn, tạo HS hàng loạt gửi xưởng.
+/// Lập bảo trì nhanh — thiết bị đến hạn / trễ hạn, tạo HS hàng loạt.
 class HangChoBaoTriScreen extends StatefulWidget {
-  /// Năm đang xem trên màn kế hoạch (đồng bộ dropdown).
   final int? namBanDau;
   const HangChoBaoTriScreen({super.key, this.namBanDau});
 
@@ -15,7 +15,11 @@ class HangChoBaoTriScreen extends StatefulWidget {
 }
 
 class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
+  static const _blue = Color(0xFF0B6BCB);
+  static const _sky = Color(0xFF0EA5E9);
+  static const _bg = Color(0xFFF0F7FC);
+
   final _controller = HangChoDenHanController();
   final _qtCtrl = ToTruongQuyTrinhTaoController(loaiCongViec: 'Bảo trì');
   final _noiDungCtrl = TextEditingController(
@@ -23,6 +27,7 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
   );
   late final AnimationController _fadeCtrl;
   late final Animation<double> _fadeAnim;
+  bool _moCauHinh = true;
 
   static const _tenThang = [
     '',
@@ -43,16 +48,17 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
   @override
   void initState() {
     super.initState();
-    if (widget.namBanDau != null) {
-      _controller.nam = widget.namBanDau!;
-    }
+    if (widget.namBanDau != null) _controller.nam = widget.namBanDau!;
     _fadeCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 480),
+      duration: const Duration(milliseconds: 420),
     );
     _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic);
     _controller.tai().then((_) {
       if (mounted) _fadeCtrl.forward();
+    });
+    _qtCtrl.addListener(() {
+      if (mounted) setState(() {});
     });
   }
 
@@ -74,9 +80,20 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
   Future<void> _taoHangLoat() async {
     final errQt = _qtCtrl.validate();
     if (errQt != null) {
+      setState(() => _moCauHinh = true);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(errQt),
         backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
+      ));
+      return;
+    }
+    if (_noiDungCtrl.text.trim().isEmpty) {
+      setState(() => _moCauHinh = true);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('Vui lòng nhập nội dung công việc'),
+        backgroundColor: Colors.red.shade700,
+        behavior: SnackBarBehavior.floating,
       ));
       return;
     }
@@ -93,6 +110,7 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
                 'Đã tạo hồ sơ bảo trì và gửi xưởng (Chờ duyệt).',
           ),
           backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     } else if (_controller.loi != null) {
@@ -100,6 +118,7 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
         SnackBar(
           content: Text(_controller.loi!),
           backgroundColor: Colors.red.shade700,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -107,73 +126,197 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
 
   @override
   Widget build(BuildContext context) {
+    final top = MediaQuery.paddingOf(context).top;
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FC),
+      backgroundColor: _bg,
       body: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
+          final soChon = _controller.daChon.length;
           return Column(
             children: [
-              _buildHeroHeader(),
+              // ===== Header gọn =====
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.fromLTRB(8, top + 4, 12, 14),
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF004E80), _blue, _sky],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius:
+                  BorderRadius.vertical(bottom: Radius.circular(22)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x400B6BCB),
+                      blurRadius: 16,
+                      offset: Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                              color: Colors.white, size: 20),
+                        ),
+                        const Expanded(
+                          child: Text(
+                            'Lập bảo trì nhanh',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        Material(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              _fadeCtrl.reset();
+                              _controller.tai().then((_) {
+                                if (mounted) _fadeCtrl.forward();
+                              });
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(10),
+                              child: Icon(Icons.refresh_rounded,
+                                  color: Colors.white, size: 20),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                      child: Text(
+                        'Chọn tháng · cấu hình quy trình · tích thiết bị · tạo hồ sơ',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 12.5,
+                          height: 1.3,
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        children: [
+                          Expanded(child: _pillThang()),
+                          const SizedBox(width: 10),
+                          Expanded(child: _pillNam()),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              // ===== Nội dung cuộn chung (form + danh sách) =====
               Expanded(
                 child: FadeTransition(
                   opacity: _fadeAnim,
-                  child: Column(
-                    children: [
+                  child: CustomScrollView(
+                    physics: const BouncingScrollPhysics(
+                      parent: AlwaysScrollableScrollPhysics(),
+                    ),
+                    slivers: [
                       if (_controller.loi != null && !_controller.dangTao)
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                          child: _LoiBanner(text: _controller.loi!),
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                            child: _LoiBanner(text: _controller.loi!),
+                          ),
                         ),
-                      // Quy trình + nội dung — dưới tháng/năm, tách khỏi nút tạo
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            ToTruongChonQuyTrinhTao(
-                              loaiCongViec: 'Bảo trì',
-                              controller: _qtCtrl,
-                            ),
-                            const SizedBox(height: 10),
-                            TextField(
-                              controller: _noiDungCtrl,
-                              maxLines: 2,
-                              decoration: InputDecoration(
-                                labelText: 'Nội dung công việc',
-                                hintText: 'Mô tả bảo trì định kỳ...',
-                                prefixIcon: const Icon(
-                                    Icons.notes_rounded,
-                                    size: 20),
-                                filled: true,
-                                fillColor: Colors.white,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(
-                                      color: Colors.grey.shade200),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: BorderSide(
-                                      color: Colors.grey.shade200),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                  borderSide: const BorderSide(
-                                      color: Color(0xFF0B6BCB), width: 1.5),
-                                ),
-                              ),
-                            ),
-                          ],
+
+                      // Card cấu hình (có thể thu gọn)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+                          child: _buildCardCauHinh(),
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Expanded(child: _buildDanhSach()),
-                      _buildThanhTao(),
+
+                      // Tiêu đề danh sách
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 18,
+                                decoration: BoxDecoration(
+                                  color: _blue,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Chọn thiết bị',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 15,
+                                  color: Color(0xFF0F172A),
+                                ),
+                              ),
+                              const Spacer(),
+                              if (!_controller.dangTai &&
+                                  _controller.danhSach.isNotEmpty) ...[
+                                Text(
+                                  '${_controller.danhSach.length} máy',
+                                  style: TextStyle(
+                                    fontSize: 12.5,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                TextButton(
+                                  onPressed: () {
+                                    HapticFeedback.selectionClick();
+                                    _controller.chonTatCa();
+                                  },
+                                  style: TextButton.styleFrom(
+                                    visualDensity: VisualDensity.compact,
+                                    foregroundColor: _blue,
+                                  ),
+                                  child: Text(
+                                    soChon == _controller.danhSach.length
+                                        ? 'Bỏ chọn'
+                                        : 'Chọn tất cả',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12.5),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      // Danh sách thiết bị
+                      ..._sliverDanhSach(),
+
+                      // Đệm dưới cho thanh tạo
+                      const SliverToBoxAdapter(child: SizedBox(height: 100)),
                     ],
                   ),
                 ),
               ),
+
+              // ===== Thanh tạo cố định =====
+              _buildThanhTao(soChon),
             ],
           );
         },
@@ -181,100 +324,427 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
     );
   }
 
-  Widget _buildHeroHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0B6BCB), Color(0xFF0284C7), Color(0xFF0EA5E9)],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
+  Widget _buildCardCauHinh() {
+    final daChonQt = _qtCtrl.dangChon != null;
+    final soBuoc = _qtCtrl.daTich.length;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeOutCubic,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _blue.withValues(alpha: 0.12)),
         boxShadow: [
           BoxShadow(
-            color: Color(0x400B6BCB),
-            blurRadius: 20,
-            offset: Offset(0, 8),
+            color: _blue.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 12, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white, size: 20),
-                  ),
-                  const Expanded(
-                    child: Text(
-                      'Lập kế hoạch',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.3,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header thu/mở
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _moCauHinh = !_moCauHinh);
+              },
+              child: Padding(
+                padding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        gradient:
+                        const LinearGradient(colors: [_blue, _sky]),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.tune_rounded,
+                          color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Cấu hình tạo hồ sơ',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w900, fontSize: 14.5),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            daChonQt
+                                ? '${_qtCtrl.dangChon!.nhan} · $soBuoc bước'
+                                : 'Chưa chọn quy trình',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: daChonQt
+                                  ? _blue
+                                  : Colors.grey.shade500,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
+                    AnimatedRotation(
+                      turns: _moCauHinh ? 0.5 : 0,
+                      duration: const Duration(milliseconds: 250),
+                      child: Icon(Icons.expand_more_rounded,
+                          color: Colors.grey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+              child: Column(
+                children: [
+                  const Divider(height: 1),
+                  const SizedBox(height: 12),
+                  ToTruongChonQuyTrinhTao(
+                    loaiCongViec: 'Bảo trì',
+                    controller: _qtCtrl,
                   ),
-                  Material(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        _fadeCtrl.reset();
-                        _controller.tai().then((_) {
-                          if (mounted) _fadeCtrl.forward();
-                        });
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.all(10),
-                        child: Icon(Icons.refresh_rounded,
-                            color: Colors.white, size: 22),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _noiDungCtrl,
+                    maxLines: 2,
+                    decoration: InputDecoration(
+                      labelText: 'Nội dung công việc',
+                      hintText: 'Mô tả bảo trì định kỳ...',
+                      prefixIcon:
+                      const Icon(Icons.notes_rounded, size: 20),
+                      filled: true,
+                      fillColor: const Color(0xFFF8FBFE),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.grey.shade200),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide:
+                        const BorderSide(color: _blue, width: 1.5),
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 4),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'Thiết bị đến hạn / trễ hạn — chọn máy và tạo hồ sơ gửi xưởng',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.88),
-                    fontSize: 13,
-                    height: 1.35,
+            ),
+            crossFadeState: _moCauHinh
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 280),
+            sizeCurve: Curves.easeOutCubic,
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Widget> _sliverDanhSach() {
+    if (_controller.dangTai) {
+      return [
+        const SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: CircularProgressIndicator(color: _blue),
+          ),
+        ),
+      ];
+    }
+    final list = _controller.danhSach;
+    if (list.isEmpty) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 80,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          _blue.withValues(alpha: 0.15),
+                          _sky.withValues(alpha: 0.08),
+                        ],
+                      ),
+                    ),
+                    child: const Icon(Icons.event_available_rounded,
+                        size: 36, color: _blue),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Không có thiết bị đến hạn',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: Colors.grey.shade800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Trong ${_tenThang[_controller.thang].toLowerCase()}/${_controller.nam}\n'
+                        'chỉ hiện máy đến hạn / trễ hạn chưa có hồ sơ BT.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.grey.shade600,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ];
+    }
+
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+                (context, index) {
+              final item = list[index];
+              final chon = _controller.daChon.contains(item.maThietBi);
+              final tre = item.trangThaiHan == 'Trễ hạn';
+              final mau = tre ? const Color(0xFFDC2626) : const Color(0xFFD97706);
+
+              return TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: 1),
+                duration: Duration(milliseconds: 280 + (index % 8) * 40),
+                curve: Curves.easeOutCubic,
+                builder: (context, t, child) => Opacity(
+                  opacity: t,
+                  child: Transform.translate(
+                    offset: Offset(0, 12 * (1 - t)),
+                    child: child,
+                  ),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    elevation: chon ? 2 : 0,
+                    shadowColor: _blue.withValues(alpha: 0.2),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        _controller.daoChon(item.maThietBi);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: chon
+                                ? _blue.withValues(alpha: 0.5)
+                                : Colors.grey.shade200,
+                            width: chon ? 1.6 : 1,
+                          ),
+                          color: chon
+                              ? _blue.withValues(alpha: 0.04)
+                              : Colors.white,
+                        ),
+                        child: Row(
+                          children: [
+                            AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 26,
+                              height: 26,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: chon ? _blue : Colors.transparent,
+                                border: Border.all(
+                                  color: chon ? _blue : Colors.grey.shade400,
+                                  width: 2,
+                                ),
+                              ),
+                              child: chon
+                                  ? const Icon(Icons.check_rounded,
+                                  size: 16, color: Colors.white)
+                                  : null,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.tenThietBi,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 14.5,
+                                      color: Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${item.loaiThietBi ?? "—"} · Chu kỳ ${item.soThangChuKy} tháng',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    'Hạn: ${_fmt(item.ngayDenHan)}'
+                                        '${item.ngayBaoTriGanNhat != null ? ' · Gần nhất: ${_fmt(item.ngayBaoTriGanNhat)}' : ''}',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: mau.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text(
+                                item.trangThaiHan,
+                                style: TextStyle(
+                                  color: mau,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+            childCount: list.length,
+          ),
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildThanhTao(int soChon) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 14,
+              offset: const Offset(0, -3),
+            ),
+          ],
+        ),
+        child: SizedBox(
+          width: double.infinity,
+          height: 50,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: soChon == 0 || _controller.dangTao
+                  ? null
+                  : const LinearGradient(colors: [_blue, Color(0xFF0284C7)]),
+              color: soChon == 0 || _controller.dangTao
+                  ? Colors.grey.shade300
+                  : null,
+              boxShadow: soChon == 0
+                  ? null
+                  : [
+                BoxShadow(
+                  color: _blue.withValues(alpha: 0.35),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _controller.dangTao || soChon == 0 ? null : _taoHangLoat,
+                child: Center(
+                  child: _controller.dangTao
+                      ? const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.4,
+                      color: Colors.white,
+                    ),
+                  )
+                      : Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.playlist_add_check_rounded,
+                        color: soChon == 0
+                            ? Colors.grey.shade600
+                            : Colors.white,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        soChon == 0
+                            ? 'Chọn thiết bị để tạo hồ sơ'
+                            : 'Tạo $soChon hồ sơ bảo trì',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: soChon == 0
+                              ? Colors.grey.shade600
+                              : Colors.white,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    Expanded(child: _pillDropdownThang()),
-                    const SizedBox(width: 10),
-                    Expanded(child: _pillDropdownNam()),
-                  ],
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _pillDropdownThang() {
+  Widget _pillThang() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
@@ -283,8 +753,8 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -292,7 +762,7 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
         child: DropdownButton<int>(
           value: _controller.thang,
           isExpanded: true,
-          icon: const Icon(Icons.expand_more_rounded, color: Color(0xFF0B6BCB)),
+          icon: const Icon(Icons.expand_more_rounded, color: _blue),
           style: const TextStyle(
             color: Color(0xFF0F172A),
             fontWeight: FontWeight.w700,
@@ -300,7 +770,8 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
           ),
           items: List.generate(
             12,
-                (i) => DropdownMenuItem(value: i + 1, child: Text(_tenThang[i + 1])),
+                (i) =>
+                DropdownMenuItem(value: i + 1, child: Text(_tenThang[i + 1])),
           ),
           onChanged: (v) {
             if (v != null) {
@@ -314,7 +785,7 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
     );
   }
 
-  Widget _pillDropdownNam() {
+  Widget _pillNam() {
     final nams = _controller.danhSachNam.isEmpty
         ? <int>[_controller.nam]
         : _controller.danhSachNam;
@@ -327,8 +798,8 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
@@ -336,7 +807,7 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
         child: DropdownButton<int>(
           value: value,
           isExpanded: true,
-          icon: const Icon(Icons.expand_more_rounded, color: Color(0xFF0B6BCB)),
+          icon: const Icon(Icons.expand_more_rounded, color: _blue),
           style: const TextStyle(
             color: Color(0xFF0F172A),
             fontWeight: FontWeight.w700,
@@ -352,331 +823,6 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
               _fadeCtrl.forward();
             }
           },
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDanhSach() {
-    if (_controller.dangTai) {
-      return const Center(
-        child: CircularProgressIndicator(color: Color(0xFF0B6BCB)),
-      );
-    }
-    final list = _controller.danhSach;
-    if (list.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF0B6BCB).withValues(alpha: 0.15),
-                      const Color(0xFF0EA5E9).withValues(alpha: 0.08),
-                    ],
-                  ),
-                ),
-                child: const Icon(Icons.event_available_rounded,
-                    size: 40, color: Color(0xFF0B6BCB)),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Không có thiết bị đến hạn',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: Colors.grey.shade800,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Trong ${_tenThang[_controller.thang].toLowerCase()}/${_controller.nam}\n'
-                    'chỉ hiện máy đến hạn / trễ hạn và chưa có hồ sơ BT.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: Colors.grey.shade600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 14, 8, 6),
-          child: Row(
-            children: [
-              Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0B6BCB).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${list.length} thiết bị',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12.5,
-                    color: Color(0xFF0B6BCB),
-                  ),
-                ),
-              ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: _controller.chonTatCa,
-                icon: Icon(
-                  _controller.daChon.length == list.length
-                      ? Icons.check_box_rounded
-                      : Icons.check_box_outline_blank_rounded,
-                  size: 20,
-                  color: const Color(0xFF0B6BCB),
-                ),
-                label: Text(
-                  _controller.daChon.length == list.length
-                      ? 'Bỏ chọn'
-                      : 'Chọn tất cả',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0B6BCB),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            itemCount: list.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
-            itemBuilder: (context, i) {
-              final item = list[i];
-              final chon = _controller.daChon.contains(item.maThietBi);
-              final mau =
-              item.treHan ? const Color(0xFFDC2626) : const Color(0xFFD97706);
-              return TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
-                duration: Duration(milliseconds: 280 + (i * 40).clamp(0, 240)),
-                curve: Curves.easeOutCubic,
-                builder: (context, v, child) => Opacity(
-                  opacity: v,
-                  child: Transform.translate(
-                    offset: Offset(0, 12 * (1 - v)),
-                    child: child,
-                  ),
-                ),
-                child: Material(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  elevation: chon ? 2.5 : 0.8,
-                  shadowColor: chon
-                      ? const Color(0xFF0B6BCB).withValues(alpha: 0.25)
-                      : Colors.black26,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => _controller.daoChon(item.maThietBi),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: chon
-                              ? const Color(0xFF0B6BCB).withValues(alpha: 0.45)
-                              : Colors.transparent,
-                          width: 1.5,
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          Checkbox(
-                            value: chon,
-                            onChanged: (_) =>
-                                _controller.daoChon(item.maThietBi),
-                            activeColor: const Color(0xFF0B6BCB),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                          ),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  item.tenThietBi,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 14.5,
-                                    color: Color(0xFF0F172A),
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${item.loaiThietBi ?? "—"} · Chu kỳ ${item.soThangChuKy} tháng',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Hạn: ${_fmt(item.ngayDenHan)}'
-                                      '${item.ngayBaoTriGanNhat != null ? ' · Gần nhất: ${_fmt(item.ngayBaoTriGanNhat)}' : ''}',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 9, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: mau.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              item.trangThaiHan,
-                              style: TextStyle(
-                                color: mau,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildThanhTao() {
-    final soChon = _controller.daChon.length;
-    return SafeArea(
-      top: false,
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 16,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (soChon > 0)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  'Đã chọn $soChon thiết bị',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ),
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(14),
-                  gradient: soChon == 0 || _controller.dangTao
-                      ? null
-                      : const LinearGradient(
-                    colors: [Color(0xFF0B6BCB), Color(0xFF0284C7)],
-                  ),
-                  color: soChon == 0 || _controller.dangTao
-                      ? Colors.grey.shade300
-                      : null,
-                  boxShadow: soChon == 0
-                      ? null
-                      : [
-                    BoxShadow(
-                      color: const Color(0xFF0B6BCB)
-                          .withValues(alpha: 0.35),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
-                    onTap: _controller.dangTao || soChon == 0
-                        ? null
-                        : _taoHangLoat,
-                    child: Center(
-                      child: _controller.dangTao
-                          ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2.4,
-                          color: Colors.white,
-                        ),
-                      )
-                          : Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.playlist_add_check_rounded,
-                            color: soChon == 0
-                                ? Colors.grey.shade600
-                                : Colors.white,
-                            size: 22,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            soChon == 0
-                                ? 'Chọn thiết bị để tạo hồ sơ'
-                                : 'Tạo $soChon hồ sơ bảo trì',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 15,
-                              color: soChon == 0
-                                  ? Colors.grey.shade600
-                                  : Colors.white,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
         ),
       ),
     );
