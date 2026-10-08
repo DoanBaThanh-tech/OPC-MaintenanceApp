@@ -1,6 +1,40 @@
 class QuyTrinhNvktRules {
   QuyTrinhNvktRules._();
 
+  /// Ưu tiên mô tả: tiến độ đã lưu → bước lúc tạo hồ sơ → mẫu thiết bị.
+  static String moTaUuTien({
+    String? moTaTienDo,
+    String? moTaHoSo,
+    String? moTaMau,
+    required int soBuoc,
+  }) {
+    final td = (moTaTienDo ?? '').trim();
+    if (td.isNotEmpty) return td;
+    final hs = (moTaHoSo ?? '').trim();
+    if (hs.isNotEmpty) return hs;
+    final mau = (moTaMau ?? '').trim();
+    if (mau.isNotEmpty) return mau;
+    return 'Bước $soBuoc';
+  }
+
+  /// Được chỉnh nội dung bước (cùng điều kiện sửa vật tư).
+  static bool coTheSuaMoTa({
+    required bool daChon,
+    required bool daXong,
+    required bool khoaBoiNguoiKhac,
+    required bool cheDoCapNhat,
+    required bool dangXuLy,
+    bool dangMoCapNhat = false,
+  }) =>
+      coTheSuaVatTu(
+        daChon: daChon,
+        daXong: daXong,
+        khoaBoiNguoiKhac: khoaBoiNguoiKhac,
+        cheDoCapNhat: cheDoCapNhat,
+        dangXuLy: dangXuLy,
+        dangMoCapNhat: dangMoCapNhat,
+      );
+
   /// Được sửa số lượng / thêm / xóa vật tư trong bước.
   /// - Khóa khi người khác đã Xong
   /// - Sau Xong / sau từ chối: khóa đến khi bấm «Cập nhật» ([dangMoCapNhat])

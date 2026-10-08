@@ -204,17 +204,46 @@ mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNvkt, _
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    b.moTaCtrl.text.trim().isEmpty
-                        ? 'Bước ${b.soBuoc}'
-                        : b.moTaCtrl.text.trim(),
-                    style: TextStyle(
-                      fontSize: 13.5,
-                      height: 1.35,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey.shade800,
+                  // Nội dung bước: ưu tiên đã chỉnh lúc tạo HS; NVKT sửa được khi mở khóa
+                  if (b.daChon && _coTheSuaVatTu(b))
+                    TextField(
+                      controller: b.moTaCtrl,
+                      maxLines: 2,
+                      style: const TextStyle(
+                        fontSize: 13.5,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        labelText: 'Nội dung bước ${b.soBuoc}',
+                        hintText: 'Chỉnh nội dung nếu cần…',
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 10),
+                      ),
+                      onChanged: (_) {
+                        if (!_cheDoCapNhat) {
+                          _luuNhapBuoc(b);
+                        }
+                      },
+                    )
+                  else
+                    Text(
+                      b.moTaCtrl.text.trim().isEmpty
+                          ? 'Bước ${b.soBuoc}'
+                          : b.moTaCtrl.text.trim(),
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        height: 1.35,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade800,
+                      ),
                     ),
-                  ),
                   if (b.daChon) ...[
                     const SizedBox(height: 12),
                     ...List.generate(b.vatTu.length, (j) {

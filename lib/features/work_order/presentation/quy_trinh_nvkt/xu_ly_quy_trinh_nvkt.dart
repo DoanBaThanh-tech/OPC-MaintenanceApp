@@ -30,7 +30,33 @@ mixin _XuLyQuyTrinhNvkt on _QuyTrinhNvktScreenStateBase {
       }
       _buoc.clear();
 
-      // Luôn nạp mẫu quy trình thiết bị trước, rồi áp tiến độ đã lưu
+      // Mô tả đã chỉnh lúc tạo HS (xưởng/tổ trưởng) — không dùng lại mẫu mặc định
+      final moTaTuHoSo = <int, String>{};
+      if (y.maHoSo != null) {
+        try {
+          if (_laBaoTri) {
+            final hs =
+            await WorkOrderService.layChiTietHoSoBaoTri(y.maHoSo!);
+            for (final b in hs.danhSachBuocQuyTrinh) {
+              if (b.moTaBuoc.trim().isNotEmpty) {
+                moTaTuHoSo[b.soBuoc] = b.moTaBuoc.trim();
+              }
+            }
+          } else {
+            final hs =
+            await WorkOrderService.layChiTietHoSoSuaChua(y.maHoSo!);
+            for (final b in hs.danhSachBuocQuyTrinh) {
+              if (b.moTaBuoc.trim().isNotEmpty) {
+                moTaTuHoSo[b.soBuoc] = b.moTaBuoc.trim();
+              }
+            }
+          }
+        } catch (_) {
+          // Không chặn tải quy trình nếu chi tiết HS lỗi
+        }
+      }
+
+      // Nạp mẫu thiết bị, ưu tiên mô tả từ hồ sơ đã chỉnh
       final maTb = y.maThietBi ?? 0;
       if (maTb > 0) {
         final loai = _laBaoTri ? 'Bảo trì' : 'Sửa chữa';
@@ -39,9 +65,22 @@ mixin _XuLyQuyTrinhNvkt on _QuyTrinhNvktScreenStateBase {
           loaiCongViec: loai,
         );
         for (final b in mau) {
-          _buoc.add(_BuocState(soBuoc: b.soBuoc, moTa: b.moTa));
+          final moTa = QuyTrinhNvktRules.moTaUuTien(
+            moTaHoSo: moTaTuHoSo[b.soBuoc],
+            moTaMau: b.moTa,
+            soBuoc: b.soBuoc,
+          );
+          _buoc.add(_BuocState(soBuoc: b.soBuoc, moTa: moTa));
         }
       }
+      // HS có bước ngoài mẫu → bổ sung
+      for (final e in moTaTuHoSo.entries) {
+        final daCo = _buoc.any((b) => b.soBuoc == e.key);
+        if (!daCo) {
+          _buoc.add(_BuocState(soBuoc: e.key, moTa: e.value));
+        }
+      }
+      _buoc.sort((a, b) => a.soBuoc.compareTo(b.soBuoc));
 
       // Hồ sơ vật tư đã gửi — chỉ khôi phục khi quy trình mới.
       // Trang cập nhật sau từ chối: chỉ lấy từ tiến độ DaXong/DaCapNhat (tránh bước chỉ tích nháp).
@@ -126,6 +165,12 @@ mixin _XuLyQuyTrinhNvkt on _QuyTrinhNvktScreenStateBase {
           // Sau Xưởng từ chối: không hiện bước tổ trưởng chọn sẵn
           boQuaDuocChon: _cheDoCapNhat,
         );
+        // Luôn áp mô tả từ tiến độ (kể cả DuocChon — nội dung lúc tạo/chỉnh HS)
+        final moTaTd = (row['moTaBuoc'] ?? row['MoTaBuoc'])?.toString();
+        if (moTaTd != null && moTaTd.trim().isNotEmpty) {
+          b.moTaCtrl.text = moTaTd.trim();
+        }
+
         if (tt == 'DuocChon') {
           if (_cheDoCapNhat) {
             // Không áp bước tổ trưởng — để trống như bước chưa chọn

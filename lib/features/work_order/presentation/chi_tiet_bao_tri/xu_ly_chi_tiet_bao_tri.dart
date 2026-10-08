@@ -93,6 +93,10 @@ extension _ChiTietBaoTriXuLy on _WorkOrderBaoTriDetailScreenState {
         _hoSoVatTu = hsVt;
         _dsBuocFull = views;
         _dangTaiQuyTrinh = false;
+        // Có bước đã chọn trên server / mẫu → đủ điều kiện phân công
+        if (views.any((e) => e.daChon)) {
+          _daLuuKeHoachBuoc = true;
+        }
       });
     } catch (e) {
       if (!mounted) return;
