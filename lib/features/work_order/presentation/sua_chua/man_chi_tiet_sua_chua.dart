@@ -336,15 +336,8 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                       statusLabel: hs.trangThai,
                     ),
                   ),
-                  // Trạng thái quy trình lên đầu (Xưởng + Tổ trưởng) — kèm lý do từ chối
-                  if (_coHienTrangThaiQuyTrinhSc(hs)) ...[
-                    const SizedBox(height: 12),
-                    ModernDetailUi.fadeSlide(
-                      delayMs: 20,
-                      child: _buildBannerTrangThaiQuyTrinhSc(hs),
-                    ),
-                  ],
                   const SizedBox(height: 14),
+                  // 1) Thông tin hồ sơ trước
                   ModernDetailUi.fadeSlide(
                     delayMs: 40,
                     child: ModernDetailUi.softCard(
@@ -394,6 +387,88 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                       ),
                     ),
                   ),
+                  // 2) Nhân viên phân công — ngay sau Thông tin hồ sơ
+                  if (hs.daCoPhanCong ||
+                      (hs.tenNhanVienThucHiens ?? '').trim().isNotEmpty ||
+                      hs.maNhanVienThucHiens.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    ModernDetailUi.fadeSlide(
+                      delayMs: 60,
+                      child: ModernDetailUi.softCard(
+                        child: Builder(builder: (_) {
+                          final tenHienThi =
+                          (hs.tenNhanVienThucHiens ?? '—').trim();
+                          final soNguoi = hs.maNhanVienThucHiens.isNotEmpty
+                              ? hs.maNhanVienThucHiens.length
+                              : tenHienThi
+                              .split(',')
+                              .where((e) => e.trim().isNotEmpty)
+                              .length;
+                          final nhan = hs.daHoanThanh
+                              ? 'Nhân viên đã sửa chữa'
+                              : 'Nhân viên được phân công';
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    hs.daHoanThanh
+                                        ? Icons.verified_rounded
+                                        : Icons.groups_rounded,
+                                    color: hs.daHoanThanh
+                                        ? AppColors.success
+                                        : ModernDetailUi.primary,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      nhan,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 13.5),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: (hs.daHoanThanh
+                                          ? AppColors.success
+                                          : _scPrimary)
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      '$soNguoi người',
+                                      style: TextStyle(
+                                        color: hs.daHoanThanh
+                                            ? AppColors.success
+                                            : _scPrimary,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Text(
+                                tenHienThi.isEmpty ? '—' : tenHienThi,
+                                style: TextStyle(
+                                  height: 1.45,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.grey.shade800,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          );
+                        }),
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   ModernDetailUi.fadeSlide(
                     delayMs: 80,
@@ -441,42 +516,182 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                           ],
                           if (_dsBuocDayDu.isNotEmpty ||
                               hs.danhSachBuocQuyTrinh.isNotEmpty ||
-                              _dangTaiBuocDayDu) ...[
+                              _dangTaiBuocDayDu ||
+                              _coHienTrangThaiQuyTrinhSc(hs)) ...[
                             const SizedBox(height: 14),
-                            Row(
-                              children: [
-                                const Icon(Icons.checklist_rtl_rounded,
-                                    size: 18, color: _scPrimary),
-                                const SizedBox(width: 8),
-                                const Expanded(
-                                  child: Text(
-                                    'Quy trình đã chọn',
-                                    style: TextStyle(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 13.5),
+                            Builder(builder: (_) {
+                              final coTt = _coHienTrangThaiQuyTrinhSc(hs);
+                              final nhanTt = coTt
+                                  ? _nhanTtQuyTrinhSc(hs)
+                                  : null;
+                              final mauTt = nhanTt != null
+                                  ? _mauTtQuyTrinhSc(nhanTt)
+                                  : _scPrimary;
+                              final lyDo =
+                              (hs.lyDoTuChoiPhanCong ?? '').trim();
+                              final biTuChoi = nhanTt == 'Từ chối';
+                              return Column(
+                                crossAxisAlignment:
+                                CrossAxisAlignment.stretch,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(
+                                          Icons.checklist_rtl_rounded,
+                                          size: 18,
+                                          color: _scPrimary),
+                                      const SizedBox(width: 8),
+                                      const Expanded(
+                                        child: Text(
+                                          'Quy trình đã chọn',
+                                          style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13.5),
+                                        ),
+                                      ),
+                                      if (nhanTt != null)
+                                        Container(
+                                          padding:
+                                          const EdgeInsets.symmetric(
+                                              horizontal: 10,
+                                              vertical: 4),
+                                          decoration: BoxDecoration(
+                                            color: mauTt.withValues(
+                                                alpha: 0.14),
+                                            borderRadius:
+                                            BorderRadius.circular(20),
+                                            border: Border.all(
+                                                color: mauTt.withValues(
+                                                    alpha: 0.45)),
+                                          ),
+                                          child: Text(
+                                            nhanTt,
+                                            style: TextStyle(
+                                              color: mauTt,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        )
+                                      else if (_dsBuocDayDu.isNotEmpty)
+                                        Text(
+                                          '${_dsBuocDayDu.where((e) => e.daChon).length}/${_dsBuocDayDu.length} chọn',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                    ],
                                   ),
-                                ),
-                                if (_dsBuocDayDu.isNotEmpty)
-                                  Text(
-                                    '${_dsBuocDayDu.where((e) => e.daChon).length}/${_dsBuocDayDu.length} chọn',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.grey.shade600,
+                                  if (nhanTt != null) ...[
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        if (_dsBuocDayDu.isNotEmpty)
+                                          Text(
+                                            '${_dsBuocDayDu.where((e) => e.daChon).length}/${_dsBuocDayDu.length} chọn · ',
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.grey.shade600,
+                                            ),
+                                          ),
+                                        Expanded(
+                                          child: Text(
+                                            switch (nhanTt) {
+                                              'Xác nhận' =>
+                                              'Xưởng đã xác nhận quy trình.',
+                                              'Từ chối' =>
+                                              'Quy trình bị từ chối — NVKT chỉnh sửa và gửi lại.',
+                                              'Chờ xác nhận' =>
+                                              'Đang chờ Xưởng xác nhận.',
+                                              'Đang thực hiện' =>
+                                              'NVKT đang thực hiện quy trình.',
+                                              _ => 'Trạng thái: $nhanTt',
+                                            },
+                                            style: TextStyle(
+                                              fontSize: 11.5,
+                                              color: Colors.grey.shade600,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              'Hiển thị cả bước đã chọn và chưa chọn lúc tạo hồ sơ.',
-                              style: TextStyle(
-                                fontSize: 11.5,
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
+                                  ] else ...[
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Hiển thị cả bước đã chọn và chưa chọn lúc tạo hồ sơ.',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color: Colors.grey.shade600,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                  // Lý do từ chối gắn ngay trong khối quy trình
+                                  if (biTuChoi && lyDo.isNotEmpty) ...[
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      padding: const EdgeInsets.fromLTRB(
+                                          10, 8, 10, 8),
+                                      decoration: BoxDecoration(
+                                        color: AppColors.danger
+                                            .withValues(alpha: 0.06),
+                                        borderRadius:
+                                        BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color: AppColors.danger
+                                              .withValues(alpha: 0.28),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                        children: [
+                                          const Icon(
+                                              Icons.info_outline_rounded,
+                                              size: 16,
+                                              color: AppColors.danger),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text.rich(
+                                              TextSpan(
+                                                children: [
+                                                  const TextSpan(
+                                                    text: 'Lý do: ',
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                      FontWeight.w800,
+                                                      fontSize: 12.5,
+                                                      color:
+                                                      AppColors.danger,
+                                                    ),
+                                                  ),
+                                                  TextSpan(
+                                                    text: lyDo,
+                                                    style: TextStyle(
+                                                      fontWeight:
+                                                      FontWeight.w600,
+                                                      fontSize: 12.5,
+                                                      height: 1.35,
+                                                      color: Colors
+                                                          .grey.shade900,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 8),
+                                ],
+                              );
+                            }),
                             if (_dangTaiBuocDayDu)
                               const Padding(
                                 padding: EdgeInsets.symmetric(vertical: 10),
@@ -654,88 +869,6 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                       ),
                     ),
                   ),
-                  // Phân công / Đang thực hiện → «được phân công»; hoàn thành → «đã sửa chữa»
-                  if (hs.daCoPhanCong ||
-                      (hs.tenNhanVienThucHiens ?? '').trim().isNotEmpty ||
-                      hs.maNhanVienThucHiens.isNotEmpty) ...[
-                    const SizedBox(height: 12),
-                    ModernDetailUi.fadeSlide(
-                      delayMs: 120,
-                      child: ModernDetailUi.softCard(
-                        child: Builder(builder: (_) {
-                          final tenHienThi =
-                          (hs.tenNhanVienThucHiens ?? '—').trim();
-                          final soNguoi = hs.maNhanVienThucHiens.isNotEmpty
-                              ? hs.maNhanVienThucHiens.length
-                              : tenHienThi
-                              .split(',')
-                              .where((e) => e.trim().isNotEmpty)
-                              .length;
-                          final nhan = hs.daHoanThanh
-                              ? 'Nhân viên đã sửa chữa'
-                              : 'Nhân viên được phân công';
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    hs.daHoanThanh
-                                        ? Icons.verified_rounded
-                                        : Icons.groups_rounded,
-                                    color: hs.daHoanThanh
-                                        ? AppColors.success
-                                        : ModernDetailUi.primary,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      nhan,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 13.5),
-                                    ),
-                                  ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: (hs.daHoanThanh
-                                          ? AppColors.success
-                                          : _scPrimary)
-                                          .withValues(alpha: 0.12),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      '$soNguoi người',
-                                      style: TextStyle(
-                                        color: hs.daHoanThanh
-                                            ? AppColors.success
-                                            : _scPrimary,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                tenHienThi.isEmpty ? '—' : tenHienThi,
-                                style: TextStyle(
-                                  height: 1.45,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey.shade800,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          );
-                        }),
-                      ),
-                    ),
-                  ],
                   const SizedBox(height: 22),
                   if (_laToTruong &&
                       (hs.choPhanCong || hs.coTheCapNhatPhanCong)) ...[
