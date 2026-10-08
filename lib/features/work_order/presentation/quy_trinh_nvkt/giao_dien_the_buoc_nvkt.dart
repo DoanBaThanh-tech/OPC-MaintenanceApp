@@ -1,7 +1,7 @@
 part of quy_trinh_nvkt_screen;
 
 /// UI từng bước quy trình NVKT.
-mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenState {
+mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNvkt, _XuLyVatTuVaHoanThanhNvkt {
 
   Widget _buildBuocCard(int index) {
     final b = _buoc[index];
@@ -25,7 +25,7 @@ mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenState {
             color: b.daXong
                 ? const Color(0xFF6EE7B7)
                 : b.daChon
-                ? _blue.withValues(alpha: 0.45) 
+                ? _blue.withValues(alpha: 0.45)
                 : const Color(0xFFE0F2FE),
             width: b.daChon || b.daXong ? 1.5 : 1,
           ),

@@ -454,6 +454,8 @@ class HoSoSuaChua {
   final bool? choXuongXacNhanQuyTrinhFlag;
   /// Thời điểm NVKT tiến hành quy trình.
   final DateTime? thoiDiemBatDauThucTe;
+  /// Bước quy trình đã chọn lúc tạo (mô tả có thể đã sửa).
+  final List<BuocQuyTrinhHs> danhSachBuocQuyTrinh;
 
   HoSoSuaChua({
     required this.maHoSoSuaChua,
@@ -477,6 +479,7 @@ class HoSoSuaChua {
     this.rowVersion,
     this.choXuongXacNhanQuyTrinhFlag,
     this.thoiDiemBatDauThucTe,
+    this.danhSachBuocQuyTrinh = const [],
   });
 
   bool get dangThucHien => trangThai == 'Đang thực hiện';
@@ -510,6 +513,7 @@ class HoSoSuaChua {
               trangThai == 'Đang thực hiện');
 
   factory HoSoSuaChua.fromJson(Map<String, dynamic> j) {
+    // parse steps early
     int asInt(dynamic v) => (v as num?)?.toInt() ?? 0;
     int? asIntN(dynamic v) => (v as num?)?.toInt();
     DateTime? asDate(dynamic v) =>
@@ -532,6 +536,16 @@ class HoSoSuaChua {
 
     final maList = parseMaNv(j['maNhanVienThucHiens'] ?? j['MaNhanVienThucHiens']);
     final fromDs = parseMaNv(j['danhSachNhanVienPhanCong'] ?? j['DanhSachNhanVienPhanCong']);
+
+    final rawBuocSc = j['danhSachBuocQuyTrinh'] ?? j['DanhSachBuocQuyTrinh'];
+    final dsBuocSc = <BuocQuyTrinhHs>[];
+    if (rawBuocSc is List) {
+      for (final e in rawBuocSc) {
+        if (e is Map) {
+          dsBuocSc.add(BuocQuyTrinhHs.fromJson(Map<String, dynamic>.from(e)));
+        }
+      }
+    }
 
     return HoSoSuaChua(
       maHoSoSuaChua: asInt(j['maHoSoSuaChua'] ?? j['MaHoSoSuaChua']),
@@ -563,6 +577,7 @@ class HoSoSuaChua {
           j['ChoXuongXacNhanQuyTrinh'] == true,
       thoiDiemBatDauThucTe:
       asDate(j['thoiDiemBatDauThucTe'] ?? j['ThoiDiemBatDauThucTe']),
+      danhSachBuocQuyTrinh: dsBuocSc,
     );
   }
 }

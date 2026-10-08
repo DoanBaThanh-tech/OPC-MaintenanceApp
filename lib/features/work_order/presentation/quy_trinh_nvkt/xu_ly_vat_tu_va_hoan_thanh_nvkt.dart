@@ -1,7 +1,7 @@
 part of quy_trinh_nvkt_screen;
 
 /// Chọn vật tư và hoàn thành gửi Xưởng.
-mixin _XuLyVatTuVaHoanThanhNvkt on _QuyTrinhNvktScreenState {
+mixin _XuLyVatTuVaHoanThanhNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNvkt {
 
   Future<void> _themVatTu(int buocIdx) async {
     final b = _buoc[buocIdx];

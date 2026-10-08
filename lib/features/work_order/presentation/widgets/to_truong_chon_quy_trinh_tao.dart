@@ -166,62 +166,36 @@ class _ToTruongChonQuyTrinhTaoState extends State<ToTruongChonQuyTrinhTao> {
                     height: 22,
                     child: CircularProgressIndicator(strokeWidth: 2))),
           ] else if (_c.buoc.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Text(
-                  'Bước cần làm',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
-                      color: Colors.grey.shade800),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: () {
-                    for (final b in _c.buoc) {
-                      if (!_c.daTich.contains(b.soBuoc)) {
-                        _c.doiTich(b.soBuoc, true);
-                      }
-                    }
-                  },
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    foregroundColor: _blue,
-                  ),
-                  child: const Text('Chọn tất cả',
-                      style:
-                      TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Tích chọn bước và chỉnh nội dung nếu cần (không bắt buộc giữ nguyên mẫu).',
-              style: TextStyle(
-                  fontSize: 12, color: Colors.grey.shade600, height: 1.3),
-            ),
-            const SizedBox(height: 8),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 280),
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
-                  children: _c.buoc.map((b) {
-                    final chon = _c.daTich.contains(b.soBuoc);
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.fromLTRB(8, 6, 12, 8),
+            const SizedBox(height: 14),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                final isTablet = w >= 560;
+                final daChon = _c.daTich.length;
+                final tong = _c.buoc.length;
+                final cols = w >= 840 ? 3 : (isTablet ? 2 : 1);
+                final listH = isTablet
+                    ? (tong <= cols * 2 ? null : 360.0)
+                    : (tong <= 3 ? null : 310.0);
+
+                Widget stepCard(dynamic b) {
+                  final chon = _c.daTich.contains(b.soBuoc);
+                  final moTa = _c.moTaHienThi(b);
+                  return Material(
+                    color: Colors.transparent,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: EdgeInsets.all(isTablet ? 12 : 10),
                       decoration: BoxDecoration(
                         color: chon
-                            ? _blue.withValues(alpha: 0.06)
+                            ? _blue.withValues(alpha: 0.07)
                             : const Color(0xFFF8FBFE),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                           color: chon
-                              ? _blue.withValues(alpha: 0.35)
+                              ? _blue.withValues(alpha: 0.4)
                               : Colors.grey.shade200,
+                          width: chon ? 1.3 : 1,
                         ),
                       ),
                       child: Column(
@@ -229,95 +203,211 @@ class _ToTruongChonQuyTrinhTaoState extends State<ToTruongChonQuyTrinhTao> {
                         children: [
                           Row(
                             children: [
-                              Checkbox(
-                                value: chon,
-                                activeColor: _blue,
-                                shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(5)),
-                                onChanged: (v) {
-                                  HapticFeedback.selectionClick();
-                                  _c.doiTich(b.soBuoc, v);
-                                },
+                              SizedBox(
+                                width: 28,
+                                height: 28,
+                                child: Checkbox(
+                                  value: chon,
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize:
+                                  MaterialTapTargetSize.shrinkWrap,
+                                  activeColor: _blue,
+                                  onChanged: (v) {
+                                    HapticFeedback.selectionClick();
+                                    _c.doiTich(b.soBuoc, v);
+                                  },
+                                ),
                               ),
+                              const SizedBox(width: 4),
                               Container(
-                                width: 26,
-                                height: 26,
-                                alignment: Alignment.center,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(
-                                  color: chon ? _blue : Colors.grey.shade300,
+                                  color:
+                                  chon ? _blue : _blue.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  '${b.soBuoc}',
+                                  'Bước ${b.soBuoc}',
                                   style: TextStyle(
-                                    color: chon
-                                        ? Colors.white
-                                        : Colors.grey.shade700,
+                                    fontSize: isTablet ? 12.5 : 11.5,
                                     fontWeight: FontWeight.w900,
-                                    fontSize: 12,
+                                    color: chon ? Colors.white : _blue,
                                   ),
                                 ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  chon
-                                      ? 'Đã chọn — có thể sửa nội dung bên dưới'
-                                      : 'Chưa chọn',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w700,
-                                    color: chon
-                                        ? _blue
-                                        : Colors.grey.shade600,
-                                  ),
+                              const Spacer(),
+                              if (chon)
+                                Icon(Icons.check_circle_rounded,
+                                    size: 18,
+                                    color: _blue.withValues(alpha: 0.9)),
+                            ],
+                          ),
+                          SizedBox(height: isTablet ? 10 : 8),
+                          TextFormField(
+                            key: ValueKey('buoc-mota-${b.soBuoc}'),
+                            initialValue: moTa,
+                            maxLines: isTablet ? 3 : 2,
+                            minLines: 1,
+                            style: TextStyle(
+                              fontSize: isTablet ? 14 : 13,
+                              fontWeight: FontWeight.w600,
+                              height: 1.35,
+                              color: const Color(0xFF0F172A),
+                            ),
+                            decoration: InputDecoration(
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: isTablet ? 12 : 10,
+                                vertical: isTablet ? 12 : 10,
+                              ),
+                              filled: true,
+                              fillColor: Colors.white,
+                              hintText: 'Nội dung bước ${b.soBuoc}',
+                              hintStyle: TextStyle(
+                                color: Colors.grey.shade500,
+                                fontWeight: FontWeight.w500,
+                                fontSize: isTablet ? 13.5 : 12.5,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                BorderSide(color: Colors.grey.shade200),
+                              ),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide:
+                                BorderSide(color: Colors.grey.shade200),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(
+                                    color: _blue, width: 1.5),
+                              ),
+                            ),
+                            onChanged: (v) => _c.capNhatMoTa(b.soBuoc, v),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final Widget body = cols > 1
+                    ? GridView.builder(
+                  shrinkWrap: true,
+                  physics: listH == null
+                      ? const NeverScrollableScrollPhysics()
+                      : const BouncingScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: cols,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: cols >= 3 ? 1.5 : 1.42,
+                  ),
+                  itemCount: tong,
+                  itemBuilder: (context, i) => stepCard(_c.buoc[i]),
+                )
+                    : ListView.separated(
+                  shrinkWrap: true,
+                  physics: listH == null
+                      ? const NeverScrollableScrollPhysics()
+                      : const BouncingScrollPhysics(),
+                  itemCount: tong,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, i) => stepCard(_c.buoc[i]),
+                );
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Bước cần làm',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: isTablet ? 15 : 13.5,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Sửa nội dung ngay trên ô · bỏ tích nếu không làm',
+                                style: TextStyle(
+                                  fontSize: isTablet ? 12.5 : 11.5,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ],
                           ),
-                          if (chon) ...[
-                            Padding(
-                              padding: const EdgeInsets.only(left: 8, right: 4),
-                              child: TextFormField(
-                                key: ValueKey('moTa-${b.soBuoc}-${_c.dangChon?.maThietBi}'),
-                                initialValue: _c.moTaHienThi(b.soBuoc),
-                                onChanged: (v) =>
-                                    _c.capNhatMoTaBuoc(b.soBuoc, v),
-                                maxLines: 2,
-                                style: const TextStyle(
-                                    fontSize: 13.5, fontWeight: FontWeight.w600),
-                                decoration: InputDecoration(
-                                  isDense: true,
-                                  labelText: 'Nội dung bước ${b.soBuoc}',
-                                  hintText: 'Chỉnh nội dung bảo trì/sửa chữa…',
-                                  filled: true,
-                                  fillColor: Colors.white,
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 12, vertical: 10),
-                                ),
-                              ),
+                        ),
+                        Container(
+                          margin: const EdgeInsets.only(left: 8, top: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: _blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '$daChon/$tong',
+                            style: const TextStyle(
+                              color: _blue,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 12.5,
                             ),
-                          ] else
-                            Padding(
-                              padding:
-                              const EdgeInsets.only(left: 12, bottom: 4),
-                              child: Text(
-                                b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                    fontSize: 13, color: Colors.grey.shade700),
-                              ),
-                            ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 4,
+                      children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            for (final b in _c.buoc) {
+                              _c.doiTich(b.soBuoc, true);
+                            }
+                          },
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: _blue,
+                          ),
+                          icon: const Icon(Icons.done_all_rounded, size: 16),
+                          label: const Text('Chọn tất cả',
+                              style: TextStyle(fontWeight: FontWeight.w800)),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            for (final b in _c.buoc.toList()) {
+                              _c.doiTich(b.soBuoc, false);
+                            }
+                          },
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: Colors.grey.shade700,
+                          ),
+                          child: const Text('Bỏ chọn',
+                              style: TextStyle(fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    if (listH != null)
+                      SizedBox(height: listH, child: body)
+                    else
+                      body,
+                  ],
+                );
+              },
             ),
           ],
         ],

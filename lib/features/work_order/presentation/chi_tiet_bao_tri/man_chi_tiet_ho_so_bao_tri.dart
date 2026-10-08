@@ -43,13 +43,19 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
   void initState() {
     super.initState();
     _controller = WorkOrderBaoTriDetailController(widget.maHoSoBaoTri);
-    _controller.taiChiTiet().then((_) {
+    _controller.taiChiTiet().then((_) async {
       if (!mounted) return;
-      setState(() {});
       final hs = _controller.hoSo;
-      // NVKT đã gửi / từ chối / hoàn thành → tải quy trình mới nhất (đủ bước) cho Xưởng + Tổ trưởng
-      if (hs != null && _canhBaoCanTaiQuyTrinhNvkt(hs)) {
-        _taiQuyTrinhVatTu(hs);
+      if (hs != null) {
+        await _dongBoCoKeHoachBuoc(hs);
+        if (!mounted) return;
+        setState(() {});
+        // NVKT đã gửi / từ chối / hoàn thành → tải quy trình mới nhất (đủ bước)
+        if (_canhBaoCanTaiQuyTrinhNvkt(hs)) {
+          _taiQuyTrinhVatTu(hs);
+        }
+      } else {
+        setState(() {});
       }
     });
     _xuongCtrl.addListener(() {
@@ -67,6 +73,22 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
 
   /// Đã có quy trình NVKT gửi → chỉ 1 khối mới nhất (không hiện bản tổ trưởng chọn lúc tạo).
   bool _daCoQuyTrinhNvktGui(HoSoBaoTri hs) => _canhBaoCanTaiQuyTrinhNvkt(hs);
+
+  /// Bước đã chọn lúc tạo / đã lưu trên server → cho phép phân công (không bắt Lưu lại).
+  Future<void> _dongBoCoKeHoachBuoc(HoSoBaoTri hs) async {
+    if (hs.danhSachBuocQuyTrinh.isNotEmpty) {
+      _daLuuKeHoachBuoc = true;
+      return;
+    }
+    try {
+      final soBuoc = await ToTruongKeHoachBuocService.laySoBuocDaChon(
+        maHoSoBaoTri: hs.maHoSoBaoTri,
+      );
+      _daLuuKeHoachBuoc = soBuoc.isNotEmpty;
+    } catch (_) {
+      _daLuuKeHoachBuoc = false;
+    }
+  }
 
   void dispose() {
     _noiDungXuongCtrl.dispose();

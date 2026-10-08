@@ -1,7 +1,7 @@
 part of quy_trinh_nvkt_screen;
 
 /// Tải dữ liệu, đồng bộ tiến độ, claim/lưu bước.
-mixin _XuLyQuyTrinhNvkt on _QuyTrinhNvktScreenState {
+mixin _XuLyQuyTrinhNvkt on _QuyTrinhNvktScreenStateBase {
 
   Future<void> _tai() async {
     setState(() {

@@ -59,8 +59,8 @@ class ToTruongQuyTrinhTaoController extends ChangeNotifier {
   QuyTrinhOption? dangChon;
   List<BuocQuyTrinh> buoc = [];
   final Set<int> daTich = {};
-  /// Nội dung bước tổ trưởng chỉnh (soBuoc → mô tả).
-  final Map<int, String> moTaSua = {};
+  /// Mô tả bước do Tổ trưởng/Xưởng sửa khi tạo hồ sơ (ghi đè mẫu).
+  final Map<int, String> moTaTuyChinh = {};
   bool dangTaiDs = true;
   bool dangTaiBuoc = false;
   String? loi;
@@ -92,7 +92,7 @@ class ToTruongQuyTrinhTaoController extends ChangeNotifier {
     dangChon = opt;
     buoc = [];
     daTich.clear();
-    moTaSua.clear();
+    moTaTuyChinh.clear();
     if (opt == null) {
       notifyListeners();
       return;
@@ -105,13 +105,10 @@ class ToTruongQuyTrinhTaoController extends ChangeNotifier {
         maThietBi: opt.maThietBi,
         loaiCongViec: opt.loaiCongViec,
       );
-      // Mặc định tích hết — Tổ trưởng bỏ bớt / sửa nội dung nếu cần
+      // Mặc định tích hết — Tổ trưởng bỏ bớt nếu cần
       daTich
         ..clear()
         ..addAll(buoc.map((b) => b.soBuoc));
-      moTaSua
-        ..clear()
-        ..addEntries(buoc.map((b) => MapEntry(b.soBuoc, b.moTa)));
     } on ApiException catch (e) {
       loi = e.message;
     } catch (e) {
@@ -125,39 +122,37 @@ class ToTruongQuyTrinhTaoController extends ChangeNotifier {
   void doiTich(int soBuoc, bool? v) {
     if (v == true) {
       daTich.add(soBuoc);
-      if (!moTaSua.containsKey(soBuoc)) {
-        final goc = buoc.where((b) => b.soBuoc == soBuoc).map((b) => b.moTa);
-        moTaSua[soBuoc] = goc.isEmpty ? '' : goc.first;
-      }
     } else {
       daTich.remove(soBuoc);
     }
     notifyListeners();
   }
 
-  void capNhatMoTaBuoc(int soBuoc, String moTa) {
-    moTaSua[soBuoc] = moTa;
-    // không notify mỗi ký tự — caller setState nếu cần
+  /// Mô tả hiển thị: ưu tiên bản đã sửa khi tạo hồ sơ.
+  String moTaHienThi(BuocQuyTrinh b) {
+    final custom = moTaTuyChinh[b.soBuoc];
+    if (custom != null && custom.trim().isNotEmpty) return custom.trim();
+    return b.moTa.trim().isEmpty ? 'Bước ${b.soBuoc}' : b.moTa.trim();
   }
 
-  String moTaHienThi(int soBuoc) {
-    if (moTaSua.containsKey(soBuoc)) return moTaSua[soBuoc] ?? '';
-    for (final b in buoc) {
-      if (b.soBuoc == soBuoc) return b.moTa;
+  void capNhatMoTa(int soBuoc, String moTa) {
+    final t = moTa.trim();
+    if (t.isEmpty) {
+      moTaTuyChinh.remove(soBuoc);
+    } else {
+      moTaTuyChinh[soBuoc] = t;
     }
-    return '';
+    notifyListeners();
   }
 
-  /// Payload gửi kèm tạo hồ sơ (kèm nội dung bước đã chỉnh).
+  /// Payload gửi kèm tạo hồ sơ — gửi đúng mô tả đã sửa.
   List<Map<String, dynamic>>? payloadBuoc() {
     if (dangChon == null || daTich.isEmpty) return null;
     return buoc
         .where((b) => daTich.contains(b.soBuoc))
         .map((b) => {
       'soBuoc': b.soBuoc,
-      'moTaBuoc': moTaHienThi(b.soBuoc).trim().isEmpty
-          ? (b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa)
-          : moTaHienThi(b.soBuoc).trim(),
+      'moTaBuoc': moTaHienThi(b),
     })
         .toList();
   }

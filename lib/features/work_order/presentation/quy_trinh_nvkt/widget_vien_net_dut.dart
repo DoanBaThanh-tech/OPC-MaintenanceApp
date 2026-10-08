@@ -1,54 +1,37 @@
 part of quy_trinh_nvkt_screen;
 
-class _BuocState {
-  int soBuoc;
-  final TextEditingController moTaCtrl;
-  final List<_VatTuDongState> vatTu;
-  /// NVKT tích chọn bước sẽ thực hiện
-  bool daChon;
-  /// Đã bấm Xong trong bước
-  bool daXong;
-  /// Mở rộng chọn vật tư
-  bool moRong;
-  /// Người khác đang giữ / đã xong bước này
-  bool khoaBoiNguoiKhac;
-  String? tenNguoiGiu;
-  /// Đã bấm Lưu lại bước / Xong thành công → khóa nút & không sửa nữa
-  bool daLuuDieuChinh;
-  /// Đang mở chế độ sửa sau khi bấm «Cập nhật» (chưa Lưu cập nhật).
-  bool dangMoCapNhat;
+class _DashedBorderPainter extends CustomPainter {
+  final Color color;
+  final double radius;
 
-  _BuocState({required this.soBuoc, required String moTa})
-      : moTaCtrl = TextEditingController(text: moTa),
-        vatTu = [],
-        daChon = false,
-        daXong = false,
-        moRong = false,
-        khoaBoiNguoiKhac = false,
-        daLuuDieuChinh = false,
-        dangMoCapNhat = false;
+  _DashedBorderPainter({required this.color, this.radius = 12});
 
-  void dispose() {
-    moTaCtrl.dispose();
-    for (final v in vatTu) {
-      v.dispose();
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.6;
+    const dash = 6.0;
+    const gap = 4.0;
+    final r = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0.8, 0.8, size.width - 1.6, size.height - 1.6),
+      Radius.circular(radius),
+    );
+    final path = Path()..addRRect(r);
+    for (final metric in path.computeMetrics()) {
+      var dist = 0.0;
+      while (dist < metric.length) {
+        final next = dist + dash;
+        canvas.drawPath(
+          metric.extractPath(dist, next > metric.length ? metric.length : next),
+          paint,
+        );
+        dist = next + gap;
+      }
     }
   }
-}
 
-class _VatTuDongState {
-  final int? maVatTu;
-  final String tenVatTu;
-  int soLuong;
-  final int donGia;
-  final TextEditingController slCtrl;
-
-  _VatTuDongState({
-    this.maVatTu,
-    required this.tenVatTu,
-    required this.soLuong,
-    required this.donGia,
-  }) : slCtrl = TextEditingController(text: soLuong.toString());
-
-  void dispose() => slCtrl.dispose();
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

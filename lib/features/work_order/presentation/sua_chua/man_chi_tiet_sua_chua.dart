@@ -33,17 +33,36 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
       ..forward();
     _ctrl = ChiTietHoSoSuaChuaController(widget.maHoSo);
     _ctrl.addListener(_onCtrl);
-    _ctrl.tai().then((_) {
+    _ctrl.tai().then((_) async {
       final hs = _ctrl.hoSo;
-      // Xưởng: xem quy trình khi Đang thực hiện / chờ duyệt / đã xong
-      // Tổ trưởng & vai trò khác: chỉ khi Đã hoàn thành
-      if (hs != null &&
-          (hs.daHoanThanh ||
-              (_laXuong &&
-                  (hs.choXacNhanKetQua || hs.dangThucHien)))) {
-        _taiQuyTrinhVatTu();
+      if (hs != null) {
+        await _dongBoCoKeHoachBuocSc(hs);
+        if (!mounted) return;
+        setState(() {});
+        // Xưởng: xem quy trình khi Đang thực hiện / chờ duyệt / đã xong
+        // Tổ trưởng & vai trò khác: chỉ khi Đã hoàn thành
+        if (hs.daHoanThanh ||
+            (_laXuong && (hs.choXacNhanKetQua || hs.dangThucHien))) {
+          _taiQuyTrinhVatTu();
+        }
       }
     });
+  }
+
+  /// Bước đã chọn lúc tạo SC → đủ điều kiện phân công.
+  Future<void> _dongBoCoKeHoachBuocSc(HoSoSuaChua hs) async {
+    if (hs.danhSachBuocQuyTrinh.isNotEmpty) {
+      _daLuuKeHoachBuoc = true;
+      return;
+    }
+    try {
+      final soBuoc = await ToTruongKeHoachBuocService.laySoBuocDaChon(
+        maHoSoSuaChua: hs.maHoSoSuaChua,
+      );
+      _daLuuKeHoachBuoc = soBuoc.isNotEmpty;
+    } catch (_) {
+      _daLuuKeHoachBuoc = false;
+    }
   }
 
   Future<void> _taiQuyTrinhVatTu() async {
@@ -270,6 +289,63 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                                     height: 1.45,
                                     color: Colors.grey.shade800,
                                     fontSize: 14)),
+                          ],
+                          if (hs.danhSachBuocQuyTrinh.isNotEmpty) ...[
+                            const SizedBox(height: 14),
+                            const Row(
+                              children: [
+                                Icon(Icons.checklist_rtl_rounded,
+                                    size: 18, color: _scPrimary),
+                                SizedBox(width: 8),
+                                Text('Quy trình đã chọn',
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13.5)),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            ...hs.danhSachBuocQuyTrinh.map((b) {
+                              final moTa = b.moTaBuoc.trim().isEmpty
+                                  ? 'Bước ${b.soBuoc}'
+                                  : b.moTaBuoc.trim();
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      width: 22,
+                                      height: 22,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        color: _scPrimary.withValues(alpha: 0.12),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${b.soBuoc}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 11,
+                                          color: _scPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        moTa,
+                                        style: TextStyle(
+                                          height: 1.35,
+                                          color: Colors.grey.shade800,
+                                          fontSize: 13.5,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
                           ],
                         ],
                       ),
