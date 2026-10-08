@@ -1,0 +1,676 @@
+part of maintenance_plan_screens;
+
+// ============ MÀN LẬP KẾ HOẠCH ============
+
+class CreateMaintenancePlanScreen extends StatefulWidget {
+  final int nam;
+  final int? thangKhoiTao;
+  final int? maThietBiKhoiTao;
+
+  const CreateMaintenancePlanScreen({
+    super.key,
+    required this.nam,
+    this.thangKhoiTao,
+    this.maThietBiKhoiTao,
+  });
+
+  @override
+  State<CreateMaintenancePlanScreen> createState() => _CreateMaintenancePlanScreenState();
+}
+
+class _CreateMaintenancePlanScreenState extends State<CreateMaintenancePlanScreen>
+    with SingleTickerProviderStateMixin {
+  late final CreateMaintenancePlanController _controller;
+  late final AnimationController _fadeCtrl;
+  late final Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = CreateMaintenancePlanController(
+      nam: widget.nam,
+      thangKhoiTao: widget.thangKhoiTao,
+      maThietBiKhoiTao: widget.maThietBiKhoiTao,
+    );
+    _controller.taiDuLieuBanDau();
+    _fadeCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 420));
+    _fadeAnim = CurvedAnimation(parent: _fadeCtrl, curve: Curves.easeOutCubic);
+    _fadeCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeCtrl.dispose();
+    _controller.noiDungCongViecController.dispose();
+    _controller.thoiGianTextController.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _chonNgay() async {
+    var first = _controller.ngayDuKienToiThieu;
+    final last = _controller.ngayKetThuc;
+    if (first.isAfter(last)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Tháng này không còn ngày hợp lệ (phải sau ngày lập kế hoạch). Chọn tháng khác.',
+          ),
+        ),
+      );
+      return;
+    }
+    var initial = _controller.chiTietChon?.ngayDuKienBaoTri ?? first;
+    if (initial.isBefore(first)) initial = first;
+    if (initial.isAfter(last)) initial = last;
+
+    final ngay = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: first,
+      lastDate: last,
+      helpText: 'Chọn ngày dự kiến bảo trì',
+      cancelText: 'Hủy',
+      confirmText: 'Chọn',
+    );
+    if (ngay != null) _controller.datNgayDuKien(ngay);
+  }
+
+  Future<void> _luu() async {
+    final ok = await _controller.luuKeHoach();
+    if (ok && mounted) Navigator.pop(context, true);
+  }
+
+  String _fmt(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+  InputDecoration _fieldDeco({
+    String? hint,
+    String? helper,
+    String? error,
+    Widget? prefix,
+    Widget? suffix,
+    String? suffixText,
+  }) {
+    return InputDecoration(
+      hintText: hint,
+      helperText: helper,
+      errorText: error,
+      prefixIcon: prefix,
+      suffixIcon: suffix,
+      suffixText: suffixText,
+      filled: true,
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: Colors.grey.shade300),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: const BorderSide(color: AppColors.danger),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text, {String? hint}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            text,
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 13.5,
+              letterSpacing: 0.15,
+              color: Color(0xFF1E293B),
+            ),
+          ),
+          if (hint != null) ...[
+            const SizedBox(height: 3),
+            Text(hint, style: TextStyle(fontSize: 11.5, color: Colors.grey.shade600, height: 1.3)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _card({required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.shade200),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _tapField({
+    required VoidCallback? onTap,
+    required IconData icon,
+    required String value,
+    required bool enabled,
+    String? placeholder,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: enabled ? Colors.white : Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: enabled ? AppColors.primary.withValues(alpha: 0.55) : Colors.grey.shade300,
+              width: enabled ? 1.4 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: enabled ? AppColors.primary : Colors.grey.shade400),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  value.isNotEmpty ? value : (placeholder ?? 'Chọn'),
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: value.isNotEmpty ? FontWeight.w600 : FontWeight.w500,
+                    color: value.isNotEmpty ? const Color(0xFF0F172A) : Colors.grey.shade500,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: enabled ? AppColors.primary : Colors.grey.shade400,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: Text('Lập bảo trì · ${widget.nam}'),
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: false,
+      ),
+      body: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          if (_controller.dangTai) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+          }
+          return FadeTransition(
+            opacity: _fadeAnim,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+              physics: const BouncingScrollPhysics(),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Header banner
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primary,
+                              AppColors.primaryDark,
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.28),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.build_circle_outlined, color: Colors.white, size: 28),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text(
+                                    'Lập bảo trì cho thiết bị',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Chọn thiết bị · tháng · ngày dự kiến rồi gửi xưởng',
+                                    style: TextStyle(
+                                      color: Colors.white.withValues(alpha: 0.88),
+                                      fontSize: 12.5,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+
+                      // --- Thiết bị ---
+                      _card(
+                        children: [
+                          _sectionLabel(
+                            'Thiết bị',
+                            hint: 'Gõ 2–3 chữ (có/không dấu) là hiện danh sách khớp',
+                          ),
+                          TextField(
+                            decoration: _fieldDeco(
+                              hint: 'VD: lo, auto, hap, autoclave…',
+                              prefix: const Icon(Icons.search_rounded, size: 22),
+                              suffix: _controller.tuKhoaTimKiem.isEmpty
+                                  ? null
+                                  : IconButton(
+                                icon: const Icon(Icons.clear_rounded, size: 20),
+                                onPressed: _controller.xoaTuKhoaTimKiem,
+                                tooltip: 'Xóa tìm kiếm',
+                              ),
+                            ),
+                            onChanged: _controller.datTuKhoaTimKiem,
+                          ),
+                          const SizedBox(height: 12),
+                          DropdownButtonFormField<String>(
+                            value: _controller.danhMucChon,
+                            isExpanded: true,
+                            decoration: _fieldDeco(
+                              hint: 'Tất cả danh mục',
+                              prefix: const Icon(Icons.category_outlined, size: 22),
+                            ),
+                            hint: const Text('Tất cả danh mục'),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('Tất cả danh mục'),
+                              ),
+                              ..._controller.danhSachDanhMuc.map(
+                                    (dm) => DropdownMenuItem(
+                                  value: dm,
+                                  child: Text(dm, overflow: TextOverflow.ellipsis),
+                                ),
+                              ),
+                            ],
+                            onChanged: _controller.chonDanhMuc,
+                          ),
+                          const SizedBox(height: 12),
+                          // Danh sách kết quả tìm kiếm — bấm chọn thiết bị
+                          Builder(
+                            builder: (context) {
+                              final list = _controller.dsThietBiDaLoc;
+                              final coTuKhoa =
+                                  _controller.tuKhoaTimKiem.trim().isNotEmpty;
+                              if (list.isEmpty) {
+                                return Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8FAFC),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                        color: const Color(0xFFE2E8F0)),
+                                  ),
+                                  child: Text(
+                                    coTuKhoa
+                                        ? 'Không tìm thấy thiết bị khớp «${_controller.tuKhoaTimKiem.trim()}»'
+                                        : 'Không có thiết bị trong danh mục đã chọn',
+                                    style: TextStyle(
+                                        color: Colors.grey.shade600,
+                                        fontSize: 13.5),
+                                  ),
+                                );
+                              }
+                              // Giới hạn chiều cao khi nhiều kết quả
+                              final maxH = coTuKhoa || list.length <= 6
+                                  ? null
+                                  : 220.0;
+                              final content = ListView.separated(
+                                shrinkWrap: true,
+                                physics: maxH == null
+                                    ? const NeverScrollableScrollPhysics()
+                                    : const BouncingScrollPhysics(),
+                                itemCount: list.length,
+                                separatorBuilder: (_, __) => Divider(
+                                    height: 1, color: Colors.grey.shade200),
+                                itemBuilder: (_, i) {
+                                  final tb = list[i];
+                                  final dangChon = _controller.thietBiChon
+                                      ?.maThietBi ==
+                                      tb.maThietBi;
+                                  return ListTile(
+                                    dense: true,
+                                    selected: dangChon,
+                                    selectedTileColor: AppColors.primary
+                                        .withValues(alpha: 0.08),
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10)),
+                                    leading: Icon(
+                                      dangChon
+                                          ? Icons.check_circle_rounded
+                                          : Icons.precision_manufacturing_outlined,
+                                      color: dangChon
+                                          ? AppColors.primary
+                                          : Colors.grey.shade600,
+                                      size: 22,
+                                    ),
+                                    title: Text(
+                                      tb.tenThietBi,
+                                      style: TextStyle(
+                                        fontWeight: dangChon
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    subtitle: Text(
+                                      tb.loaiThietBi ?? 'Chưa phân loại',
+                                      style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey.shade600),
+                                    ),
+                                    onTap: () {
+                                      _controller.chonThietBi(tb);
+                                    },
+                                  );
+                                },
+                              );
+                              return Container(
+                                width: double.infinity,
+                                constraints: maxH != null
+                                    ? BoxConstraints(maxHeight: maxH)
+                                    : null,
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: const Color(0xFFE2E8F0)),
+                                ),
+                                child: content,
+                              );
+                            },
+                          ),
+                          if (_controller.thietBiChon != null) ...[
+                            const SizedBox(height: 10),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                    color: AppColors.success
+                                        .withValues(alpha: 0.35)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.check_circle,
+                                      color: AppColors.success, size: 20),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Đã chọn: ${_controller.thietBiChon!.tenThietBi}',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 13.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          AnimatedSize(
+                            duration: const Duration(milliseconds: 250),
+                            curve: Curves.easeOutCubic,
+                            child: _controller.chuKyCoDinh == null
+                                ? const SizedBox.shrink()
+                                : Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.autorenew_rounded, size: 18, color: AppColors.primary.withValues(alpha: 0.9)),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Chu kỳ đề xuất: ${_controller.chuKyCoDinh!.soThangChuKyDeXuat} tháng/lần',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primaryDark,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // --- Thời gian: Tháng TRƯỚC, Ngày SAU ---
+                      _card(
+                        children: [
+                          _sectionLabel(
+                            'Thời gian bảo trì',
+                            hint: 'Chọn tháng trước, sau đó chọn ngày dự kiến trong tháng đó',
+                          ),
+                          _sectionLabel('Tháng *'),
+                          DropdownButtonFormField<int>(
+                            value: _controller.thang,
+                            decoration: _fieldDeco(
+                              prefix: const Icon(Icons.calendar_view_month_rounded, size: 22),
+                            ),
+                            items: List.generate(12, (i) => i + 1)
+                                .map((m) => DropdownMenuItem(value: m, child: Text('Tháng $m / ${_controller.nam}')))
+                                .toList(),
+                            onChanged: (v) {
+                              if (v != null) _controller.doiThang(v);
+                            },
+                          ),
+                          const SizedBox(height: 16),
+                          _sectionLabel(
+                            'Ngày dự kiến bảo trì *',
+                            hint: _controller.thietBiChon == null
+                                ? 'Chọn thiết bị trước để chọn ngày'
+                                : 'Ngày trong tháng ${_controller.thang}/${_controller.nam}, sau hôm nay',
+                          ),
+                          _tapField(
+                            onTap: _controller.thietBiChon == null ? null : _chonNgay,
+                            icon: Icons.event_available_rounded,
+                            enabled: _controller.thietBiChon != null,
+                            value: _controller.chiTietChon != null
+                                ? _fmt(_controller.chiTietChon!.ngayDuKienBaoTri)
+                                : '',
+                            placeholder: _controller.thietBiChon == null
+                                ? 'Chọn thiết bị trước'
+                                : 'Chạm để chọn ngày',
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      // --- Công việc & giờ ---
+                      _card(
+                        children: [
+                          _sectionLabel('Nội dung công việc *'),
+                          TextField(
+                            controller: _controller.noiDungCongViecController,
+                            maxLines: 3,
+                            decoration: _fieldDeco(hint: 'Mô tả công việc cần bảo trì...'),
+                          ),
+                          const SizedBox(height: 12),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8F4FC),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                  color: AppColors.primary.withValues(alpha: 0.25)),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Icon(Icons.info_outline_rounded,
+                                    size: 18,
+                                    color: AppColors.primary.withValues(alpha: 0.9)),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Thời gian dự kiến / bắt đầu / kết thúc không nhập khi tạo. '
+                                        'Hệ thống ghi nhận khi NVKT bấm Tiến hành quy trình và khi hoàn thành.',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: Colors.grey.shade700,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      // Lỗi đỏ
+                      AnimatedSize(
+                        duration: const Duration(milliseconds: 200),
+                        child: _controller.loi == null
+                            ? const SizedBox.shrink()
+                            : Padding(
+                          padding: const EdgeInsets.only(top: 14),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: AppColors.danger.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: AppColors.danger.withValues(alpha: 0.35)),
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(Icons.error_outline_rounded, color: AppColors.danger, size: 20),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    _controller.loi!,
+                                    style: const TextStyle(
+                                      color: AppColors.danger,
+                                      fontWeight: FontWeight.w600,
+                                      height: 1.35,
+                                      fontSize: 13.5,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 22),
+                      AnimatedScale(
+                        scale: _controller.dangLuu ? 0.98 : 1,
+                        duration: const Duration(milliseconds: 150),
+                        child: FilledButton(
+                          style: FilledButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            elevation: 2,
+                            shadowColor: AppColors.primary.withValues(alpha: 0.4),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: _controller.dangLuu ? null : _luu,
+                          child: _controller.dangLuu
+                              ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                          )
+                              : const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.send_rounded, size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'Tạo bảo trì',
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
