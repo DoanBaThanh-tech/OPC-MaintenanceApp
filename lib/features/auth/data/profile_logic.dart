@@ -1,6 +1,7 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_exception.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../../../core/storage/token_storage.dart';
 
 /// Hồ sơ cá nhân — logic + validate (không nhét vào UI).
@@ -118,5 +119,54 @@ class ProfileService {
     final hs = HoSoCaNhan.fromJson(Map<String, dynamic>.from(data as Map));
     await TokenStorage.capNhatHoTen(hs.hoTen);
     return hs;
+  }
+
+  static Future<void> doiMatKhau({
+    required String matKhauCu,
+    required String matKhauMoi,
+  }) async {
+    await ApiClient.instance.post<Map<String, dynamic>>(
+      '${ApiConstants.hoSoCaNhan}/doi-mat-khau',
+      {
+        'matKhauCu': matKhauCu,
+        'matKhauMoi': matKhauMoi,
+      },
+    );
+  }
+}
+
+
+
+/// Lưu PIN 4 số + mật khẩu xem được trên thiết bị (sau đăng nhập / đổi MK).
+/// Server chỉ lưu hash — không trả lại mật khẩu gốc.
+class ProfileVault {
+  ProfileVault._();
+  static const _s = FlutterSecureStorage();
+
+  static String _kPin(int maNd) => 'profile_pin_$maNd';
+  static String _kPwd(int maNd) => 'profile_pwd_$maNd';
+
+  static Future<bool> daCoPin(int maNd) async {
+    final v = await _s.read(key: _kPin(maNd));
+    return v != null && v.length == 4;
+  }
+
+  static Future<void> luuPin(int maNd, String pin4) async {
+    await _s.write(key: _kPin(maNd), value: pin4);
+  }
+
+  static Future<bool> kiemTraPin(int maNd, String pin4) async {
+    final v = await _s.read(key: _kPin(maNd));
+    return v != null && v == pin4;
+  }
+
+  static Future<void> luuMatKhau(int maNd, String matKhau) async {
+    await _s.write(key: _kPwd(maNd), value: matKhau);
+  }
+
+  static Future<String?> layMatKhau(int maNd) => _s.read(key: _kPwd(maNd));
+
+  static Future<void> xoaMatKhau(int maNd) async {
+    await _s.delete(key: _kPwd(maNd));
   }
 }

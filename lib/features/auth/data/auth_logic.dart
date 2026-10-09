@@ -1,6 +1,7 @@
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/storage/token_storage.dart';
+import 'profile_logic.dart' show ProfileVault;
 
 // ============ MODEL ============
 
@@ -56,6 +57,8 @@ class AuthService {
       vaiTro: result.vaiTro,
       maVaiTro: result.maVaiTro,
     );
+    // Lưu MK trên máy để xem trong hồ sơ (sau khi nhập PIN 4 số)
+    await ProfileVault.luuMatKhau(result.maNguoiDung, matKhau);
     return result;
   }
 
@@ -86,6 +89,10 @@ class AuthService {
       {'email': email, 'matKhauMoi': matKhauMoi},
       auth: false,
     );
+    final ma = await TokenStorage.getMaNguoiDung();
+    if (ma != null) {
+      await ProfileVault.luuMatKhau(ma, matKhauMoi);
+    }
   }
 
   static Future<void> dangXuat() async => TokenStorage.xoaPhienDangNhap();

@@ -921,7 +921,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                       icon: Icons.mark_email_unread_rounded, pulse: _pulse)),
               const SizedBox(height: 18),
               const Text(
-                'Nhận mã OTP qua Gmail',
+                'Nhận mã OTP qua Gmail đã đăng ký',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -932,8 +932,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
               const SizedBox(height: 8),
               const Text(
-                'Nhập email đăng nhập công ty và Gmail cá nhân để nhận mã. '
-                    'Sau khi đổi mật khẩu vẫn đăng nhập bằng email công ty.',
+                'Nhập email đăng nhập công ty và đúng Gmail cá nhân đã gắn trên hồ sơ. '
+                    'OTP chỉ gửi tới email đó — không gửi sang Gmail khác. '
+                    'Đăng nhập sau vẫn dùng email công ty.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _AuthRecoveryPalette.muted,
@@ -957,15 +958,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                 controller: _emailOtpCtrl,
                 keyboardType: TextInputType.emailAddress,
                 decoration: _recoveryFieldDeco(
-                  label: 'Gmail cá nhân nhận OTP',
-                  hint: 'vd: ban@gmail.com',
+                  label: 'Gmail cá nhân đã đăng ký trên hồ sơ',
+                  hint: 'Phải khớp email nhận OTP trong Hồ sơ cá nhân',
                   prefix: Icons.alternate_email_rounded,
                 ),
                 validator: (v) {
                   final e = AuthValidators.email(v);
                   if (e != null) return e;
                   if (v!.trim().toLowerCase().endsWith('@opc.com')) {
-                    return 'Dùng Gmail/Outlook thật — không dùng @opc.com ảo';
+                    return 'Phải là Gmail/Outlook đã đăng ký trên hồ sơ, không dùng @opc.com';
                   }
                   return null;
                 },
@@ -1180,7 +1181,7 @@ class _OtpScreenState extends State<OtpScreen> with TickerProviderStateMixin {
               ),
               const SizedBox(height: 8),
               Text(
-                'Mã đã gửi tới ${widget.emailNhanOtp}',
+                'Mã đã gửi tới email cá nhân đã đăng ký\n(${widget.emailNhanOtp})',
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: _AuthRecoveryPalette.muted,

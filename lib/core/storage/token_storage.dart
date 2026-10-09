@@ -54,5 +54,15 @@ class TokenStorage {
     return token != null && token.isNotEmpty;
   }
 
-  static Future<void> xoaPhienDangNhap() => _storage.deleteAll();
+  /// Chỉ xóa phiên đăng nhập — giữ PIN / mật khẩu cache (profile_pin_* / profile_pwd_*).
+  static Future<void> xoaPhienDangNhap() async {
+    await Future.wait([
+      _storage.delete(key: _keyToken),
+      _storage.delete(key: _keyMaNguoiDung),
+      _storage.delete(key: _keyEmail),
+      _storage.delete(key: _keyHoTen),
+      _storage.delete(key: _keyVaiTro),
+      _storage.delete(key: _keyMaVaiTro),
+    ]);
+  }
 }
