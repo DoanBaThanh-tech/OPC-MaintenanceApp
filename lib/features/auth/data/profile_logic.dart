@@ -52,38 +52,30 @@ class ProfileRules {
   static String? kiemTraHoTen(String? raw) {
     final t = (raw ?? '').trim();
     if (t.isEmpty) return 'Vui lòng nhập họ tên.';
-    if (t.contains('@') || t.toLowerCase().contains('opc.com')) {
-      return 'Họ tên không được điền email.';
-    }
+    // Chỉ chữ cái (Unicode) + khoảng trắng — không số, không ký tự đặc biệt
     final ok = RegExp(r'^[\p{L}\s]+$', unicode: true).hasMatch(t);
     if (!ok) {
-      return 'Họ tên chỉ gồm chữ cái và khoảng trắng.';
+      return 'Họ tên chỉ được nhập chữ (không số, không ký tự đặc biệt).';
     }
     return null;
   }
 
-  /// Chỉ chữ số 0–9, tối đa 10 số; không chữ, ký tự đặc biệt, thập phân, số âm.
+  /// Chỉ chữ số 0–9, tối đa 10 số.
   static String? kiemTraSdt(String? raw) {
     final t = (raw ?? '').trim();
     if (t.isEmpty) return null;
-    if (!RegExp(r'^\d+$').hasMatch(t)) {
-      return 'Số điện thoại chỉ được nhập số (không chữ, không ký tự đặc biệt).';
-    }
-    if (t.length > 10) {
-      return 'Số điện thoại tối đa 10 số.';
+    if (!RegExp(r'^\d{1,10}$').hasMatch(t)) {
+      return 'Số điện thoại chỉ gồm số, tối đa 10 chữ số.';
     }
     return null;
   }
 
-  /// Email nhận OTP — bỏ trống được; nếu nhập phải là hộp thư thật (không @opc.com).
+  /// Email nhận OTP — nếu nhập phải đúng đuôi @gmail.com.
   static String? kiemTraEmailLienHe(String? raw) {
     final t = (raw ?? '').trim();
     if (t.isEmpty) return null;
-    if (!RegExp(r'^[\w.\-]+@[\w.\-]+\.\w+$').hasMatch(t)) {
-      return 'Email liên hệ không hợp lệ.';
-    }
-    if (t.toLowerCase().endsWith('@opc.com')) {
-      return 'Email liên hệ phải là hộp thư thật (Gmail/Outlook…), không dùng @opc.com.';
+    if (!RegExp(r'^[\w.+\-]+@gmail\.com$', caseSensitive: false).hasMatch(t)) {
+      return 'Email nhận OTP phải đúng định dạng …@gmail.com';
     }
     return null;
   }

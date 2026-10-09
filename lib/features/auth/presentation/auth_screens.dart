@@ -965,8 +965,9 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                 validator: (v) {
                   final e = AuthValidators.email(v);
                   if (e != null) return e;
-                  if (v!.trim().toLowerCase().endsWith('@opc.com')) {
-                    return 'Phải là Gmail/Outlook đã đăng ký trên hồ sơ, không dùng @opc.com';
+                  final low = v!.trim().toLowerCase();
+                  if (!low.endsWith('@gmail.com')) {
+                    return 'Email cá nhân phải đúng định dạng …@gmail.com';
                   }
                   return null;
                 },

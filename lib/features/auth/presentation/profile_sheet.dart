@@ -661,6 +661,11 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
                         children: [
                           TextField(
                             controller: _hoTenCtrl,
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(
+                                RegExp(r'[\p{L}\s]', unicode: true),
+                              ),
+                            ],
                             decoration: _dec(
                                 label: 'Họ và tên',
                                 prefix: Icons.badge_outlined),
@@ -682,8 +687,8 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
                             controller: _emailLienHeCtrl,
                             keyboardType: TextInputType.emailAddress,
                             decoration: _dec(
-                              label: 'Email nhận OTP (Gmail…)',
-                              hint: 'Gmail cá nhân gắn với tài khoản',
+                              label: 'Email nhận OTP',
+                              hint: 'vd: tenban@gmail.com',
                               prefix: Icons.alternate_email_rounded,
                             ),
                           ),
