@@ -29,6 +29,7 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
 
   final _hoTenCtrl = TextEditingController();
   final _sdtCtrl = TextEditingController();
+  final _emailLienHeCtrl = TextEditingController();
   DateTime? _ngayVaoLam;
 
   String? _email;
@@ -54,6 +55,7 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
     _anim.dispose();
     _hoTenCtrl.dispose();
     _sdtCtrl.dispose();
+    _emailLienHeCtrl.dispose();
     super.dispose();
   }
 
@@ -69,6 +71,7 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
       _hoTenCtrl.text =
       hs.hoTen == 'Chưa cập nhật' ? '' : hs.hoTen;
       _sdtCtrl.text = hs.soDienThoai ?? '';
+      _emailLienHeCtrl.text = hs.emailLienHe ?? '';
       _ngayVaoLam = hs.ngayVaoLam;
     } on ApiException catch (e) {
       _loi = e.message;
@@ -90,6 +93,11 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
       setState(() => _loi = e2);
       return;
     }
+    final e3 = ProfileRules.kiemTraEmailLienHe(_emailLienHeCtrl.text);
+    if (e3 != null) {
+      setState(() => _loi = e3);
+      return;
+    }
     setState(() {
       _dangLuu = true;
       _loi = null;
@@ -98,6 +106,7 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
       final hs = await ProfileService.capNhat(
         hoTen: _hoTenCtrl.text,
         soDienThoai: _sdtCtrl.text,
+        emailLienHe: _emailLienHeCtrl.text,
         ngayVaoLam: _ngayVaoLam,
       );
       if (!mounted) return;
@@ -261,6 +270,15 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
                   decoration: _dec(
                     label: 'Số điện thoại',
                     hint: 'Tối đa 10 số — VD: 0901234567',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _emailLienHeCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: _dec(
+                    label: 'Email nhận OTP (Gmail…)',
+                    hint: 'VD: tenban@gmail.com — không dùng @opc.com',
                   ),
                 ),
                 const SizedBox(height: 12),

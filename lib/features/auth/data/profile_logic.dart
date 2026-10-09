@@ -10,6 +10,8 @@ class HoSoCaNhan {
   final String? tenVaiTro;
   final String hoTen;
   final String? soDienThoai;
+  /// Email thật nhận OTP (Gmail…) — khác email đăng nhập @opc.com.
+  final String? emailLienHe;
   final DateTime? ngayVaoLam;
 
   const HoSoCaNhan({
@@ -18,6 +20,7 @@ class HoSoCaNhan {
     this.tenVaiTro,
     required this.hoTen,
     this.soDienThoai,
+    this.emailLienHe,
     this.ngayVaoLam,
   });
 
@@ -36,6 +39,7 @@ class HoSoCaNhan {
       tenVaiTro: (j['tenVaiTro'] ?? j['TenVaiTro'])?.toString(),
       hoTen: (j['hoTen'] ?? j['HoTen'])?.toString() ?? '',
       soDienThoai: (j['soDienThoai'] ?? j['SoDienThoai'])?.toString(),
+      emailLienHe: (j['emailLienHe'] ?? j['EmailLienHe'])?.toString(),
       ngayVaoLam: d(j['ngayVaoLam'] ?? j['NgayVaoLam']),
     );
   }
@@ -69,6 +73,19 @@ class ProfileRules {
     }
     return null;
   }
+
+  /// Email nhận OTP — bỏ trống được; nếu nhập phải là hộp thư thật (không @opc.com).
+  static String? kiemTraEmailLienHe(String? raw) {
+    final t = (raw ?? '').trim();
+    if (t.isEmpty) return null;
+    if (!RegExp(r'^[\w.\-]+@[\w.\-]+\.\w+$').hasMatch(t)) {
+      return 'Email liên hệ không hợp lệ.';
+    }
+    if (t.toLowerCase().endsWith('@opc.com')) {
+      return 'Email liên hệ phải là hộp thư thật (Gmail/Outlook…), không dùng @opc.com.';
+    }
+    return null;
+  }
 }
 
 class ProfileService {
@@ -81,11 +98,13 @@ class ProfileService {
   static Future<HoSoCaNhan> capNhat({
     required String hoTen,
     String? soDienThoai,
+    String? emailLienHe,
     DateTime? ngayVaoLam,
   }) async {
     final body = <String, dynamic>{
       'hoTen': hoTen.trim(),
       'soDienThoai': soDienThoai?.trim(),
+      'emailLienHe': emailLienHe?.trim(),
     };
     if (ngayVaoLam != null) {
       body['ngayVaoLam'] =

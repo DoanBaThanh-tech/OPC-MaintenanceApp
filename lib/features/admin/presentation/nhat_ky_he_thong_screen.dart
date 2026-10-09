@@ -729,27 +729,22 @@ class _NhatKyHeThongScreenState extends State<NhatKyHeThongScreen>
                         if ((n.diaChiIp ?? '').isNotEmpty)
                           _detailRow(
                               Icons.lan_outlined, 'IP', n.diaChiIp!),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Text(
-                          'Người dùng đã làm gì',
+                          'Chi tiết thao tác (field & giá trị)',
                           style: TextStyle(
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.grey.shade700,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
+                        const SizedBox(height: 6),
+                        _buildChiTietBlock(
                           (n.chiTiet != null && n.chiTiet!.trim().isNotEmpty)
                               ? n.chiTiet!
                               : (n.moTa.isNotEmpty
                               ? n.moTa
-                              : 'Không có payload chi tiết.'),
-                          style: const TextStyle(
-                            fontSize: 12.5,
-                            height: 1.4,
-                            color: Color(0xFF334155),
-                          ),
+                              : 'Chưa có chi tiết payload. Gọi lại API sau khi restart server để ghi log đầy đủ field = giá trị.'),
                         ),
                       ],
                     ),
@@ -879,6 +874,112 @@ class _NhatKyHeThongScreenState extends State<NhatKyHeThongScreen>
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  /// Hiển thị chi tiết log có cấu trúc: tiêu đề section + từng dòng field = giá trị.
+  Widget _buildChiTietBlock(String raw) {
+    final lines = raw
+        .split('\n')
+        .map((e) => e.trimRight())
+        .where((e) => e.trim().isNotEmpty)
+        .toList();
+    if (lines.isEmpty) {
+      return Text(
+        'Không có chi tiết.',
+        style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final line in lines) ...[
+            if (line.startsWith('──') || line.startsWith('--'))
+              Padding(
+                padding: const EdgeInsets.only(top: 8, bottom: 4),
+                child: Text(
+                  line.replaceAll('─', '').replaceAll('-', '').trim(),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                    color: _blue,
+                  ),
+                ),
+              )
+            else if (line.contains(' = '))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: Text(
+                        line.split(' = ').first.trim(),
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey.shade700,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                    const Text(
+                      ' = ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                    Expanded(
+                      flex: 5,
+                      child: Text(
+                        line.substring(line.indexOf(' = ') + 3).trim(),
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Padding(
+                padding: const EdgeInsets.only(bottom: 3),
+                child: Text(
+                  line,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.35,
+                    fontWeight: line.startsWith('GET') ||
+                        line.startsWith('POST') ||
+                        line.startsWith('PUT') ||
+                        line.startsWith('API:') ||
+                        line.startsWith('Kết quả:')
+                        ? FontWeight.w800
+                        : FontWeight.w600,
+                    color: line.startsWith('Kết quả:') &&
+                        line.contains('Lỗi')
+                        ? const Color(0xFFDC2626)
+                        : const Color(0xFF334155),
+                  ),
+                ),
+              ),
+          ],
         ],
       ),
     );

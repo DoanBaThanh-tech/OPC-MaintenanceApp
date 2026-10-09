@@ -59,17 +59,22 @@ class AuthService {
     return result;
   }
 
-  static Future<void> quenMatKhau(String email) async {
+  /// [email]: email đăng nhập công ty. [emailNhanOtp]: Gmail cá nhân nhận mã.
+  static Future<void> quenMatKhau(String email, {String? emailNhanOtp}) async {
     await ApiClient.instance.post<Map<String, dynamic>>(
-      '${ApiConstants.auth}/quen-mat-khau',
-      {'email': email},
+      '${ApiConstants.auth}/quen-mat-khau/yeu-cau',
+      {
+        'email': email,
+        if (emailNhanOtp != null && emailNhanOtp.trim().isNotEmpty)
+          'emailNhanOtp': emailNhanOtp.trim(),
+      },
       auth: false,
     );
   }
 
   static Future<void> xacNhanOtp(String email, String maOtp) async {
     await ApiClient.instance.post<Map<String, dynamic>>(
-      '${ApiConstants.auth}/xac-nhan-otp',
+      '${ApiConstants.auth}/quen-mat-khau/xac-nhan',
       {'email': email, 'maOTP': maOtp},
       auth: false,
     );
@@ -77,7 +82,7 @@ class AuthService {
 
   static Future<void> datLaiMatKhau(String email, String matKhauMoi) async {
     await ApiClient.instance.post<Map<String, dynamic>>(
-      '${ApiConstants.auth}/dat-lai-mat-khau',
+      '${ApiConstants.auth}/quen-mat-khau/dat-lai',
       {'email': email, 'matKhauMoi': matKhauMoi},
       auth: false,
     );
@@ -94,8 +99,9 @@ class AuthValidators {
   static final _emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.[\w\.\-]+$');
 
   // Khớp CHÍNH XÁC quy tắc trong QuanLyNguoiDungService.cs backend
+  // ≥8 ký tự, có số + ký tự đặc biệt (khớp AuthService API)
   static final _matKhauRegex =
-  RegExp(r'^(?=.*[A-Z])(?=.*[!@#$%^&*(),.?":{}|<>_\-]).{8,}$');
+  RegExp(r'^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>_\-]).{8,}$');
 
   static String? email(String? value) {
     if (value == null || value.trim().isEmpty) return 'Vui lòng nhập email';
@@ -111,7 +117,7 @@ class AuthValidators {
   static String? matKhauMoi(String? value) {
     if (value == null || value.isEmpty) return 'Vui lòng nhập mật khẩu';
     if (!_matKhauRegex.hasMatch(value)) {
-      return 'Mật khẩu tối thiểu 8 ký tự, có 1 chữ hoa và 1 ký tự đặc biệt';
+      return 'Mật khẩu tối thiểu 8 ký tự, có 1 chữ số và 1 ký tự đặc biệt';
     }
     return null;
   }
@@ -122,7 +128,22 @@ class AuthValidators {
   }
 
   static String? otp(String? value) {
-    if (value == null || value.length != 4) return 'Mã OTP gồm 4 số';
+    if (value == null || value.trim().length != 6) return 'Mã OTP gồm 6 số';
+    if (!RegExp(r'^\d{6}$').hasMatch(value.trim())) return 'Mã OTP gồm 6 số';
     return null;
+  }
+
+  /// Độ mạnh mật khẩu 0–100 (thanh trạng thái UI).
+  static int doManhMatKhau(String? value) {
+    if (value == null || value.isEmpty) return 0;
+    var diem = 0;
+    if (value.length >= 8) diem += 30;
+    if (value.length >= 12) diem += 10;
+    if (RegExp(r'[0-9]').hasMatch(value)) diem += 25;
+    if (RegExp(r'[!@#\$%^&*(),.?":{}|<>_\-]').hasMatch(value)) diem += 25;
+    if (RegExp(r'[A-Z]').hasMatch(value)) diem += 5;
+    if (RegExp(r'[a-z]').hasMatch(value)) diem += 5;
+    if (diem > 100) diem = 100;
+    return diem;
   }
 }
