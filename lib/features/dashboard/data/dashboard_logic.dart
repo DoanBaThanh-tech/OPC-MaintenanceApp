@@ -49,6 +49,14 @@ class PhienDangNhap {
 class DashboardLogic {
   DashboardLogic._();
 
+  /// Yêu cầu Dashboard chuyển sang mục menu theo [label] (giữ slide menu).
+  /// Ví dụ: `DashboardLogic.moMenuTheoNhan('Hồ sơ bảo trì')`.
+  static final ValueNotifier<String?> yeuCauMoMenu = ValueNotifier<String?>(null);
+
+  static void moMenuTheoNhan(String label) {
+    yeuCauMoMenu.value = label;
+  }
+
   /// Đọc thông tin phiên đăng nhập đã lưu — dùng cho header slide menu
   static Future<PhienDangNhap> layPhienDangNhap() async {
     final email = await TokenStorage.getEmail() ?? '';

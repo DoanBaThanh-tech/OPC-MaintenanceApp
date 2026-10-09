@@ -20,7 +20,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    DashboardLogic.yeuCauMoMenu.addListener(_xuLyYeuCauMoMenu);
     _taiDuLieu();
+  }
+
+  @override
+  void dispose() {
+    DashboardLogic.yeuCauMoMenu.removeListener(_xuLyYeuCauMoMenu);
+    super.dispose();
+  }
+
+  void _xuLyYeuCauMoMenu() {
+    final label = DashboardLogic.yeuCauMoMenu.value;
+    if (label == null || label.isEmpty || _menu.isEmpty) return;
+    for (final nhom in _menu) {
+      for (final muc in nhom.muc) {
+        if (muc.label == label) {
+          setState(() => _dangChon = muc);
+          DashboardLogic.yeuCauMoMenu.value = null;
+          return;
+        }
+      }
+    }
   }
 
   Future<void> _taiDuLieu() async {
@@ -31,6 +52,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _menu = menu;
       _dangChon = menu.isNotEmpty ? menu.first.muc.first : null;
     });
+    // Nếu có yêu cầu mở menu khi đang tải xong (sau đăng nhập / tạo HS)
+    _xuLyYeuCauMoMenu();
   }
 
   Future<void> _dangXuat() async {

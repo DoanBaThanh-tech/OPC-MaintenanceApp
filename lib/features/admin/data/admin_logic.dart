@@ -91,8 +91,11 @@ class NhatKyItem {
   final String moTa;
   final int? statusCode;
   final String? queryString;
-  final String loaiHanhDong; // Read / Create / Update / Delete
+  /// Chỉ GET / POST / PUT (không dùng CRUD / DELETE).
+  final String loaiHanhDong;
   final String? chiTiet;
+  /// Tên chức năng nghiệp vụ (Hồ sơ bảo trì, Phân công…).
+  final String tenChucNang;
 
   const NhatKyItem({
     required this.maNhatKy,
@@ -107,63 +110,73 @@ class NhatKyItem {
     this.queryString,
     required this.loaiHanhDong,
     this.chiTiet,
+    required this.tenChucNang,
   });
 
-  String get loaiLabel {
-    switch (loaiHanhDong.toUpperCase()) {
+  /// Method chuẩn: GET / POST / PUT.
+  String get methodLabel {
+    final m = phuongThucHttp.toUpperCase();
+    if (m == 'PATCH') return 'PUT';
+    if (m == 'GET' || m == 'POST' || m == 'PUT') return m;
+    final l = loaiHanhDong.toUpperCase();
+    if (l == 'PATCH') return 'PUT';
+    if (l == 'GET' || l == 'POST' || l == 'PUT') return l;
+    // Map CRUD cũ → method
+    switch (l) {
       case 'READ':
-      case 'GET':
-        return 'Read';
+        return 'GET';
       case 'CREATE':
-      case 'POST':
-        return 'Create';
+        return 'POST';
       case 'UPDATE':
-      case 'PUT':
-      case 'PATCH':
-        return 'Update';
-      case 'DELETE':
-        return 'Delete';
+        return 'PUT';
       default:
-        return loaiHanhDong.isEmpty ? phuongThucHttp : loaiHanhDong;
+        return m.isEmpty ? 'GET' : m;
     }
+  }
+
+  bool get laLoiApi => statusCode != null && statusCode! >= 400;
+
+  String get trangThaiNhan {
+    final c = statusCode;
+    if (c == null) return '—';
+    if (c >= 200 && c < 300) return 'Thành công';
+    if (c >= 400 && c < 500) return 'Lỗi client';
+    if (c >= 500) return 'Lỗi server';
+    return 'HTTP $c';
+  }
+
+  /// Link API đầy đủ (path + query) để admin đối chiếu khi lỗi.
+  String get linkApi {
+    final q = (queryString ?? '').trim();
+    if (q.isEmpty) return tenApi;
+    if (q.startsWith('?')) return '$tenApi$q';
+    return '$tenApi?$q';
   }
 
   factory NhatKyItem.fromJson(Map<String, dynamic> j) {
     int n(dynamic v) => (v as num?)?.toInt() ?? 0;
     int? nN(dynamic v) => (v as num?)?.toInt();
-    final method =
+    var method =
         (j['phuongThucHttp'] ?? j['PhuongThucHttp'])?.toString() ?? '';
+    method = method.toUpperCase();
+    if (method == 'PATCH') method = 'PUT';
     final loaiRaw =
         (j['loaiHanhDong'] ?? j['LoaiHanhDong'])?.toString() ?? '';
-    String loai;
-    if (loaiRaw.isNotEmpty) {
-      loai = loaiRaw;
-    } else {
-      switch (method.toUpperCase()) {
-        case 'GET':
-          loai = 'Read';
-          break;
-        case 'POST':
-          loai = 'Create';
-          break;
-        case 'PUT':
-        case 'PATCH':
-          loai = 'Update';
-          break;
-        case 'DELETE':
-          loai = 'Delete';
-          break;
-        default:
-          loai = method;
-      }
-    }
+    var loai = loaiRaw.toUpperCase();
+    if (loai == 'READ') loai = 'GET';
+    if (loai == 'CREATE') loai = 'POST';
+    if (loai == 'UPDATE' || loai == 'PATCH') loai = 'PUT';
+    if (loai.isEmpty) loai = method;
+    final tenChucNangRaw =
+        (j['tenChucNang'] ?? j['TenChucNang'])?.toString()?.trim() ?? '';
+    final tenApi = (j['tenApi'] ?? j['TenApi'])?.toString() ?? '';
     return NhatKyItem(
       maNhatKy: n(j['maNhatKy'] ?? j['MaNhatKy']),
       maNhanVien: n(j['maNhanVien'] ?? j['MaNhanVien']),
       tenNhanVien:
       (j['tenNhanVien'] ?? j['TenNhanVien'])?.toString() ?? '—',
-      tenApi: (j['tenApi'] ?? j['TenApi'])?.toString() ?? '',
-      phuongThucHttp: method,
+      tenApi: tenApi,
+      phuongThucHttp: method.isEmpty ? loai : method,
       thoiGian: DateTime.tryParse(
           (j['thoiGianTruyCap'] ?? j['ThoiGianTruyCap'])?.toString() ??
               '') ??
@@ -174,7 +187,46 @@ class NhatKyItem {
       queryString: (j['queryString'] ?? j['QueryString'])?.toString(),
       loaiHanhDong: loai,
       chiTiet: (j['chiTiet'] ?? j['ChiTiet'])?.toString(),
+      tenChucNang: tenChucNangRaw.isNotEmpty
+          ? tenChucNangRaw
+          : NhatKyRules.mapTenChucNang(tenApi),
     );
+  }
+}
+
+/// Logic ánh xạ path → chức năng (fallback khi API chưa trả TenChucNang).
+class NhatKyRules {
+  NhatKyRules._();
+
+  static String mapTenChucNang(String path) {
+    final p = path.toLowerCase();
+    if (p.contains('phan-cong')) return 'Phân công nhân viên';
+    if (p.contains('tien-do') ||
+        p.contains('quy-trinh') ||
+        p.contains('ke-hoach-buoc')) {
+      return 'Quy trình / bước thực hiện';
+    }
+    if (p.contains('bao-tri')) return 'Hồ sơ bảo trì';
+    if (p.contains('sua-chua')) return 'Hồ sơ sửa chữa';
+    if (p.contains('vat-tu') || p.contains('inventory')) {
+      return 'Vật tư / hồ sơ vật tư';
+    }
+    if (p.contains('ke-hoach') || p.contains('maintenanceplan')) {
+      return 'Kế hoạch bảo trì';
+    }
+    if (p.contains('thiet-bi') || p.contains('equipment')) return 'Thiết bị';
+    if (p.contains('phe-duyet') || p.contains('duyet') || p.contains('approval')) {
+      return 'Phê duyệt';
+    }
+    if (p.contains('nguoi-dung') || p.contains('user')) {
+      return 'Quản lý người dùng';
+    }
+    if (p.contains('thong-ke')) return 'Thống kê';
+    if (p.contains('/toi') || p.contains('auth') || p.contains('profile')) {
+      return 'Tài khoản / hồ sơ cá nhân';
+    }
+    if (p.contains('nhatky') || p.contains('system')) return 'Hệ thống / nhật ký';
+    return 'API khác';
   }
 }
 
@@ -444,18 +496,58 @@ class NhatKyController extends ChangeNotifier {
   bool dangTaiNgam = false;
   String? loi;
   String tuKhoa = '';
-  String? phuongThuc; // GET/POST/PUT/DELETE
-  String? loaiHanhDong; // Read/Create/Update/Delete
+  /// Lọc theo method: GET / POST / PUT (null = tất cả, bỏ DELETE).
+  String? phuongThuc;
+  /// Lọc theo danh mục chức năng (null = tất cả).
+  String? tenChucNang;
+  /// Chỉ hiện bản ghi API lỗi (status >= 400).
+  bool chiLoi = false;
   bool live = true;
 
   List<NhatKyItem> get danhSachLoc {
-    if (loaiHanhDong == null || loaiHanhDong!.isEmpty) return danhSach;
-    final key = loaiHanhDong!.toLowerCase();
-    return danhSach.where((e) => e.loaiLabel.toLowerCase() == key).toList();
+    return danhSach.where((e) {
+      final m = e.methodLabel;
+      if (m == 'DELETE') return false;
+      if (phuongThuc != null &&
+          phuongThuc!.isNotEmpty &&
+          m != phuongThuc!.toUpperCase()) {
+        return false;
+      }
+      if (tenChucNang != null &&
+          tenChucNang!.isNotEmpty &&
+          e.tenChucNang != tenChucNang) {
+        return false;
+      }
+      if (chiLoi && !e.laLoiApi) return false;
+      return true;
+    }).toList();
   }
 
-  int demLoai(String loai) =>
-      danhSach.where((e) => e.loaiLabel.toLowerCase() == loai.toLowerCase()).length;
+  /// Nhóm theo danh mục chức năng (nhiều log nhất trước).
+  Map<String, List<NhatKyItem>> get nhomTheoChucNang {
+    final map = <String, List<NhatKyItem>>{};
+    for (final e in danhSachLoc) {
+      map.putIfAbsent(e.tenChucNang, () => []).add(e);
+    }
+    final keys = map.keys.toList()
+      ..sort((a, b) => map[b]!.length.compareTo(map[a]!.length));
+    return {for (final k in keys) k: map[k]!};
+  }
+
+  List<String> get danhSachTenChucNang {
+    final set = <String>{};
+    for (final e in danhSach) {
+      if (e.methodLabel != 'DELETE') set.add(e.tenChucNang);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  int demMethod(String method) => danhSach
+      .where((e) => e.methodLabel == method.toUpperCase())
+      .length;
+
+  int get demLoi => danhSach.where((e) => e.laLoiApi).length;
 
   Future<void> tai({bool ngam = false}) async {
     if (ngam) {
@@ -468,8 +560,12 @@ class NhatKyController extends ChangeNotifier {
     try {
       danhSach = await AdminService.layNhatKy(
         tuKhoa: tuKhoa.isEmpty ? null : tuKhoa,
-        phuongThuc: phuongThuc,
+        phuongThuc: phuongThuc == 'PUT' ? null : phuongThuc,
       );
+      // Client lọc PUT (+ PATCH đã chuẩn hóa); bỏ DELETE
+      danhSach = danhSach
+          .where((e) => e.methodLabel != 'DELETE')
+          .toList();
     } on ApiException catch (e) {
       loi = e.message;
     } catch (e) {
@@ -487,11 +583,16 @@ class NhatKyController extends ChangeNotifier {
 
   void datPhuongThuc(String? m) {
     phuongThuc = m;
-    tai();
+    notifyListeners();
   }
 
-  void datLoaiHanhDong(String? loai) {
-    loaiHanhDong = loai;
+  void datTenChucNang(String? ten) {
+    tenChucNang = ten;
+    notifyListeners();
+  }
+
+  void datChiLoi(bool v) {
+    chiLoi = v;
     notifyListeners();
   }
 

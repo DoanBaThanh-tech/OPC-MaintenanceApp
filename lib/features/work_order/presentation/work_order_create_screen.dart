@@ -7,7 +7,7 @@ import '../data/to_truong_quy_trinh_tao_logic.dart';
 import 'widgets/to_truong_chon_quy_trinh_tao.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../core/network/api_exception.dart';
-import 'work_order_list_screen.dart';
+import '../../dashboard/data/dashboard_logic.dart';
 
 // ============ MÀN 1: TẠO HỒ SƠ BẢO TRÌ (từ 1 dòng chi tiết kế hoạch) ============
 
@@ -59,12 +59,9 @@ class _CreateWorkOrderBaoTriScreenState extends State<CreateWorkOrderBaoTriScree
       danhSachBuoc: _qtCtrl.payloadBuoc(),
     );
     if (ok && mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => const WorkOrderBaoTriListScreen(),
-        ),
-            (route) => route.isFirst,
-      );
+      // Về Dashboard (còn slide menu) rồi mở mục Hồ sơ bảo trì
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      DashboardLogic.moMenuTheoNhan('Hồ sơ bảo trì');
     }
   }
 
@@ -327,13 +324,9 @@ class _TaoHoSoBaoTriThuCongScreenState extends State<TaoHoSoBaoTriThuCongScreen>
         backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ));
-      // Tiện lợi: vào thẳng trang hồ sơ bảo trì
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => const WorkOrderBaoTriListScreen(),
-        ),
-            (route) => route.isFirst,
-      );
+      // Về Dashboard (còn slide menu) rồi mở mục Hồ sơ bảo trì
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      DashboardLogic.moMenuTheoNhan('Hồ sơ bảo trì');
     } else if (_ctrl.loi != null) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(_ctrl.loi!),
