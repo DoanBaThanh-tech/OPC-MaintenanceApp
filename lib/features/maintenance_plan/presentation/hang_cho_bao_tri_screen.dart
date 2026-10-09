@@ -4,6 +4,7 @@ import '../../../core/theme/app_theme.dart';
 import '../data/maintenance_plan_logic.dart';
 import '../../work_order/data/to_truong_quy_trinh_tao_logic.dart';
 import '../../work_order/presentation/widgets/to_truong_chon_quy_trinh_tao.dart';
+import '../../work_order/presentation/work_order_list_screen.dart';
 
 /// Lập bảo trì nhanh — thiết bị đến hạn / trễ hạn, tạo HS hàng loạt.
 class HangChoBaoTriScreen extends StatefulWidget {
@@ -112,6 +113,13 @@ class _HangChoBaoTriScreenState extends State<HangChoBaoTriScreen>
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
+      );
+      // Chuyển thẳng sang trang hồ sơ bảo trì
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => const WorkOrderBaoTriListScreen(),
+        ),
+            (route) => route.isFirst,
       );
     } else if (_controller.loi != null) {
       ScaffoldMessenger.of(context).showSnackBar(

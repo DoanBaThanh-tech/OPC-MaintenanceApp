@@ -17,6 +17,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   String? _loiQuyTrinh;
   /// Đủ bước mẫu thiết bị + tiến độ + vật tư (kể cả bước tổ trưởng/NVKT chưa chọn).
   List<_BuocQtNvktView> _dsBuocFull = [];
+  /// Tên NV được phân công trên hồ sơ (BT/SC).
+  String? _tenNhanVienDuocPhanCong;
 
   String _fmtDt(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
@@ -71,6 +73,21 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
       final hsVt = results[0] as HoSoVatTuItem?;
       final tienDo = results[1] as List<Map<String, dynamic>>;
       final mau = results[2] as List<BuocQuyTrinh>;
+      String? tenNvPc;
+      try {
+        if (y.laBaoTri) {
+          final hs =
+          await WorkOrderService.layChiTietHoSoBaoTri(y.maHoSo!);
+          tenNvPc =
+              (hs.tenNhanVienThucHiens ?? hs.tenNhanVienThucHien)?.trim();
+        } else {
+          final hs =
+          await WorkOrderService.layChiTietHoSoSuaChua(y.maHoSo!);
+          tenNvPc = hs.tenNhanVienThucHiens?.trim();
+        }
+      } catch (_) {
+        // Không chặn hiển thị quy trình nếu tải danh sách NV lỗi
+      }
 
       final vtTheoBuoc = <int, List<ChiTietVatTuSuDung>>{};
       if (hsVt != null) {
@@ -138,6 +155,9 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
       setState(() {
         _hoSoVatTu = hsVt;
         _dsBuocFull = views;
+        if (tenNvPc != null && tenNvPc.isNotEmpty) {
+          _tenNhanVienDuocPhanCong = tenNvPc;
+        }
         _dangTaiQuyTrinh = false;
       });
     } catch (e) {
@@ -355,22 +375,50 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                     _row('Giờ kết thúc', _fmtGio(y.ngayKetThucDuKien!)),
                 ]),
 
-                if (y.noiDung != null && y.noiDung!.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  _infoCard([
-                    const Text(
-                      'Nội dung công việc (hồ sơ)',
-                      style:
-                      TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                // Nội dung công việc + Nhân viên được phân công (ngay dưới)
+                const SizedBox(height: 14),
+                _infoCard([
+                  const Text(
+                    'Nội dung công việc (hồ sơ)',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    (y.noiDung != null && y.noiDung!.trim().isNotEmpty)
+                        ? y.noiDung!
+                        : '—',
+                    style: TextStyle(color: Colors.grey.shade800, height: 1.4),
+                  ),
+                  if ((_tenNhanVienDuocPhanCong ?? '').trim().isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    Divider(height: 1, color: Colors.grey.shade200),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Icon(Icons.groups_rounded,
+                            size: 18, color: AppColors.primary),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Nhân viên được phân công',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800, fontSize: 13.5),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      y.noiDung!,
-                      style:
-                      TextStyle(color: Colors.grey.shade800, height: 1.4),
+                      _tenNhanVienDuocPhanCong!.trim(),
+                      style: TextStyle(
+                        color: Colors.grey.shade800,
+                        height: 1.4,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
-                  ]),
-                ],
+                  ],
+                ]),
 
                 // NV không ghi chép: chỉ xem
                 if (y.chiXem && !y.daHoanThanhPc && !y.choXacNhanKetQua) ...[
@@ -403,13 +451,13 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                   ),
                 ],
 
-                // Luôn hiện đủ bước (tổ trưởng chọn + chưa chọn; NVKT cập nhật + chưa chọn)
+                // Một frame duy nhất: Quy trình + lý do từ chối (nếu có)
                 if (y.maHoSo != null) ...[
                   const SizedBox(height: 14),
                   _buildQuyTrinhDaThucHien(),
                 ],
 
-                // Chỉ hiện khi đang chờ Xưởng — biến mất nếu Xưởng từ chối
+                // Chỉ hiện khi đang chờ Xưởng
                 if (y.choXacNhanKetQua) ...[
                   const SizedBox(height: 14),
                   Container(
@@ -432,61 +480,6 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                               fontWeight: FontWeight.w600,
                               height: 1.35,
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                // Xưởng từ chối → hết banner chờ, hiện lý do + hướng dẫn cập nhật
-                if (y.biTuChoi && !y.choXacNhanKetQua && !y.daHoanThanhPc) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.danger.withValues(alpha: 0.08),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                          color: AppColors.danger.withValues(alpha: 0.3)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.feedback_outlined,
-                                color: AppColors.danger),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Xưởng đã từ chối kết quả',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.danger,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (y.lyDoTuChoi != null &&
-                            y.lyDoTuChoi!.trim().isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            'Lý do: ${y.lyDoTuChoi}',
-                            style: TextStyle(
-                              color: Colors.grey.shade800,
-                              height: 1.4,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: 6),
-                        Text(
-                          'Vui lòng bấm "Cập nhật quy trình thực hiện" để thêm/bớt bước hoặc chỉnh vật tư theo yêu cầu Xưởng, rồi gửi lại.',
-                          style: TextStyle(
-                            color: Colors.grey.shade700,
-                            fontSize: 12.5,
-                            height: 1.35,
                           ),
                         ),
                       ],
@@ -612,18 +605,35 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
     );
   }
 
-  /// Hiển thị đủ bước quy trình (đã chọn + chưa chọn) + vật tư khi có.
+  /// Một frame: tiêu đề + lý do từ chối + đủ bước quy trình.
   Widget _buildQuyTrinhDaThucHien() {
+    final y = widget.yeuCau;
+    final lyDo = (y.lyDoTuChoi ?? '').trim();
+    final hienLyDoTuChoi =
+        y.biTuChoi && !y.choXacNhanKetQua && !y.daHoanThanhPc;
+
     if (_dangTaiQuyTrinh) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator()),
-      );
+      return _infoCard([
+        const Text('Quy trình thực hiện',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+        const SizedBox(height: 12),
+        const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(strokeWidth: 2.2),
+          ),
+        ),
+      ]);
     }
     if (_loiQuyTrinh != null) {
       return _infoCard([
         const Text('Quy trình thực hiện',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+        if (hienLyDoTuChoi && lyDo.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _lyDoTuChoiTrongQuyTrinh(lyDo),
+        ],
         const SizedBox(height: 8),
         Text(_loiQuyTrinh!, style: TextStyle(color: Colors.grey.shade700)),
         TextButton(onPressed: _taiQuyTrinhVatTu, child: const Text('Thử lại')),
@@ -633,6 +643,10 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
       return _infoCard([
         const Text('Quy trình thực hiện',
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14)),
+        if (hienLyDoTuChoi && lyDo.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          _lyDoTuChoiTrongQuyTrinh(lyDo),
+        ],
         const SizedBox(height: 8),
         Text(
           'Chưa có mẫu quy trình cho thiết bị này hoặc chưa có dữ liệu bước.',
@@ -653,44 +667,49 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
               .length,
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _infoCard([
-          Row(
-            children: [
-              Icon(Icons.account_tree_rounded,
-                  size: 18, color: AppColors.primary.withValues(alpha: 0.9)),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Quy trình thực hiện',
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                ),
-              ),
-            ],
+    return _infoCard([
+      Row(
+        children: [
+          Icon(Icons.account_tree_rounded,
+              size: 18, color: AppColors.primary.withValues(alpha: 0.9)),
+          const SizedBox(width: 8),
+          const Expanded(
+            child: Text(
+              'Quy trình thực hiện',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            '${_dsBuocFull.length} bước · $soDaChon đã chọn · $soDaLam đã làm · $soVt VT',
-            style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
-          ),
-        ]),
+        ],
+      ),
+      // Lý do từ chối ngay dưới tiêu đề
+      if (hienLyDoTuChoi) ...[
         const SizedBox(height: 8),
-        for (final b in _dsBuocFull)
-          Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(14),
+        _lyDoTuChoiTrongQuyTrinh(lyDo.isNotEmpty
+            ? lyDo
+            : 'Xưởng đã từ chối — vui lòng cập nhật quy trình và gửi lại.'),
+      ],
+      const SizedBox(height: 6),
+      Text(
+        '${_dsBuocFull.length} bước · $soDaChon đã chọn · $soDaLam đã làm · $soVt VT',
+        style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
+      ),
+      const SizedBox(height: 10),
+      for (var i = 0; i < _dsBuocFull.length; i++) ...[
+        if (i > 0) const SizedBox(height: 8),
+        Builder(builder: (_) {
+          final b = _dsBuocFull[i];
+          return Container(
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: b.daThucHien
-                  ? Colors.white
+                  ? const Color(0xFFF0FDF4)
                   : (b.daChon
                   ? const Color(0xFFF0F9FF)
                   : const Color(0xFFF8FAFC)),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(12),
               border: Border.all(
                 color: b.daThucHien
-                    ? const Color(0xFFBAE6FD)
+                    ? const Color(0xFF86EFAC)
                     : (b.daChon
                     ? const Color(0xFFBAE6FD)
                     : Colors.grey.shade200),
@@ -781,7 +800,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                         fontSize: 12, color: Colors.grey.shade700),
                   ),
                 ],
-                if (b.vatTu.any((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0)) ...[
+                if (b.vatTu
+                    .any((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0)) ...[
                   const SizedBox(height: 8),
                   for (final c in b.vatTu)
                     if (c.tenVatTu.isNotEmpty && c.soLuong > 0)
@@ -801,7 +821,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                             Text(
                               _fmtTien(c.thanhTien),
                               style: const TextStyle(
-                                  fontWeight: FontWeight.w700, fontSize: 12.5),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 12.5),
                             ),
                           ],
                         ),
@@ -819,8 +840,53 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                 ],
               ],
             ),
-          ),
+          );
+        }),
       ],
+    ]);
+  }
+
+  Widget _lyDoTuChoiTrongQuyTrinh(String lyDo) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+      decoration: BoxDecoration(
+        color: AppColors.danger.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.danger.withValues(alpha: 0.28)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.info_outline_rounded,
+              size: 16, color: AppColors.danger),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  const TextSpan(
+                    text: 'Lý do từ chối: ',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12.5,
+                      color: AppColors.danger,
+                    ),
+                  ),
+                  TextSpan(
+                    text: lyDo,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 12.5,
+                      height: 1.35,
+                      color: Colors.grey.shade900,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
