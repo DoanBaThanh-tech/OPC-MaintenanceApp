@@ -36,6 +36,27 @@ class MaterialUsageService {
         .toList();
   }
 
+  /// Cập nhật nội dung các bước quy trình mẫu của thiết bị.
+  static Future<void> capNhatQuyTrinhThietBi({
+    required int maThietBi,
+    required String loaiCongViec,
+    required List<BuocQuyTrinh> buoc,
+  }) async {
+    await ApiClient.instance.put<Map<String, dynamic>>(
+      '${ApiConstants.inventory}/quy-trinh',
+      {
+        'maThietBi': maThietBi,
+        'loaiCongViec': loaiCongViec,
+        'danhSachBuoc': buoc
+            .map((b) => {
+          'soBuoc': b.soBuoc,
+          'moTaBuoc': b.moTa,
+        })
+            .toList(),
+      },
+    );
+  }
+
   static Future<HoSoVatTuItem?> taoHoSoVatTu({
     int? maHoSoBaoTri,
     int? maHoSoSuaChua,

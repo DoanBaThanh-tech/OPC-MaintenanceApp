@@ -204,46 +204,18 @@ mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNvkt, _
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Nội dung bước: ưu tiên đã chỉnh lúc tạo HS; NVKT sửa được khi mở khóa
-                  if (b.daChon && _coTheSuaVatTu(b))
-                    TextField(
-                      controller: b.moTaCtrl,
-                      maxLines: 2,
-                      style: const TextStyle(
-                        fontSize: 13.5,
-                        height: 1.35,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        labelText: 'Nội dung bước ${b.soBuoc}',
-                        hintText: 'Chỉnh nội dung nếu cần…',
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                      ),
-                      onChanged: (_) {
-                        if (!_cheDoCapNhat) {
-                          _luuNhapBuoc(b);
-                        }
-                      },
-                    )
-                  else
-                    Text(
-                      b.moTaCtrl.text.trim().isEmpty
-                          ? 'Bước ${b.soBuoc}'
-                          : b.moTaCtrl.text.trim(),
-                      style: TextStyle(
-                        fontSize: 13.5,
-                        height: 1.35,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey.shade800,
-                      ),
+                  // NVKT không chỉnh nội dung bước — chỉ xem (kể cả chế độ cập nhật sau từ chối)
+                  Text(
+                    b.moTaCtrl.text.trim().isEmpty
+                        ? 'Bước ${b.soBuoc}'
+                        : b.moTaCtrl.text.trim(),
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      height: 1.35,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey.shade800,
                     ),
+                  ),
                   if (b.daChon) ...[
                     const SizedBox(height: 12),
                     ...List.generate(b.vatTu.length, (j) {
@@ -289,82 +261,118 @@ mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNvkt, _
                               ],
                             ),
                             const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: TextField(
-                                    controller: d.slCtrl,
-                                    enabled: _coTheSuaVatTu(b),
-                                    readOnly: !_coTheSuaVatTu(b),
-                                    keyboardType: TextInputType.number,
-                                    inputFormatters: [
-                                      FilteringTextInputFormatter.digitsOnly,
-                                      FilteringTextInputFormatter.allow(
-                                        soLuongVatTuChoPhepNhap,
+                            // Số lượng | Đơn giá (giữa) | Tổng tiền
+                            Builder(builder: (_) {
+                              final sl = int.tryParse(d.slCtrl.text.trim()) ??
+                                  d.soLuong;
+                              final tongDong =
+                                  (sl < 0 ? 0 : sl) * d.donGia;
+                              return Row(
+                                children: [
+                                  Expanded(
+                                    child: TextField(
+                                      controller: d.slCtrl,
+                                      enabled: _coTheSuaVatTu(b),
+                                      readOnly: !_coTheSuaVatTu(b),
+                                      keyboardType: TextInputType.number,
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.digitsOnly,
+                                        FilteringTextInputFormatter.allow(
+                                          soLuongVatTuChoPhepNhap,
+                                        ),
+                                      ],
+                                      decoration: InputDecoration(
+                                        labelText: 'Số lượng',
+                                        hintText: 'Số nguyên > 0',
+                                        errorText: _coTheSuaVatTu(b)
+                                            ? formValidateSoLuongVatTu(
+                                          d.slCtrl.text,
+                                          tenVatTu: d.tenVatTu,
+                                          choPhepRong: true,
+                                        )
+                                            : null,
+                                        isDense: true,
+                                        filled: true,
+                                        fillColor: _coTheSuaVatTu(b)
+                                            ? Colors.white
+                                            : const Color(0xFFF1F5F9),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(10),
+                                        ),
+                                        contentPadding:
+                                        const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 10),
                                       ),
-                                    ],
-                                    decoration: InputDecoration(
-                                      labelText: 'Số lượng',
-                                      hintText: 'Số nguyên > 0',
-                                      errorText: _coTheSuaVatTu(b)
-                                          ? formValidateSoLuongVatTu(
-                                        d.slCtrl.text,
-                                        tenVatTu: d.tenVatTu,
-                                        choPhepRong: true,
-                                      )
-                                          : null,
-                                      isDense: true,
-                                      filled: true,
-                                      fillColor: _coTheSuaVatTu(b)
-                                          ? Colors.white
-                                          : const Color(0xFFF1F5F9),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      contentPadding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 10),
-                                    ),
-                                    onChanged: !_coTheSuaVatTu(b)
-                                        ? null
-                                        : (v) {
-                                      final kq = validateSoLuongVatTu(
-                                        v,
-                                        tenVatTu: d.tenVatTu,
-                                        choPhepRong: true,
-                                      );
-                                      d.soLuong = kq.soLuong ?? 0;
-                                      setState(() {});
-                                      // Lưu nháp số lượng
-                                      _luuNhapBuoc(b);
-                                    },
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: InputDecorator(
-                                    decoration: InputDecoration(
-                                      labelText: 'Đơn giá',
-                                      isDense: true,
-                                      filled: true,
-                                      fillColor: Colors.white,
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      contentPadding: const EdgeInsets.symmetric(
-                                          horizontal: 10, vertical: 10),
-                                    ),
-                                    child: Text(
-                                      _fmtTien(d.donGia),
-                                      style: TextStyle(
-                                        color: Colors.grey.shade700,
-                                        fontWeight: FontWeight.w700,
-                                        fontSize: 13,
-                                      ),
+                                      onChanged: !_coTheSuaVatTu(b)
+                                          ? null
+                                          : (v) {
+                                        final kq = validateSoLuongVatTu(
+                                          v,
+                                          tenVatTu: d.tenVatTu,
+                                          choPhepRong: true,
+                                        );
+                                        d.soLuong = kq.soLuong ?? 0;
+                                        setState(() {});
+                                        _luuNhapBuoc(b);
+                                      },
                                     ),
                                   ),
-                                ),
-                              ],
-                            ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: InputDecorator(
+                                      decoration: InputDecoration(
+                                        labelText: 'Đơn giá',
+                                        isDense: true,
+                                        filled: true,
+                                        fillColor: Colors.white,
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(10),
+                                        ),
+                                        contentPadding:
+                                        const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 10),
+                                      ),
+                                      child: Text(
+                                        _fmtTien(d.donGia),
+                                        style: TextStyle(
+                                          color: Colors.grey.shade700,
+                                          fontWeight: FontWeight.w700,
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: InputDecorator(
+                                      decoration: InputDecoration(
+                                        labelText: 'Tổng tiền',
+                                        isDense: true,
+                                        filled: true,
+                                        fillColor: const Color(0xFFECFDF5),
+                                        border: OutlineInputBorder(
+                                          borderRadius:
+                                          BorderRadius.circular(10),
+                                        ),
+                                        contentPadding:
+                                        const EdgeInsets.symmetric(
+                                            horizontal: 10, vertical: 10),
+                                      ),
+                                      child: Text(
+                                        _fmtTien(tongDong),
+                                        style: const TextStyle(
+                                          color: Color(0xFF047857),
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 12.5,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            }),
                           ],
                         ),
                       );

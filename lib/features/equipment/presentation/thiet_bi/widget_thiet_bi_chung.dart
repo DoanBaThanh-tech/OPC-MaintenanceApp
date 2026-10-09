@@ -506,21 +506,120 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-class _QuyTrinhSection extends StatelessWidget {
+/// Quy trình BT/SC trên chi tiết thiết bị — chỉnh nội dung bước + Lưu.
+class _QuyTrinhSection extends StatefulWidget {
   final String title;
   final IconData icon;
   final Color accent;
+  final String loaiCongViec;
+  final int maThietBi;
   final List<BuocQuyTrinh> buoc;
+  final VoidCallback? onSaved;
 
   const _QuyTrinhSection({
     required this.title,
     required this.icon,
     required this.accent,
+    required this.loaiCongViec,
+    required this.maThietBi,
     required this.buoc,
+    this.onSaved,
   });
 
   @override
+  State<_QuyTrinhSection> createState() => _QuyTrinhSectionState();
+}
+
+class _QuyTrinhSectionState extends State<_QuyTrinhSection> {
+  late List<TextEditingController> _ctrls;
+  bool _dangLuu = false;
+  bool _moRong = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncCtrls();
+  }
+
+  @override
+  void didUpdateWidget(covariant _QuyTrinhSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.buoc != widget.buoc) {
+      for (final c in _ctrls) {
+        c.dispose();
+      }
+      _syncCtrls();
+    }
+  }
+
+  void _syncCtrls() {
+    _ctrls = widget.buoc
+        .map((b) => TextEditingController(text: b.moTa))
+        .toList();
+  }
+
+  @override
+  void dispose() {
+    for (final c in _ctrls) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  Future<void> _luu() async {
+    if (widget.buoc.isEmpty || _dangLuu) return;
+    setState(() => _dangLuu = true);
+    try {
+      final payload = <BuocQuyTrinh>[];
+      for (var i = 0; i < widget.buoc.length; i++) {
+        final b = widget.buoc[i];
+        final moTa = i < _ctrls.length ? _ctrls[i].text.trim() : b.moTa;
+        payload.add(BuocQuyTrinh(
+          soBuoc: b.soBuoc,
+          moTa: moTa.isEmpty ? 'Bước ${b.soBuoc}' : moTa,
+        ));
+      }
+      await MaterialUsageService.capNhatQuyTrinhThietBi(
+        maThietBi: widget.maThietBi,
+        loaiCongViec: widget.loaiCongViec,
+        buoc: payload,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã lưu ${widget.title.toLowerCase()}'),
+          backgroundColor: AppColors.success,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      widget.onSaved?.call();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$e'),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _dangLuu = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final accent = widget.accent;
+    final buoc = widget.buoc;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
       decoration: BoxDecoration(
@@ -538,97 +637,165 @@ class _QuyTrinhSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+          InkWell(
+            onTap: () => setState(() => _moRong = !_moRong),
+            borderRadius: BorderRadius.circular(10),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(widget.icon, color: accent, size: 20),
                 ),
-                child: Icon(icon, color: accent, size: 20),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    color: Colors.grey.shade900,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    widget.title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: Colors.grey.shade900,
+                    ),
                   ),
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                Container(
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${buoc.length} bước',
+                    style: TextStyle(
+                      color: accent,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
-                child: Text(
-                  '${buoc.length} bước',
-                  style: TextStyle(
-                    color: accent,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
+                const SizedBox(width: 4),
+                Icon(
+                  _moRong
+                      ? Icons.expand_less_rounded
+                      : Icons.expand_more_rounded,
+                  color: Colors.grey.shade500,
+                ),
+              ],
+            ),
+          ),
+          if (_moRong) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Chỉnh nội dung từng bước rồi bấm Lưu. Nội dung này sẽ dùng khi tạo hồ sơ ${widget.loaiCongViec.toLowerCase()}.',
+              style: TextStyle(
+                fontSize: 12,
+                height: 1.35,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 12),
+            if (buoc.isEmpty)
+              Text(
+                'Chưa có quy trình trong hệ thống cho thiết bị này.',
+                style: TextStyle(
+                    fontSize: 13, color: Colors.grey.shade600, height: 1.35),
+              )
+            else
+              ...List.generate(buoc.length, (i) {
+                final b = buoc[i];
+                final ctrl = i < _ctrls.length ? _ctrls[i] : null;
+                return Container(
+                  margin: EdgeInsets.only(bottom: i == buoc.length - 1 ? 0 : 8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FBFE),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: accent,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${b.soBuoc}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ctrl == null
+                            ? Text(b.moTa)
+                            : TextField(
+                          controller: ctrl,
+                          maxLines: 2,
+                          style: const TextStyle(
+                            fontSize: 13.5,
+                            height: 1.35,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          decoration: InputDecoration(
+                            isDense: true,
+                            labelText: 'Nội dung bước ${b.soBuoc}',
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 10),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            if (buoc.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 44,
+                child: FilledButton.icon(
+                  onPressed: _dangLuu ? null : _luu,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: accent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: _dangLuu
+                      ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                      : const Icon(Icons.save_rounded, size: 20),
+                  label: Text(
+                    _dangLuu ? 'Đang lưu…' : 'Lưu nội dung quy trình',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 12),
-          if (buoc.isEmpty)
-            Text(
-              'Chưa có quy trình trong hệ thống cho thiết bị này.',
-              style: TextStyle(fontSize: 13, color: Colors.grey.shade600, height: 1.35),
-            )
-          else
-            ...List.generate(buoc.length, (i) {
-              final b = buoc[i];
-              return Container(
-                margin: EdgeInsets.only(bottom: i == buoc.length - 1 ? 0 : 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF8FBFE),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 28,
-                      height: 28,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: accent,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        '${b.soBuoc}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        b.moTa,
-                        style: const TextStyle(
-                          fontSize: 13.5,
-                          height: 1.35,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }),
+          ],
         ],
       ),
     );
