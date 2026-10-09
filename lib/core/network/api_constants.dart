@@ -43,6 +43,9 @@ class ApiConstants {
   static const String inventory = "/Inventory";
   static const String system = "/system";
 
+  /// GET /api/ThongBao — thông báo của user đang đăng nhập
+  static const String thongBao = "/ThongBao";
+
   // ---------- Admin ----------
   static const String adminUsers = auth;
   static const String adminTaoTaiKhoan = '$auth/tao-tai-khoan';

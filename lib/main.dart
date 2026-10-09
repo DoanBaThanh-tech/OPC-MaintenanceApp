@@ -7,7 +7,8 @@ import 'features/auth/presentation/splash_screen.dart';
 
 final navigatorKey = GlobalKey<NavigatorState>();
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   ApiClient.instance.onUnauthorized = () async {
     await TokenStorage.xoaPhienDangNhap();
     navigatorKey.currentState?.pushAndRemoveUntil(

@@ -5,6 +5,10 @@ import '../../auth/data/auth_logic.dart';
 import '../../auth/presentation/auth_screens.dart';
 import '../../auth/presentation/profile_sheet.dart';
 import '../data/dashboard_logic.dart';
+import '../../notification/data/thong_bao_service.dart';
+import '../../notification/presentation/man_thong_bao.dart';
+import '../../../core/storage/token_storage.dart';
+import '../../../main.dart' show navigatorKey;
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -22,6 +26,29 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.initState();
     DashboardLogic.yeuCauMoMenu.addListener(_xuLyYeuCauMoMenu);
     _taiDuLieu();
+    _khoiDongThongBao();
+  }
+
+  Future<void> _khoiDongThongBao() async {
+    await ThongBaoRealtimeService.instance.init(
+      onTap: (tb) async {
+        // Từ thông báo hệ thống: nếu chưa đăng nhập → login; đã login → màn thông báo / chi tiết
+        final logged = await TokenStorage.daDangNhap();
+        final nav = navigatorKey.currentState;
+        if (nav == null) return;
+        if (!logged) {
+          nav.pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (_) => false,
+          );
+          return;
+        }
+        nav.push(
+          MaterialPageRoute(builder: (_) => const ManThongBaoScreen()),
+        );
+      },
+    );
+    ThongBaoRealtimeService.instance.startPolling();
   }
 
   @override

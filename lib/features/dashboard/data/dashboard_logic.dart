@@ -11,6 +11,7 @@ import '../../work_order/presentation/ho_so_vat_tu_screens.dart';
 import '../presentation/thong_ke_giam_doc_screen.dart';
 import '../../admin/presentation/quan_ly_nguoi_dung_screen.dart';
 import '../../admin/presentation/nhat_ky_he_thong_screen.dart';
+import '../../notification/presentation/man_thong_bao.dart';
 // ============ MODEL ============
 
 /// 1 mục trong slide menu
@@ -140,6 +141,11 @@ class DashboardLogic {
       case 'Nhân viên kỹ thuật':
         return [
           MenuGroup(tieuDe: 'Công việc của tôi', muc: [
+            MenuItemData(
+              icon: Icons.notifications_active_rounded,
+              label: 'Thông báo phân công',
+              screenBuilder: () => const ManThongBaoScreen(),
+            ),
             MenuItemData(
               icon: Icons.assignment_rounded,
               label: 'Yêu cầu bảo trì của tôi',
