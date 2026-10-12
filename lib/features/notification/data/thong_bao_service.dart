@@ -13,9 +13,8 @@ import 'thong_bao_models.dart';
 /// Callback khi user bấm thông báo / nút «Tiến hành» ngoài app.
 typedef ThongBaoTapCallback = void Function(ThongBaoItem? item);
 
-/// Poll API → hiện **thông báo hệ thống** khi có phân công mới.
-/// Sau khi NVKT bấm Tiến hành (ngoài app hoặc trong app) → đánh dấu đã xử lý,
-/// không hiện lại thông báo đó nữa.
+/// Poll API → hiện thông báo hệ thống khi có phân công mới.
+/// Sau khi NVKT bấm Tiến hành → đánh dấu đã xử lý, không hiện lại.
 class ThongBaoRealtimeService {
   ThongBaoRealtimeService._();
   static final instance = ThongBaoRealtimeService._();
@@ -23,14 +22,24 @@ class ThongBaoRealtimeService {
   static const actionTienHanh = 'tien_hanh';
   static const _keyDaXuLy = 'thong_bao_da_xu_ly_ids';
 
-  final _plugin = FlutterLocalNotificationsPlugin();
-  final _storage = const FlutterSecureStorage();
+  final FlutterLocalNotificationsPlugin _plugin =
+  FlutterLocalNotificationsPlugin();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage();
+
   Timer? _timer;
-  final Set<int> _daHienLocal = {};
-  final Set<int> _daXuLyLocal = {};
-  final Map<int, ThongBaoItem> _cacheById = {};
+  final Set<int> _daHienLocal = <int>{};
+  final Set<int> _daXuLyLocal = <int>{};
+  final Map<int, ThongBaoItem> _cacheById = <int, ThongBaoItem>{};
   bool _ready = false;
   ThongBaoTapCallback? onTap;
+
+  Future<void> _huyAnToan(int id) async {
+    try {
+      await _plugin.cancel(id);
+    } catch (e) {
+      debugPrint('cancel notification $id: $e');
+    }
+  }
 
   Future<void> init({ThongBaoTapCallback? onTap}) async {
     this.onTap = onTap;
@@ -52,8 +61,9 @@ class ThongBaoRealtimeService {
     final launch = await _plugin.getNotificationAppLaunchDetails();
     if (launch?.didNotificationLaunchApp == true &&
         launch?.notificationResponse != null) {
-      Future.delayed(const Duration(milliseconds: 400), () {
-        _xuLyBamThongBao(launch!.notificationResponse!);
+      final resp = launch!.notificationResponse!;
+      Future<void>.delayed(const Duration(milliseconds: 400), () {
+        _xuLyBamThongBao(resp);
       });
     }
 
@@ -84,8 +94,10 @@ class ThongBaoRealtimeService {
 
   void startPolling() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 12), (_) => refresh());
-    refresh();
+    _timer = Timer.periodic(const Duration(seconds: 12), (_) {
+      unawaited(refresh());
+    });
+    unawaited(refresh());
   }
 
   void stopPolling() {
@@ -106,16 +118,14 @@ class ThongBaoRealtimeService {
 
       for (final tb in list) {
         _cacheById[tb.maThongBao] = tb;
-        // Đồng bộ: đã đọc trên server → coi như đã xử lý local
         if (tb.daDoc) {
           _daXuLyLocal.add(tb.maThongBao);
           _daHienLocal.add(tb.maThongBao);
-          await _plugin.cancel(tb.maThongBao);
+          await _huyAnToan(tb.maThongBao);
         }
       }
       await _luuDaXuLyLocal();
 
-      // Chỉ hiện TB chưa đọc + chưa từng xử lý/tiến hành
       for (final tb in list.where((e) => !e.daDoc)) {
         if (_daHienLocal.contains(tb.maThongBao)) continue;
         if (_daXuLyLocal.contains(tb.maThongBao)) continue;
@@ -156,21 +166,24 @@ class ThongBaoRealtimeService {
       ),
     );
 
-    await _plugin.show(
-      tb.maThongBao,
-      tb.tieuDe,
-      tb.noiDung,
-      details,
-      payload: '${tb.maThongBao}',
-    );
+    try {
+      await _plugin.show(
+        tb.maThongBao,
+        tb.tieuDe,
+        tb.noiDung,
+        details,
+        payload: '${tb.maThongBao}',
+      );
+    } catch (e) {
+      debugPrint('show notification: $e');
+    }
   }
 
-  /// Đánh dấu 1 thông báo đã xử lý (bấm Tiến hành trên notification).
   Future<void> danhDauDaDoc(int ma) async {
     _daXuLyLocal.add(ma);
     _daHienLocal.add(ma);
     await _luuDaXuLyLocal();
-    await _plugin.cancel(ma);
+    await _huyAnToan(ma);
     try {
       await ApiClient.instance.put<Map<String, dynamic>>(
         '${ApiConstants.thongBao}/$ma/da-doc',
@@ -179,7 +192,6 @@ class ThongBaoRealtimeService {
     } catch (_) {}
   }
 
-  /// Đánh dấu mọi TB gắn hồ sơ sau khi bấm «Tiến hành quy trình» trong app.
   Future<void> danhDauTheoHoSo({
     int? maHoSoBaoTri,
     int? maHoSoSuaChua,
@@ -192,7 +204,7 @@ class ThongBaoRealtimeService {
       if (matchBt || matchSc) {
         _daXuLyLocal.add(e.maThongBao);
         _daHienLocal.add(e.maThongBao);
-        await _plugin.cancel(e.maThongBao);
+        await _huyAnToan(e.maThongBao);
       }
     }
     await _luuDaXuLyLocal();
