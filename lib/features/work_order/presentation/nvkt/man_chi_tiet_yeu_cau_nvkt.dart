@@ -177,8 +177,14 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
       try {
         if (y.laBaoTri) {
           await WorkOrderService.nhanVienTienHanhBaoTri(y.maHoSo!);
+          await ThongBaoRealtimeService.instance.danhDauTheoHoSo(
+            maHoSoBaoTri: y.maHoSo!,
+          );
         } else {
           await WorkOrderService.nhanVienTienHanhSuaChua(y.maHoSo!);
+          await ThongBaoRealtimeService.instance.danhDauTheoHoSo(
+            maHoSoSuaChua: y.maHoSo!,
+          );
         }
       } on ApiException catch (e) {
         if (!mounted) return;

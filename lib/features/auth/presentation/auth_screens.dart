@@ -841,7 +841,6 @@ class ForgotPasswordScreen extends StatefulWidget {
 class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _emailLoginCtrl = TextEditingController();
   final _emailOtpCtrl = TextEditingController();
   bool _dangTai = false;
   String? _loi;
@@ -872,16 +871,15 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
       _loi = null;
     });
     try {
-      final emailLogin = _emailLoginCtrl.text.trim();
       final emailOtp = _emailOtpCtrl.text.trim();
-      await AuthService.quenMatKhau(emailLogin, emailNhanOtp: emailOtp);
+      await AuthService.quenMatKhau(emailOtp);
       if (!mounted) return;
       Navigator.push(
         context,
         PageRouteBuilder(
           transitionDuration: const Duration(milliseconds: 380),
           pageBuilder: (_, __, ___) => OtpScreen(
-            email: emailLogin,
+            email: emailOtp,
             emailNhanOtp: emailOtp,
           ),
           transitionsBuilder: (_, a, __, child) =>
@@ -899,7 +897,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
   void dispose() {
     _enter.dispose();
     _pulse.dispose();
-    _emailLoginCtrl.dispose();
     _emailOtpCtrl.dispose();
     super.dispose();
   }
@@ -921,7 +918,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
                       icon: Icons.mark_email_unread_rounded, pulse: _pulse)),
               const SizedBox(height: 18),
               const Text(
-                'Nhận mã OTP qua Gmail đã đăng ký',
+                'Nhận mã OTP qua Gmail',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -932,9 +929,10 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
               const SizedBox(height: 8),
               const Text(
-                'Nhập email đăng nhập công ty và đúng Gmail cá nhân đã gắn trên hồ sơ. '
-                    'OTP chỉ gửi tới email đó — không gửi sang Gmail khác. '
-                    'Đăng nhập sau vẫn dùng email công ty.',
+                'Nhập đúng Gmail cá nhân đã gắn trên hồ sơ của bạn. '
+                    'Hệ thống chỉ gửi OTP khi email khớp tài khoản — '
+                    'email sai hoặc không đúng định dạng @gmail.com sẽ không gửi được. '
+                    'Sau khi đổi mật khẩu, đăng nhập vẫn bằng email công ty.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: _AuthRecoveryPalette.muted,
@@ -944,22 +942,11 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
               ),
               const SizedBox(height: 22),
               TextFormField(
-                controller: _emailLoginCtrl,
-                keyboardType: TextInputType.emailAddress,
-                decoration: _recoveryFieldDeco(
-                  label: 'Email đăng nhập (công ty)',
-                  hint: 'vd: ten@opc.com',
-                  prefix: Icons.business_rounded,
-                ),
-                validator: AuthValidators.email,
-              ),
-              const SizedBox(height: 14),
-              TextFormField(
                 controller: _emailOtpCtrl,
                 keyboardType: TextInputType.emailAddress,
                 decoration: _recoveryFieldDeco(
-                  label: 'Gmail cá nhân đã đăng ký trên hồ sơ',
-                  hint: 'Phải khớp email nhận OTP trong Hồ sơ cá nhân',
+                  label: 'Email cá nhân (Gmail)',
+                  hint: 'vd: tenban@gmail.com',
                   prefix: Icons.alternate_email_rounded,
                 ),
                 validator: (v) {
@@ -1118,10 +1105,7 @@ class _OtpScreenState extends State<OtpScreen> with TickerProviderStateMixin {
       _loi = null;
     });
     try {
-      await AuthService.quenMatKhau(
-        widget.email,
-        emailNhanOtp: widget.emailNhanOtp,
-      );
+      await AuthService.quenMatKhau(widget.emailNhanOtp);
       if (!mounted) return;
       setState(() {
         _conHieuLuc = 120;

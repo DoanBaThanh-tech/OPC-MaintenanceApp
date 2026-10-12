@@ -62,14 +62,14 @@ class AuthService {
     return result;
   }
 
-  /// [email]: email đăng nhập công ty. [emailNhanOtp]: Gmail cá nhân nhận mã.
-  static Future<void> quenMatKhau(String email, {String? emailNhanOtp}) async {
+  /// [emailCaNhan]: Gmail đã đăng ký trên hồ sơ — dùng để tìm tài khoản và gửi OTP.
+  static Future<void> quenMatKhau(String emailCaNhan) async {
+    final e = emailCaNhan.trim();
     await ApiClient.instance.post<Map<String, dynamic>>(
       '${ApiConstants.auth}/quen-mat-khau/yeu-cau',
       {
-        'email': email,
-        if (emailNhanOtp != null && emailNhanOtp.trim().isNotEmpty)
-          'emailNhanOtp': emailNhanOtp.trim(),
+        'email': e,
+        'emailNhanOtp': e,
       },
       auth: false,
     );

@@ -6,7 +6,6 @@ import '../../auth/presentation/auth_screens.dart';
 import '../../auth/presentation/profile_sheet.dart';
 import '../data/dashboard_logic.dart';
 import '../../notification/data/thong_bao_service.dart';
-import '../../notification/presentation/man_thong_bao.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../main.dart' show navigatorKey;
 
@@ -32,10 +31,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _khoiDongThongBao() async {
     await ThongBaoRealtimeService.instance.init(
       onTap: (tb) async {
-        // Từ thông báo hệ thống: nếu chưa đăng nhập → login; đã login → màn thông báo / chi tiết
+        // Bấm «Tiến hành» / thân thông báo ngoài app
+        // → mở app: chưa login thì trang đăng nhập; đã login thì vào tài khoản (Dashboard)
         final logged = await TokenStorage.daDangNhap();
         final nav = navigatorKey.currentState;
         if (nav == null) return;
+        if (tb != null && tb.maThongBao > 0) {
+          await ThongBaoRealtimeService.instance.danhDauDaDoc(tb.maThongBao);
+        }
         if (!logged) {
           nav.pushAndRemoveUntil(
             MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -43,8 +46,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           );
           return;
         }
-        nav.push(
-          MaterialPageRoute(builder: (_) => const ManThongBaoScreen()),
+        nav.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const DashboardScreen()),
+              (_) => false,
         );
       },
     );
