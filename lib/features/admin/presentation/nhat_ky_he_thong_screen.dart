@@ -581,12 +581,16 @@ class _NhatKyHeThongScreenState extends State<NhatKyHeThongScreen>
                 ? const Color(0xFFFEF2F2)
                 : const Color(0xFFF8FAFC),
             borderRadius: BorderRadius.circular(14),
-            border: Border(
-              left: BorderSide(color: mau, width: 4),
-              top: BorderSide(color: Colors.grey.shade200),
-              right: BorderSide(color: Colors.grey.shade200),
-              bottom: BorderSide(color: Colors.grey.shade200),
-            ),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            // Thanh accent trái: boxShadow inset giả lập (tránh Border lệch màu + radius)
+            boxShadow: [
+              BoxShadow(
+                color: mau.withValues(alpha: 0.85),
+                blurRadius: 0,
+                spreadRadius: 0,
+                offset: const Offset(-3, 0),
+              ),
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
