@@ -40,7 +40,7 @@ class ApiClient {
   ///
   /// Lưu ý: nhiều endpoint ASP.NET trả `Ok()` không body → body = null.
   /// Caller dùng `post` / `put` / `delete` không ép kiểu Map khi không cần body.
-  dynamic _xuLyResponse(http.Response res) {
+  dynamic _xuLyResponse(http.Response res, {bool auth = true}) {
     dynamic body;
     if (res.body.isNotEmpty) {
       try {
@@ -57,7 +57,9 @@ class ApiClient {
       return body;
     }
 
-    if (res.statusCode == 401) {
+    // Chỉ coi 401 là "hết phiên" khi request có gửi token.
+    // Đăng nhập sai cũng từng trả 401 → không được xóa form / đẩy lại LoginScreen.
+    if (res.statusCode == 401 && auth) {
       onUnauthorized?.call();
     }
 
@@ -75,10 +77,10 @@ class ApiClient {
     throw ApiException(res.statusCode, message);
   }
 
-  Future<T> _thucHien<T>(Future<http.Response> Function() request) async {
+  Future<T> _thucHien<T>(Future<http.Response> Function() request, {bool auth = true}) async {
     try {
       final res = await request().timeout(ApiConstants.connectTimeout);
-      final parsed = _xuLyResponse(res);
+      final parsed = _xuLyResponse(res, auth: auth);
 
       // Body rỗng (Ok() không nội dung) — trả về null an toàn, không ép Map
       if (parsed == null) {
@@ -111,27 +113,27 @@ class ApiClient {
     return _thucHien<T>(() async {
       final headers = await _headers(auth: auth);
       return http.get(_uri(path, query), headers: headers);
-    });
+    }, auth: auth);
   }
 
   Future<T> post<T>(String path, Map<String, dynamic> body, {bool auth = true}) {
     return _thucHien<T>(() async {
       final headers = await _headers(auth: auth);
       return http.post(_uri(path), headers: headers, body: jsonEncode(body));
-    });
+    }, auth: auth);
   }
 
   Future<T> put<T>(String path, Map<String, dynamic> body, {bool auth = true}) {
     return _thucHien<T>(() async {
       final headers = await _headers(auth: auth);
       return http.put(_uri(path), headers: headers, body: jsonEncode(body));
-    });
+    }, auth: auth);
   }
 
   Future<T> delete<T>(String path, {bool auth = true}) {
     return _thucHien<T>(() async {
       final headers = await _headers(auth: auth);
       return http.delete(_uri(path), headers: headers);
-    });
+    }, auth: auth);
   }
 }

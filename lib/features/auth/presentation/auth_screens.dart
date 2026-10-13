@@ -78,9 +78,14 @@ class _LoginScreenState extends State<LoginScreen>
         ),
       );
     } on ApiException catch (e) {
-      setState(() => _loi = e.message);
+      // Giữ nguyên email/mật khẩu đã nhập — chỉ hiện lỗi
+      if (mounted) {
+        setState(() => _loi = e.message);
+      }
     } catch (_) {
-      setState(() => _loi = 'Không thể kết nối tới máy chủ.');
+      if (mounted) {
+        setState(() => _loi = 'Không thể kết nối tới máy chủ.');
+      }
     } finally {
       if (mounted) setState(() => _dangTai = false);
     }

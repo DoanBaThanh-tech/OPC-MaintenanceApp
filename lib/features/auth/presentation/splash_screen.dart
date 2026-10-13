@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'auth_screens.dart';
+import '../../../core/storage/token_storage.dart';
+import '../../dashboard/presentation/dashboard_screen.dart';
 
 /// Splash OPC — logo dược phẩm căn giữa, nền trắng, xanh chủ đạo, responsive.
 class SplashScreen extends StatefulWidget {
@@ -117,10 +119,16 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
     await _exitCtrl.forward();
     if (!mounted) return;
+
+    // Còn token (chưa xóa dữ liệu app) → vào thẳng dashboard, không bắt đăng nhập lại
+    final daCoPhien = await TokenStorage.daDangNhap();
+    final next = daCoPhien ? const DashboardScreen() : const LoginScreen();
+
+    if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 480),
-        pageBuilder: (_, __, ___) => const LoginScreen(),
+        pageBuilder: (_, __, ___) => next,
         transitionsBuilder: (_, anim, __, child) {
           final fade = CurvedAnimation(parent: anim, curve: Curves.easeOut);
           final slide = Tween<Offset>(

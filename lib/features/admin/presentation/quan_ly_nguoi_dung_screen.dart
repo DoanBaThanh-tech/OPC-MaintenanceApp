@@ -38,6 +38,9 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
       if (mounted) setState(() {});
       if (!_ctrl.dangTai) _listAnim.forward(from: 0);
     });
+    _searchCtrl.addListener(() {
+      if (mounted) setState(() {});
+    });
     _ctrl.tai();
   }
 
@@ -502,31 +505,48 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
               ],
             ),
             const SizedBox(height: 16),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                child: TextField(
-                  controller: _searchCtrl,
-                  onChanged: _ctrl.datTuKhoa,
-                  style: const TextStyle(color: Colors.white),
-                  cursorColor: Colors.white,
-                  decoration: InputDecoration(
-                    hintText: 'Tìm tên, email, vai trò…',
-                    hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7)),
-                    prefixIcon: Icon(Icons.search_rounded,
-                        color: Colors.white.withValues(alpha: 0.9)),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.16),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(18),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 14),
-                  ),
+            TextField(
+              controller: _searchCtrl,
+              onChanged: _ctrl.datTuKhoa,
+              style: const TextStyle(
+                color: Color(0xFF0F172A),
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+              cursorColor: _blue,
+              decoration: InputDecoration(
+                hintText: 'Tìm theo tên, email công ty hoặc vai trò…',
+                hintStyle: TextStyle(
+                  color: Colors.grey.shade500,
+                  fontWeight: FontWeight.w500,
                 ),
+                prefixIcon: Icon(Icons.search_rounded, color: _blue.withValues(alpha: 0.85)),
+                suffixIcon: _searchCtrl.text.isEmpty
+                    ? null
+                    : IconButton(
+                  tooltip: 'Xóa',
+                  onPressed: () {
+                    _searchCtrl.clear();
+                    _ctrl.datTuKhoa('');
+                  },
+                  icon: Icon(Icons.close_rounded, color: Colors.grey.shade500),
+                ),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.9)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  borderSide: BorderSide(color: _blue.withValues(alpha: 0.45), width: 1.4),
+                ),
+                contentPadding:
+                const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
               ),
             ),
           ],
@@ -565,29 +585,27 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                   onTap: () =>
                       _ctrl.datLocVaiTro(selected ? null : v.tenVaiTro),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 280),
-                    curve: Curves.easeOutCubic,
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOut,
                     width: 142,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      gradient: selected
-                          ? LinearGradient(
-                        colors: [c, c.withValues(alpha: 0.78)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      )
-                          : null,
-                      color: selected ? null : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      // Chọn: nền xanh nhạt + viền — không gradient chói
+                      color: selected
+                          ? const Color(0xFFE8F3FB)
+                          : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: selected ? c : c.withValues(alpha: 0.18),
-                        width: selected ? 0 : 1.5,
+                        color: selected
+                            ? _blue.withValues(alpha: 0.55)
+                            : const Color(0xFFE2E8F0),
+                        width: selected ? 1.5 : 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: c.withValues(alpha: selected ? 0.32 : 0.1),
-                          blurRadius: selected ? 18 : 12,
-                          offset: const Offset(0, 5),
+                          color: Colors.black.withValues(alpha: selected ? 0.06 : 0.04),
+                          blurRadius: selected ? 10 : 8,
+                          offset: const Offset(0, 3),
                         ),
                       ],
                     ),
@@ -601,8 +619,9 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                           style: TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 12,
-                            color:
-                            selected ? Colors.white : Colors.grey.shade800,
+                            color: selected
+                                ? const Color(0xFF0B6BCB)
+                                : Colors.grey.shade800,
                           ),
                         ),
                         const Spacer(),
@@ -611,7 +630,7 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                           style: TextStyle(
                             fontWeight: FontWeight.w900,
                             fontSize: 28,
-                            color: selected ? Colors.white : c,
+                            color: selected ? const Color(0xFF0B6BCB) : c,
                             height: 1,
                           ),
                         ),
