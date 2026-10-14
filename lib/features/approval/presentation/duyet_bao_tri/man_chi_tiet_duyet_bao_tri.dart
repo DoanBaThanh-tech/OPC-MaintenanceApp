@@ -518,161 +518,260 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
   }
 
   Widget _buildQuyTrinhThucHien(HoSoBaoTriDuyet hs) {
-    // Đủ bước mẫu + bước tổ trưởng không chọn
     final buoc = _controller.dsBuocDayDu.isNotEmpty
         ? _controller.dsBuocDayDu
         : hs.danhSachBuocQuyTrinh;
-    final soDaLam = buoc.where((b) => b.daThucHien).length;
     final soChon = buoc.where((b) => b.daChon).length;
+    final soDaLam = buoc.where((b) => b.daThucHien).length;
+    final tongTien = buoc.fold<int>(
+      0,
+          (a, b) => a + b.vatTu.fold<int>(0, (x, v) => x + v.thanhTien),
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          children: [
-            const Icon(Icons.checklist_rtl_rounded, size: 18, color: _primary),
-            const SizedBox(width: 8),
-            const Expanded(
-              child: Text(
-                'Quy trình thực hiện',
-                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
-              ),
-            ),
-            if (buoc.isNotEmpty)
-              Text(
-                '$soChon/${buoc.length} chọn · $soDaLam đã làm',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.grey.shade600,
+        // Header
+        Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.account_tree_rounded,
+                  size: 18, color: _primary.withValues(alpha: 0.9)),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Quy trình thực hiện',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    color: Color(0xFF0F172A),
+                  ),
                 ),
               ),
-          ],
+              if (buoc.isNotEmpty)
+                Text(
+                  '$soChon/${buoc.length} chọn · $soDaLam đã làm',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey.shade600,
+                  ),
+                ),
+            ],
+          ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          buoc.isEmpty
-              ? 'Chưa có bước quy trình trên hồ sơ này.'
-              : 'Hiển thị đủ bước mẫu (kể cả bước tổ trưởng chưa chọn). Chỉ xem.',
-          style: TextStyle(
-              fontSize: 12.5, color: Colors.grey.shade600, height: 1.35),
-        ),
-        if (buoc.isNotEmpty) ...[
-          const SizedBox(height: 12),
+        const SizedBox(height: 8),
+        if (buoc.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Text(
+              'Chưa có bước quy trình trên hồ sơ này.',
+              style: TextStyle(
+                color: Colors.grey.shade600,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          )
+        else
           for (final b in buoc)
             Container(
               margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: !b.daChon
+                color: b.daThucHien
+                    ? Colors.white
+                    : (!b.daChon
                     ? const Color(0xFFF1F5F9)
-                    : b.daThucHien
-                    ? const Color(0xFF0068A9).withValues(alpha: 0.06)
-                    : const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(12),
+                    : const Color(0xFFF8FAFC)),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: !b.daChon
-                      ? Colors.grey.shade300
-                      : b.daThucHien
-                      ? const Color(0xFF0068A9).withValues(alpha: 0.25)
+                  color: b.daThucHien
+                      ? const Color(0xFFBAE6FD)
                       : Colors.grey.shade200,
                 ),
               ),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: !b.daChon
-                          ? Colors.grey.shade400
-                          : b.daThucHien
-                          ? _primary
-                          : Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '${b.soBuoc}',
-                      style: TextStyle(
-                        color: (!b.daChon || b.daThucHien)
-                            ? Colors.white
-                            : Colors.grey.shade700,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 12,
+                  Row(
+                    children: [
+                      Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: !b.daChon
+                              ? Colors.grey.shade400
+                              : (b.daThucHien ? _primary : Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '${b.soBuoc}',
+                          style: TextStyle(
+                            color: (!b.daChon || b.daThucHien)
+                                ? Colors.white
+                                : Colors.grey.shade700,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
                           b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
                           style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13.5,
-                            height: 1.35,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 14,
                             color: b.daChon
                                 ? const Color(0xFF0F172A)
                                 : Colors.grey.shade600,
                           ),
                         ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: (!b.daChon
-                                    ? Colors.blueGrey
-                                    : b.daThucHien
-                                    ? AppColors.success
-                                    : _primary)
-                                    .withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                b.nhanTrangThai,
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: !b.daChon
-                                      ? Colors.blueGrey
-                                      : b.daThucHien
-                                      ? AppColors.success
-                                      : _primary,
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: !b.daChon
+                              ? Colors.grey.shade100
+                              : (b.daThucHien
+                              ? const Color(0xFFD1FAE5)
+                              : const Color(0xFFE0F2FE)),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          b.nhanTrangThai,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w800,
+                            color: !b.daChon
+                                ? Colors.grey.shade600
+                                : (b.daThucHien
+                                ? const Color(0xFF047857)
+                                : _primary),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  if ((b.tenNhanVien ?? '').trim().isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      'NVKT: ${b.tenNhanVien}',
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.grey.shade600),
+                    ),
+                  ],
+                  // Vật tư gọn (khi có) — đơn giá + thành tiền
+                  if (b.vatTu.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    for (final vt in b.vatTu)
+                      if (vt.tenVatTu.isNotEmpty && vt.soLuong > 0)
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 3),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.inventory_2_outlined,
+                                  size: 15, color: Color(0xFF0068A9)),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  vt.donGia > 0
+                                      ? '${vt.tenVatTu} × ${vt.soLuong} · ${_fmtTien(vt.donGia)}'
+                                      : '${vt.tenVatTu} × ${vt.soLuong}',
+                                  style: const TextStyle(fontSize: 13),
                                 ),
                               ),
-                            ),
-                            if ((b.tenNhanVien ?? '').trim().isNotEmpty) ...[
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Text(
-                                  b.tenNhanVien!,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                              if (vt.donGia > 0)
+                                Text(
+                                  _fmtTien(vt.thanhTien),
                                   style: TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.grey.shade600,
-                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.grey.shade800,
                                   ),
                                 ),
-                              ),
                             ],
-                          ],
+                          ),
                         ),
-                      ],
-                    ),
-                  ),
+                    if (b.vatTu.any((e) => e.donGia > 0))
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            'Tổng bước: ${_fmtTien(b.vatTu.fold<int>(0, (a, e) => a + e.thanhTien))}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              color: _primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ],
               ),
             ),
+        // Tổng tiền tất cả bước
+        if (tongTien > 0) ...[
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: _primary.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _primary.withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.payments_outlined, size: 18, color: _primary),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Tổng tiền vật tư (tất cả bước)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+                Text(
+                  _fmtTien(tongTien),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: _primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ],
     );
   }
 
+  String _fmtTien(int v) {
+    final s = v.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return '$buf ₫';
+  }
 }

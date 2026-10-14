@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
@@ -10,6 +11,21 @@ import '../../work_order/data/services/work_order_service.dart';
 // MODEL
 // ============================================================
 
+/// Một dòng vật tư trong bước (GĐ đối chiếu hồ sơ vật tư).
+class VatTuBuocDuyet {
+  final String tenVatTu;
+  final int soLuong;
+  final int donGia;
+
+  const VatTuBuocDuyet({
+    required this.tenVatTu,
+    required this.soLuong,
+    this.donGia = 0,
+  });
+
+  int get thanhTien => soLuong * donGia;
+}
+
 /// Bước quy trình trên hồ sơ duyệt (GĐ xem đủ bước chọn + chưa chọn).
 class BuocQuyTrinhDuyet {
   final int soBuoc;
@@ -18,6 +34,7 @@ class BuocQuyTrinhDuyet {
   final String? tenNhanVien;
   /// null = suy từ trangThai; true/false = gộp từ mẫu thiết bị.
   final bool? daChonFlag;
+  final List<VatTuBuocDuyet> vatTu;
 
   const BuocQuyTrinhDuyet({
     required this.soBuoc,
@@ -25,6 +42,7 @@ class BuocQuyTrinhDuyet {
     required this.trangThai,
     this.tenNhanVien,
     this.daChonFlag,
+    this.vatTu = const [],
   });
 
   bool get daThucHien {
@@ -71,6 +89,7 @@ class BuocQuyTrinhDuyet {
       trangThai: (j['trangThai'] ?? j['TrangThai'] ?? '').toString(),
       tenNhanVien: (j['tenNhanVien'] ?? j['TenNhanVien'])?.toString(),
       daChonFlag: true, // bước từ hồ sơ = đã được tổ trưởng chọn
+      vatTu: const [],
     );
   }
 }
@@ -373,18 +392,40 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
     }
   }
 
-  /// Gộp quy trình mẫu thiết bị + bước đã chọn trên hồ sơ.
+  /// Gộp quy trình mẫu thiết bị + bước đã chọn + vật tư (khi hoàn thành).
   Future<void> _gopBuocDayDu() async {
     final hs = hoSo;
     if (hs == null) {
       dsBuocDayDu = [];
       return;
     }
-    final selected = {
+    final selected = <int, BuocQuyTrinhDuyet>{
       for (final b in hs.danhSachBuocQuyTrinh) b.soBuoc: b,
     };
+    final vtTheoBuoc = <int, List<VatTuBuocDuyet>>{};
 
-    // Ưu tiên tiến độ mới nhất (nếu có)
+    List<VatTuBuocDuyet> parseJsonVt(String? raw) {
+      if (raw == null || raw.trim().isEmpty) return const [];
+      try {
+        final arr = jsonDecode(raw);
+        if (arr is! List) return const [];
+        final out = <VatTuBuocDuyet>[];
+        for (final item in arr) {
+          if (item is! Map) continue;
+          final m = Map<String, dynamic>.from(item);
+          final ten = (m['tenVatTu'] ?? m['TenVatTu'] ?? '').toString().trim();
+          final sl = (m['soLuong'] as num?)?.toInt() ?? 0;
+          final dg = (m['donGia'] as num?)?.toInt() ?? 0;
+          if (ten.isEmpty || sl <= 0) continue;
+          out.add(VatTuBuocDuyet(tenVatTu: ten, soLuong: sl, donGia: dg));
+        }
+        return out;
+      } catch (_) {
+        return const [];
+      }
+    }
+
+    // Tiến độ bước + JsonVatTu
     try {
       final tienDo = await WorkOrderService.layTienDoBuoc(
         maHoSoBaoTri: hs.maHoSoBaoTri,
@@ -398,17 +439,59 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
             .toString();
         final tt = (m['trangThai'] ?? m['TrangThai'] ?? '').toString();
         final ten = (m['tenNhanVien'] ?? m['TenNhanVien'])?.toString();
+        final jsonVt = (m['jsonVatTu'] ?? m['JsonVatTu'])?.toString();
+        final vt = parseJsonVt(jsonVt);
+        if (vt.isNotEmpty) vtTheoBuoc[so] = vt;
         selected[so] = BuocQuyTrinhDuyet(
           soBuoc: so,
           moTa: moTa.isNotEmpty ? moTa : (selected[so]?.moTa ?? ''),
           trangThai: tt.isNotEmpty ? tt : (selected[so]?.trangThai ?? ''),
           tenNhanVien: ten ?? selected[so]?.tenNhanVien,
           daChonFlag: true,
+          vatTu: vt.isNotEmpty ? vt : (selected[so]?.vatTu ?? const []),
         );
       }
-    } catch (_) {
-      // Không chặn màn hình nếu API tiến độ lỗi
-    }
+    } catch (_) {}
+
+    // Hồ sơ vật tư theo công việc (đối chiếu GĐ) — ưu tiên nếu có
+    try {
+      final hsVt = await MaterialUsageService.layHoSoTheoCongViec(
+        maHoSoBaoTri: hs.maHoSoBaoTri,
+      );
+      if (hsVt != null) {
+        final fromHs = <int, List<VatTuBuocDuyet>>{};
+        for (final c in hsVt.chiTiet) {
+          if (c.tenVatTu.trim().isEmpty || c.soLuong <= 0) continue;
+          fromHs.putIfAbsent(c.soBuoc, () => []).add(VatTuBuocDuyet(
+            tenVatTu: c.tenVatTu,
+            soLuong: c.soLuong,
+            donGia: c.donGia,
+          ));
+        }
+        for (final e in fromHs.entries) {
+          vtTheoBuoc[e.key] = e.value;
+          final old = selected[e.key];
+          if (old != null) {
+            selected[e.key] = BuocQuyTrinhDuyet(
+              soBuoc: old.soBuoc,
+              moTa: old.moTa,
+              trangThai: old.trangThai,
+              tenNhanVien: old.tenNhanVien,
+              daChonFlag: true,
+              vatTu: e.value,
+            );
+          } else {
+            selected[e.key] = BuocQuyTrinhDuyet(
+              soBuoc: e.key,
+              moTa: '',
+              trangThai: 'DaXong',
+              daChonFlag: true,
+              vatTu: e.value,
+            );
+          }
+        }
+      }
+    } catch (_) {}
 
     List<BuocQuyTrinhDuyet> mau = [];
     final maTb = hs.maThietBi ?? 0;
@@ -430,8 +513,17 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
     }
 
     if (mau.isEmpty) {
-      // Không có mẫu → chỉ hiện bước đã gắn hồ sơ
-      dsBuocDayDu = selected.values.toList()
+      dsBuocDayDu = selected.values.map((b) {
+        final vt = vtTheoBuoc[b.soBuoc] ?? b.vatTu;
+        return BuocQuyTrinhDuyet(
+          soBuoc: b.soBuoc,
+          moTa: b.moTa,
+          trangThai: b.trangThai,
+          tenNhanVien: b.tenNhanVien,
+          daChonFlag: b.daChonFlag ?? true,
+          vatTu: vt,
+        );
+      }).toList()
         ..sort((a, b) => a.soBuoc.compareTo(b.soBuoc));
       return;
     }
@@ -441,6 +533,7 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
     for (final m in mau) {
       final s = selected[m.soBuoc];
       used.add(m.soBuoc);
+      final vt = vtTheoBuoc[m.soBuoc] ?? s?.vatTu ?? const [];
       if (s != null) {
         out.add(BuocQuyTrinhDuyet(
           soBuoc: m.soBuoc,
@@ -448,6 +541,7 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
           trangThai: s.trangThai,
           tenNhanVien: s.tenNhanVien,
           daChonFlag: true,
+          vatTu: vt,
         ));
       } else {
         out.add(BuocQuyTrinhDuyet(
@@ -455,12 +549,22 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
           moTa: m.moTa,
           trangThai: '',
           daChonFlag: false,
+          vatTu: vt,
         ));
       }
     }
-    // Bước chọn ngoài mẫu (nếu có)
     for (final e in selected.entries) {
-      if (!used.contains(e.key)) out.add(e.value);
+      if (!used.contains(e.key)) {
+        final vt = vtTheoBuoc[e.key] ?? e.value.vatTu;
+        out.add(BuocQuyTrinhDuyet(
+          soBuoc: e.value.soBuoc,
+          moTa: e.value.moTa,
+          trangThai: e.value.trangThai,
+          tenNhanVien: e.value.tenNhanVien,
+          daChonFlag: e.value.daChonFlag ?? true,
+          vatTu: vt,
+        ));
+      }
     }
     out.sort((a, b) => a.soBuoc.compareTo(b.soBuoc));
     dsBuocDayDu = out;

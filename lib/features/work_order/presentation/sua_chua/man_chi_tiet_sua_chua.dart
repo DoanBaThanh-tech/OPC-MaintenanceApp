@@ -104,13 +104,41 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
         if (tt.isNotEmpty) ttTheoBuoc[so] = tt;
         final moTa = (row['moTaBuoc'] ?? row['MoTaBuoc'])?.toString() ?? '';
         if (moTa.trim().isNotEmpty) moTaTheoBuoc[so] = moTa.trim();
+        // Vật tư lưu trên tiến độ bước
+        final jsonVt = (row['jsonVatTu'] ?? row['JsonVatTu'])?.toString();
+        if (jsonVt != null && jsonVt.trim().isNotEmpty) {
+          try {
+            final arr = jsonDecode(jsonVt);
+            if (arr is List) {
+              final list = <_VatTuBuocSc>[];
+              for (final item in arr) {
+                if (item is! Map) continue;
+                final m = Map<String, dynamic>.from(item);
+                final ten =
+                (m['tenVatTu'] ?? m['TenVatTu'] ?? '').toString().trim();
+                final sl = (m['soLuong'] as num?)?.toInt() ?? 0;
+                final dg = (m['donGia'] as num?)?.toInt() ?? 0;
+                if (ten.isEmpty || sl <= 0) continue;
+                list.add(_VatTuBuocSc(ten: ten, soLuong: sl, donGia: dg));
+              }
+              if (list.isNotEmpty) {
+                vtTheoBuoc[so] = list;
+                chonSet.add(so);
+              }
+            }
+          } catch (_) {}
+        }
       }
       if (hsVt != null) {
         for (final c in hsVt.chiTiet) {
           if (c.tenVatTu.isEmpty || c.soLuong <= 0) continue;
           chonSet.add(c.soBuoc);
           vtTheoBuoc.putIfAbsent(c.soBuoc, () => []).add(
-            _VatTuBuocSc(ten: c.tenVatTu, soLuong: c.soLuong),
+            _VatTuBuocSc(
+              ten: c.tenVatTu,
+              soLuong: c.soLuong,
+              donGia: c.donGia,
+            ),
           );
           if (c.moTaBuoc.trim().isNotEmpty) {
             moTaTheoBuoc.putIfAbsent(c.soBuoc, () => c.moTaBuoc.trim());
@@ -705,165 +733,23 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                                 ),
                               )
                             else
-                              ...(_dsBuocDayDu.isNotEmpty
-                                  ? _dsBuocDayDu
-                                  : hs.danhSachBuocQuyTrinh
-                                  .map((b) => _BuocScQtView(
-                                soBuoc: b.soBuoc,
-                                moTa: b.moTaBuoc.trim().isEmpty
-                                    ? 'Bước ${b.soBuoc}'
-                                    : b.moTaBuoc.trim(),
-                                daChon: true,
-                                trangThai:
-                                b.trangThai ?? 'DuocChon',
-                              ))
-                                  .toList())
-                                  .map((b) {
-                                final chon = b.daChon;
-                                final tt = b.trangThai.trim();
-                                final chip = !chon
-                                    ? 'Không chọn'
-                                    : (tt == 'DaXong' || tt == 'DaCapNhat'
-                                    ? 'Đã xong'
-                                    : tt == 'DangLam'
-                                    ? 'Đang làm'
-                                    : 'Đã chọn');
-                                final chipColor = !chon
-                                    ? Colors.grey
-                                    : (tt == 'DaXong' || tt == 'DaCapNhat'
-                                    ? AppColors.success
-                                    : tt == 'DangLam'
-                                    ? AppColors.warning
-                                    : _scPrimary);
-                                return Opacity(
-                                  opacity: chon ? 1 : 0.72,
-                                  child: Padding(
-                                    padding: const EdgeInsets.only(bottom: 8),
-                                    child: Container(
-                                      padding: const EdgeInsets.fromLTRB(
-                                          10, 10, 10, 10),
-                                      decoration: BoxDecoration(
-                                        color: chon
-                                            ? _scPrimary.withValues(alpha: 0.05)
-                                            : const Color(0xFFF8FAFC),
-                                        borderRadius: BorderRadius.circular(12),
-                                        border: Border.all(
-                                          color: chon
-                                              ? _scPrimary.withValues(
-                                              alpha: 0.22)
-                                              : Colors.grey.shade200,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            width: 26,
-                                            height: 26,
-                                            alignment: Alignment.center,
-                                            decoration: BoxDecoration(
-                                              color: chon
-                                                  ? _scPrimary.withValues(
-                                                  alpha: 0.14)
-                                                  : Colors.grey.shade200,
-                                              borderRadius:
-                                              BorderRadius.circular(8),
-                                            ),
-                                            child: Text(
-                                              '${b.soBuoc}',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.w900,
-                                                fontSize: 12,
-                                                color: chon
-                                                    ? _scPrimary
-                                                    : Colors.grey.shade600,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 10),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  b.moTa,
-                                                  style: TextStyle(
-                                                    height: 1.35,
-                                                    color: chon
-                                                        ? Colors.grey.shade900
-                                                        : Colors.grey.shade600,
-                                                    fontSize: 13.5,
-                                                    fontWeight: FontWeight.w600,
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Container(
-                                                  padding: const EdgeInsets
-                                                      .symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 2),
-                                                  decoration: BoxDecoration(
-                                                    color: chipColor.withValues(
-                                                        alpha: 0.12),
-                                                    borderRadius:
-                                                    BorderRadius.circular(
-                                                        8),
-                                                  ),
-                                                  child: Text(
-                                                    chip,
-                                                    style: TextStyle(
-                                                      fontSize: 11,
-                                                      fontWeight:
-                                                      FontWeight.w800,
-                                                      color: chipColor,
-                                                    ),
-                                                  ),
-                                                ),
-                                                if (chon &&
-                                                    b.vatTu.isNotEmpty) ...[
-                                                  const SizedBox(height: 8),
-                                                  for (final vt in b.vatTu)
-                                                    Padding(
-                                                      padding:
-                                                      const EdgeInsets.only(
-                                                          bottom: 3),
-                                                      child: Row(
-                                                        children: [
-                                                          const Icon(
-                                                            Icons
-                                                                .inventory_2_outlined,
-                                                            size: 15,
-                                                            color: _scPrimary,
-                                                          ),
-                                                          const SizedBox(
-                                                              width: 6),
-                                                          Expanded(
-                                                            child: Text(
-                                                              '${vt.ten} × ${vt.soLuong}',
-                                                              style:
-                                                              const TextStyle(
-                                                                fontSize: 13,
-                                                                fontWeight:
-                                                                FontWeight
-                                                                    .w600,
-                                                              ),
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                ],
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }),
+                              ..._buildDsBuocQtCards(
+                                _dsBuocDayDu.isNotEmpty
+                                    ? _dsBuocDayDu
+                                    : hs.danhSachBuocQuyTrinh
+                                    .map((b) => _BuocScQtView(
+                                  soBuoc: b.soBuoc,
+                                  moTa: b.moTaBuoc.trim().isEmpty
+                                      ? 'Bước ${b.soBuoc}'
+                                      : b.moTaBuoc.trim(),
+                                  daChon: true,
+                                  trangThai:
+                                  b.trangThai ?? 'DuocChon',
+                                ))
+                                    .toList(),
+                                daHoanThanh: hs.daHoanThanh,
+                              ),
+
                           ],
                         ],
                       ),
@@ -1422,6 +1308,207 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
     );
   }
 
+
+  List<Widget> _buildDsBuocQtCards(
+      List<_BuocScQtView> ds, {
+        required bool daHoanThanh,
+      }) {
+    final tongTien = ds.fold<int>(
+      0,
+          (a, b) => a +
+          b.vatTu.fold<int>(0, (x, v) => x + (v.donGia > 0 ? v.thanhTien : 0)),
+    );
+    final widgets = <Widget>[];
+    for (final b in ds) {
+      final chon = b.daChon;
+      final tt = b.trangThai.trim();
+      final chip = !chon
+          ? 'Không chọn'
+          : (tt == 'DaXong' || tt == 'DaCapNhat'
+          ? 'Đã thực hiện'
+          : tt == 'DangLam'
+          ? 'Đang thực hiện'
+          : 'Đã chọn — chưa làm');
+      final done = tt == 'DaXong' || tt == 'DaCapNhat';
+      widgets.add(
+        Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: done
+                ? Colors.white
+                : (!chon ? const Color(0xFFF1F5F9) : const Color(0xFFF8FAFC)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: done ? const Color(0xFFBAE6FD) : Colors.grey.shade200,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: !chon
+                          ? Colors.grey.shade400
+                          : (done ? _scPrimary : Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${b.soBuoc}',
+                      style: TextStyle(
+                        color: (!chon || done)
+                            ? Colors.white
+                            : Colors.grey.shade700,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: chon
+                            ? const Color(0xFF0F172A)
+                            : Colors.grey.shade600,
+                      ),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: !chon
+                          ? Colors.grey.shade100
+                          : (done
+                          ? const Color(0xFFD1FAE5)
+                          : const Color(0xFFE0F2FE)),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      chip,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: !chon
+                            ? Colors.grey.shade600
+                            : (done ? const Color(0xFF047857) : _scPrimary),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (b.vatTu.any((v) => v.ten.isNotEmpty && v.soLuong > 0)) ...[
+                const SizedBox(height: 8),
+                for (final vt in b.vatTu)
+                  if (vt.ten.isNotEmpty && vt.soLuong > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 3),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.inventory_2_outlined,
+                              size: 15, color: Color(0xFF0068A9)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              vt.donGia > 0
+                                  ? '${vt.ten} × ${vt.soLuong} · ${_fmtTienSc(vt.donGia)}'
+                                  : '${vt.ten} × ${vt.soLuong}',
+                              style: const TextStyle(fontSize: 13),
+                            ),
+                          ),
+                          if (vt.donGia > 0)
+                            Text(
+                              _fmtTienSc(vt.thanhTien),
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: Colors.grey.shade800,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                if (b.vatTu.any((e) => e.donGia > 0))
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(
+                        'Tổng bước: ${_fmtTienSc(b.vatTu.fold<int>(0, (a, e) => a + e.thanhTien))}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: _scPrimary,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+    if (tongTien > 0) {
+      widgets.add(
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: _scPrimary.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _scPrimary.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.payments_outlined,
+                  size: 18, color: _scPrimary),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Tổng tiền vật tư (tất cả bước)',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              Text(
+                _fmtTienSc(tongTien),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                  color: _scPrimary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return widgets;
+  }
+
+  String _fmtTienSc(int v) {
+    final s = v.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return '$buf ₫';
+  }
+
   Widget _row(String l, String v) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(
@@ -1448,6 +1535,8 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
 }
 
 /// Bước quy trình SC trên chi tiết (đủ mẫu + trạng thái chọn + vật tư NVKT).
+
+
 class _BuocScQtView {
   final int soBuoc;
   final String moTa;
@@ -1467,5 +1556,11 @@ class _BuocScQtView {
 class _VatTuBuocSc {
   final String ten;
   final int soLuong;
-  const _VatTuBuocSc({required this.ten, required this.soLuong});
+  final int donGia;
+  const _VatTuBuocSc({
+    required this.ten,
+    required this.soLuong,
+    this.donGia = 0,
+  });
+  int get thanhTien => soLuong * donGia;
 }

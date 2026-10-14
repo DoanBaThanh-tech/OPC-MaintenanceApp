@@ -449,13 +449,39 @@ extension _ChiTietBaoTriQuyTrinhUi on _WorkOrderBaoTriDetailScreenState {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                '${c.tenVatTu} × ${c.soLuong}',
+                                c.donGia > 0
+                                    ? '${c.tenVatTu} × ${c.soLuong} · ${_fmtTienVt(c.donGia)}'
+                                    : '${c.tenVatTu} × ${c.soLuong}',
                                 style: const TextStyle(fontSize: 13),
                               ),
                             ),
+                            if (c.donGia > 0)
+                              Text(
+                                _fmtTienVt(c.soLuong * c.donGia),
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.grey.shade800,
+                                ),
+                              ),
                           ],
                         ),
                       ),
+                  if (b.vatTu.any((c) => c.donGia > 0))
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 2),
+                        child: Text(
+                          'Tổng bước: ${_fmtTienVt(b.vatTu.fold<int>(0, (a, c) => a + c.soLuong * c.donGia))}',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: Color(0xFF0068A9),
+                          ),
+                        ),
+                      ),
+                    ),
                 ] else if (!b.daThucHien) ...[
                   const SizedBox(height: 6),
                   Text(
@@ -470,8 +496,63 @@ extension _ChiTietBaoTriQuyTrinhUi on _WorkOrderBaoTriDetailScreenState {
               ],
             ),
           ),
+        // Tổng tiền tất cả bước
+        Builder(builder: (_) {
+          final tong = _dsBuocFull.fold<int>(
+            0,
+                (a, b) => a +
+                b.vatTu.fold<int>(
+                    0, (x, c) => x + (c.donGia > 0 ? c.soLuong * c.donGia : 0)),
+          );
+          if (tong <= 0) return const SizedBox.shrink();
+          return Container(
+            margin: const EdgeInsets.only(top: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF0068A9).withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                  color: const Color(0xFF0068A9).withValues(alpha: 0.25)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.payments_outlined,
+                    size: 18, color: Color(0xFF0068A9)),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Tổng tiền vật tư (tất cả bước)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13.5,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+                Text(
+                  _fmtTienVt(tong),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: Color(0xFF0068A9),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
+  }
+
+  String _fmtTienVt(int v) {
+    final s = v.toString();
+    final buf = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) buf.write('.');
+      buf.write(s[i]);
+    }
+    return '$buf ₫';
   }
 
   Widget _buildXuongActions(HoSoBaoTri hs) {
