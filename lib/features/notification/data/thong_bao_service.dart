@@ -46,6 +46,7 @@ class ThongBaoRealtimeService {
     await _taiDaXuLyLocal();
     if (_ready) return;
 
+    // Icon status bar / thông báo = logo app (mipmap)
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings();
     await _plugin.initialize(
@@ -140,16 +141,37 @@ class ThongBaoRealtimeService {
   Future<void> _hienThongBaoNgoaiApp(ThongBaoItem tb) async {
     if (!_ready) return;
 
+    final isBt = tb.loai == 'PhanCongBT' ||
+        (tb.tieuDe.toLowerCase().contains('bảo trì'));
+    final tieuDe = isBt
+        ? '🔧 Phân công bảo trì mới'
+        : '🛠️ Phân công sửa chữa mới';
+    final noiDung = tb.noiDung.trim().isNotEmpty
+        ? tb.noiDung
+        : 'Bạn có yêu cầu công việc mới. Nhấn Tiến hành để mở.';
+
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        'opc_phan_cong',
-        'Phân công công việc',
+        // Channel mới để style/logo cập nhật trên Android
+        'opc_phan_cong_v2',
+        'Yêu cầu công việc OPC',
         channelDescription:
-        'Thông báo khi được phân công bảo trì / sửa chữa',
+        'Thông báo phân công bảo trì / sửa chữa — Maintenance app OPC',
         importance: Importance.high,
         priority: Priority.high,
+        visibility: NotificationVisibility.public,
         color: const Color(0xFF0068A9),
-        styleInformation: BigTextStyleInformation(tb.noiDung),
+        colorized: true,
+        // Logo app (không dùng icon Flutter mặc định)
+        icon: '@mipmap/ic_launcher',
+        largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
+        styleInformation: BigTextStyleInformation(
+          noiDung,
+          contentTitle: tieuDe,
+          summaryText: 'Maintenance app OPC',
+          htmlFormatBigText: false,
+          htmlFormatContentTitle: false,
+        ),
         actions: const <AndroidNotificationAction>[
           AndroidNotificationAction(
             actionTienHanh,
@@ -158,6 +180,7 @@ class ThongBaoRealtimeService {
             cancelNotification: true,
           ),
         ],
+        ticker: tieuDe,
       ),
       iOS: const DarwinNotificationDetails(
         presentAlert: true,
@@ -169,8 +192,8 @@ class ThongBaoRealtimeService {
     try {
       await _plugin.show(
         tb.maThongBao,
-        tb.tieuDe,
-        tb.noiDung,
+        tieuDe,
+        noiDung,
         details,
         payload: '${tb.maThongBao}',
       );

@@ -23,6 +23,16 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
   String _fmtDt(DateTime d) =>
       '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
 
+  /// Ngày + giờ:phút:giây chi tiết
+  String _fmtDtFull(DateTime d) {
+    final dd = d.day.toString().padLeft(2, '0');
+    final mm = d.month.toString().padLeft(2, '0');
+    final hh = d.hour.toString().padLeft(2, '0');
+    final mi = d.minute.toString().padLeft(2, '0');
+    final ss = d.second.toString().padLeft(2, '0');
+    return '$dd/$mm/${d.year} $hh:$mi:$ss';
+  }
+
   String _fmtGio(DateTime d) =>
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 
@@ -372,13 +382,27 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                   _row('Ngày phân công', _fmtDt(y.ngayPhanCong)),
                   if (y.ngayDuKienBaoTri != null)
                     _row('Ngày dự kiến BT', _fmtDt(y.ngayDuKienBaoTri!)),
-                  if (y.thoiGianDuKien != null)
-                    _row('Thời gian dự kiến',
-                        formatThoiGianDuKienHienThi(y.thoiGianDuKien)),
-                  if (y.ngayBatDauDuKien != null)
-                    _row('Giờ bắt đầu', _fmtGio(y.ngayBatDauDuKien!)),
-                  if (y.ngayKetThucDuKien != null)
-                    _row('Giờ kết thúc', _fmtGio(y.ngayKetThucDuKien!)),
+                  // Thời gian thực tế (giờ:phút:giây chi tiết)
+                  _row(
+                    'Thời gian bắt đầu',
+                    y.thoiDiemBatDauThucTe != null
+                        ? _fmtDtFull(y.thoiDiemBatDauThucTe!)
+                        : 'Chưa bắt đầu quy trình',
+                  ),
+                  _row(
+                    'Thời gian kết thúc',
+                    y.thoiDiemKetThucThucTe != null
+                        ? _fmtDtFull(y.thoiDiemKetThucThucTe!)
+                        : 'Chưa xác nhận (Xưởng)',
+                  ),
+                  _row(
+                    'Thời gian dự kiến',
+                    // = kết thúc − bắt đầu khi đủ 2 mốc; fallback field API
+                    y.thoiLuongThucTe ??
+                        (y.thoiGianDuKien != null
+                            ? formatThoiGianDuKienHienThi(y.thoiGianDuKien)
+                            : '—'),
+                  ),
                 ]),
 
                 // Nội dung công việc + Nhân viên được phân công (ngay dưới)

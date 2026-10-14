@@ -93,6 +93,7 @@ class HoSoBaoTri {
   final bool? choXuongXacNhanQuyTrinhFlag;
   /// Thời điểm NVKT lần đầu bấm «Tiến hành quy trình».
   final DateTime? thoiDiemBatDauThucTe;
+  final DateTime? thoiDiemKetThucThucTe;
   /// Các bước quy trình đã chọn khi tạo / Tổ trưởng tích.
   final List<BuocQuyTrinhHs> danhSachBuocQuyTrinh;
 
@@ -125,6 +126,7 @@ class HoSoBaoTri {
     this.rowVersion,
     this.choXuongXacNhanQuyTrinhFlag,
     this.thoiDiemBatDauThucTe,
+    this.thoiDiemKetThucThucTe,
     this.danhSachBuocQuyTrinh = const [],
   });
 
@@ -246,6 +248,8 @@ class HoSoBaoTri {
           j['ChoXuongXacNhanQuyTrinh'] == true,
       thoiDiemBatDauThucTe:
       asDate(j['thoiDiemBatDauThucTe'] ?? j['ThoiDiemBatDauThucTe']),
+      thoiDiemKetThucThucTe:
+      asDate(j['thoiDiemKetThucThucTe'] ?? j['ThoiDiemKetThucThucTe']),
       danhSachBuocQuyTrinh: dsBuoc,
     );
   }
@@ -341,6 +345,8 @@ class YeuCauPhanCong {
   final bool laNguoiGhiChep;
   /// Thời điểm NVKT lần đầu bấm «Tiến hành quy trình» (null = chưa bắt đầu).
   final DateTime? thoiDiemBatDauThucTe;
+  /// Thời điểm Xưởng bấm «Xác nhận» quy trình (null = chưa xác nhận).
+  final DateTime? thoiDiemKetThucThucTe;
 
   YeuCauPhanCong({
     required this.maPhanCong,
@@ -361,6 +367,7 @@ class YeuCauPhanCong {
     this.ngayTaoHoSo,
     this.laNguoiGhiChep = true, // mặc định true cho dữ liệu cũ
     this.thoiDiemBatDauThucTe,
+    this.thoiDiemKetThucThucTe,
   });
 
   /// Đã có NVKT bấm Tiến hành ít nhất 1 lần (áp dụng mọi tài khoản NVKT).
@@ -427,7 +434,22 @@ class YeuCauPhanCong {
       laNguoiGhiChep: laGhiChep,
       thoiDiemBatDauThucTe: asDate(
           j['thoiDiemBatDauThucTe'] ?? j['ThoiDiemBatDauThucTe']),
+      thoiDiemKetThucThucTe: asDate(
+          j['thoiDiemKetThucThucTe'] ?? j['ThoiDiemKetThucThucTe']),
     );
+  }
+
+  /// Thời lượng thực tế = kết thúc − bắt đầu (khi đủ 2 mốc).
+  String? get thoiLuongThucTe {
+    final a = thoiDiemBatDauThucTe;
+    final b = thoiDiemKetThucThucTe;
+    if (a == null || b == null) return null;
+    var span = b.difference(a);
+    if (span.isNegative) span = Duration.zero;
+    final h = span.inHours;
+    final m = span.inMinutes.remainder(60);
+    final s = span.inSeconds.remainder(60);
+    return '$h giờ $m phút $s giây';
   }
 }
 /// Hồ sơ sửa chữa (Xưởng tạo → Tổ trưởng phân công)
@@ -454,6 +476,7 @@ class HoSoSuaChua {
   final bool? choXuongXacNhanQuyTrinhFlag;
   /// Thời điểm NVKT tiến hành quy trình.
   final DateTime? thoiDiemBatDauThucTe;
+  final DateTime? thoiDiemKetThucThucTe;
   /// Bước quy trình đã chọn lúc tạo (mô tả có thể đã sửa).
   final List<BuocQuyTrinhHs> danhSachBuocQuyTrinh;
 
@@ -479,6 +502,7 @@ class HoSoSuaChua {
     this.rowVersion,
     this.choXuongXacNhanQuyTrinhFlag,
     this.thoiDiemBatDauThucTe,
+    this.thoiDiemKetThucThucTe,
     this.danhSachBuocQuyTrinh = const [],
   });
 
@@ -577,6 +601,8 @@ class HoSoSuaChua {
           j['ChoXuongXacNhanQuyTrinh'] == true,
       thoiDiemBatDauThucTe:
       asDate(j['thoiDiemBatDauThucTe'] ?? j['ThoiDiemBatDauThucTe']),
+      thoiDiemKetThucThucTe:
+      asDate(j['thoiDiemKetThucThucTe'] ?? j['ThoiDiemKetThucThucTe']),
       danhSachBuocQuyTrinh: dsBuocSc,
     );
   }
