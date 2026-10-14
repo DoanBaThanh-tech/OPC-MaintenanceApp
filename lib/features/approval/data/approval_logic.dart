@@ -3,23 +3,28 @@ import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_constants.dart';
 import '../../../core/network/api_exception.dart';
+import '../../work_order/data/services/material_usage_service.dart';
+import '../../work_order/data/services/work_order_service.dart';
 
 // ============================================================
 // MODEL
 // ============================================================
 
-/// Bước quy trình trên hồ sơ duyệt (GĐ xem trạng thái đầy đủ).
+/// Bước quy trình trên hồ sơ duyệt (GĐ xem đủ bước chọn + chưa chọn).
 class BuocQuyTrinhDuyet {
   final int soBuoc;
   final String moTa;
   final String trangThai;
   final String? tenNhanVien;
+  /// null = suy từ trangThai; true/false = gộp từ mẫu thiết bị.
+  final bool? daChonFlag;
 
   const BuocQuyTrinhDuyet({
     required this.soBuoc,
     required this.moTa,
     required this.trangThai,
     this.tenNhanVien,
+    this.daChonFlag,
   });
 
   bool get daThucHien {
@@ -31,6 +36,7 @@ class BuocQuyTrinhDuyet {
   }
 
   bool get daChon {
+    if (daChonFlag != null) return daChonFlag!;
     final t = trangThai.toLowerCase();
     return daThucHien ||
         t.contains('chọn') ||
@@ -41,10 +47,13 @@ class BuocQuyTrinhDuyet {
 
   /// Nhãn trạng thái dễ đọc cho giám đốc.
   String get nhanTrangThai {
+    if (!daChon) return 'Không chọn';
     final t = trangThai.trim();
-    if (t.isEmpty) return 'Chưa thực hiện';
+    if (t.isEmpty) return 'Đã chọn — chưa làm';
     final low = t.toLowerCase();
-    if (low.contains('hoàn thành') || low == 'dathuchien' || low.contains('đã thực hiện')) {
+    if (low.contains('hoàn thành') ||
+        low == 'dathuchien' ||
+        low.contains('đã thực hiện')) {
       return 'Đã thực hiện';
     }
     if (low.contains('đang')) return 'Đang thực hiện';
@@ -57,9 +66,11 @@ class BuocQuyTrinhDuyet {
     int n(dynamic v) => (v as num?)?.toInt() ?? 0;
     return BuocQuyTrinhDuyet(
       soBuoc: n(j['soBuoc'] ?? j['SoBuoc']),
-      moTa: (j['moTaBuoc'] ?? j['MoTaBuoc'] ?? j['moTa'] ?? j['MoTa'] ?? '').toString(),
+      moTa: (j['moTaBuoc'] ?? j['MoTaBuoc'] ?? j['moTa'] ?? j['MoTa'] ?? '')
+          .toString(),
       trangThai: (j['trangThai'] ?? j['TrangThai'] ?? '').toString(),
       tenNhanVien: (j['tenNhanVien'] ?? j['TenNhanVien'])?.toString(),
+      daChonFlag: true, // bước từ hồ sơ = đã được tổ trưởng chọn
     );
   }
 }
@@ -340,6 +351,8 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
   ApprovalBaoTriDetailController(this.maHoSoBaoTri);
 
   HoSoBaoTriDuyet? hoSo;
+  /// Đủ bước mẫu BT (kể cả bước tổ trưởng không chọn).
+  List<BuocQuyTrinhDuyet> dsBuocDayDu = [];
   bool dangTai = true;
   bool dangXuLy = false;
   String? loi;
@@ -350,12 +363,107 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
     notifyListeners();
     try {
       hoSo = await ApprovalService.layChiTietBaoTri(maHoSoBaoTri);
+      await _gopBuocDayDu();
     } catch (e) {
       loi = 'Lỗi tải dữ liệu: $e';
+      dsBuocDayDu = [];
     } finally {
       dangTai = false;
       notifyListeners();
     }
+  }
+
+  /// Gộp quy trình mẫu thiết bị + bước đã chọn trên hồ sơ.
+  Future<void> _gopBuocDayDu() async {
+    final hs = hoSo;
+    if (hs == null) {
+      dsBuocDayDu = [];
+      return;
+    }
+    final selected = {
+      for (final b in hs.danhSachBuocQuyTrinh) b.soBuoc: b,
+    };
+
+    // Ưu tiên tiến độ mới nhất (nếu có)
+    try {
+      final tienDo = await WorkOrderService.layTienDoBuoc(
+        maHoSoBaoTri: hs.maHoSoBaoTri,
+      );
+      for (final m in tienDo) {
+        final so = (m['soBuoc'] as num?)?.toInt() ??
+            (m['SoBuoc'] as num?)?.toInt() ??
+            0;
+        if (so <= 0) continue;
+        final moTa = (m['moTaBuoc'] ?? m['MoTaBuoc'] ?? m['moTa'] ?? '')
+            .toString();
+        final tt = (m['trangThai'] ?? m['TrangThai'] ?? '').toString();
+        final ten = (m['tenNhanVien'] ?? m['TenNhanVien'])?.toString();
+        selected[so] = BuocQuyTrinhDuyet(
+          soBuoc: so,
+          moTa: moTa.isNotEmpty ? moTa : (selected[so]?.moTa ?? ''),
+          trangThai: tt.isNotEmpty ? tt : (selected[so]?.trangThai ?? ''),
+          tenNhanVien: ten ?? selected[so]?.tenNhanVien,
+          daChonFlag: true,
+        );
+      }
+    } catch (_) {
+      // Không chặn màn hình nếu API tiến độ lỗi
+    }
+
+    List<BuocQuyTrinhDuyet> mau = [];
+    final maTb = hs.maThietBi ?? 0;
+    if (maTb > 0) {
+      try {
+        final ds = await MaterialUsageService.layQuyTrinhThietBi(
+          maThietBi: maTb,
+          loaiCongViec: 'Bảo trì',
+        );
+        mau = ds
+            .map((b) => BuocQuyTrinhDuyet(
+          soBuoc: b.soBuoc,
+          moTa: b.moTa,
+          trangThai: '',
+          daChonFlag: false,
+        ))
+            .toList();
+      } catch (_) {}
+    }
+
+    if (mau.isEmpty) {
+      // Không có mẫu → chỉ hiện bước đã gắn hồ sơ
+      dsBuocDayDu = selected.values.toList()
+        ..sort((a, b) => a.soBuoc.compareTo(b.soBuoc));
+      return;
+    }
+
+    final out = <BuocQuyTrinhDuyet>[];
+    final used = <int>{};
+    for (final m in mau) {
+      final s = selected[m.soBuoc];
+      used.add(m.soBuoc);
+      if (s != null) {
+        out.add(BuocQuyTrinhDuyet(
+          soBuoc: m.soBuoc,
+          moTa: s.moTa.trim().isNotEmpty ? s.moTa : m.moTa,
+          trangThai: s.trangThai,
+          tenNhanVien: s.tenNhanVien,
+          daChonFlag: true,
+        ));
+      } else {
+        out.add(BuocQuyTrinhDuyet(
+          soBuoc: m.soBuoc,
+          moTa: m.moTa,
+          trangThai: '',
+          daChonFlag: false,
+        ));
+      }
+    }
+    // Bước chọn ngoài mẫu (nếu có)
+    for (final e in selected.entries) {
+      if (!used.contains(e.key)) out.add(e.value);
+    }
+    out.sort((a, b) => a.soBuoc.compareTo(b.soBuoc));
+    dsBuocDayDu = out;
   }
 
   Future<bool> xuLy({required String quyetDinh, String? lyDo}) async {

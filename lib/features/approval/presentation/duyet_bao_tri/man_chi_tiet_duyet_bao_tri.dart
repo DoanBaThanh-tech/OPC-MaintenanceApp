@@ -518,8 +518,12 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
   }
 
   Widget _buildQuyTrinhThucHien(HoSoBaoTriDuyet hs) {
-    final buoc = hs.danhSachBuocQuyTrinh;
+    // Đủ bước mẫu + bước tổ trưởng không chọn
+    final buoc = _controller.dsBuocDayDu.isNotEmpty
+        ? _controller.dsBuocDayDu
+        : hs.danhSachBuocQuyTrinh;
     final soDaLam = buoc.where((b) => b.daThucHien).length;
+    final soChon = buoc.where((b) => b.daChon).length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -535,7 +539,7 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
             ),
             if (buoc.isNotEmpty)
               Text(
-                '$soDaLam/${buoc.length} đã làm',
+                '$soChon/${buoc.length} chọn · $soDaLam đã làm',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
@@ -548,7 +552,7 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
         Text(
           buoc.isEmpty
               ? 'Chưa có bước quy trình trên hồ sơ này.'
-              : 'Danh sách bước và trạng thái thực hiện (chỉ xem).',
+              : 'Hiển thị đủ bước mẫu (kể cả bước tổ trưởng chưa chọn). Chỉ xem.',
           style: TextStyle(
               fontSize: 12.5, color: Colors.grey.shade600, height: 1.35),
         ),
@@ -559,12 +563,16 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
               decoration: BoxDecoration(
-                color: b.daThucHien
+                color: !b.daChon
+                    ? const Color(0xFFF1F5F9)
+                    : b.daThucHien
                     ? const Color(0xFF0068A9).withValues(alpha: 0.06)
                     : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: b.daThucHien
+                  color: !b.daChon
+                      ? Colors.grey.shade300
+                      : b.daThucHien
                       ? const Color(0xFF0068A9).withValues(alpha: 0.25)
                       : Colors.grey.shade200,
                 ),
@@ -577,14 +585,19 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
                     height: 28,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: b.daThucHien ? _primary : Colors.grey.shade300,
+                      color: !b.daChon
+                          ? Colors.grey.shade400
+                          : b.daThucHien
+                          ? _primary
+                          : Colors.grey.shade300,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Text(
                       '${b.soBuoc}',
                       style: TextStyle(
-                        color:
-                        b.daThucHien ? Colors.white : Colors.grey.shade700,
+                        color: (!b.daChon || b.daThucHien)
+                            ? Colors.white
+                            : Colors.grey.shade700,
                         fontWeight: FontWeight.w900,
                         fontSize: 12,
                       ),
@@ -597,11 +610,13 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
                       children: [
                         Text(
                           b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 13.5,
                             height: 1.35,
-                            color: Color(0xFF0F172A),
+                            color: b.daChon
+                                ? const Color(0xFF0F172A)
+                                : Colors.grey.shade600,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -611,7 +626,9 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
-                                color: (b.daThucHien
+                                color: (!b.daChon
+                                    ? Colors.blueGrey
+                                    : b.daThucHien
                                     ? AppColors.success
                                     : _primary)
                                     .withValues(alpha: 0.12),
@@ -622,7 +639,9 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.w800,
-                                  color: b.daThucHien
+                                  color: !b.daChon
+                                      ? Colors.blueGrey
+                                      : b.daThucHien
                                       ? AppColors.success
                                       : _primary,
                                 ),
