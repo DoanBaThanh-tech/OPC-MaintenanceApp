@@ -365,6 +365,15 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
                         ),
                       ],
 
+                      // —— Quy trình thực hiện (đầy đủ trạng thái từng bước) ——
+                      const SizedBox(height: 14),
+                      _fadeSlide(
+                        delayMs: 160,
+                        child: _softCard(
+                          child: _buildQuyTrinhThucHien(hs),
+                        ),
+                      ),
+
                       if (_controller.loi != null) ...[
                         const SizedBox(height: 12),
                         Text(
@@ -507,4 +516,144 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
       },
     );
   }
+
+  Widget _buildQuyTrinhThucHien(HoSoBaoTriDuyet hs) {
+    final buoc = hs.danhSachBuocQuyTrinh;
+    final soDaLam = buoc.where((b) => b.daThucHien).length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.checklist_rtl_rounded, size: 18, color: _primary),
+            const SizedBox(width: 8),
+            const Expanded(
+              child: Text(
+                'Quy trình thực hiện',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+              ),
+            ),
+            if (buoc.isNotEmpty)
+              Text(
+                '$soDaLam/${buoc.length} đã làm',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.grey.shade600,
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          buoc.isEmpty
+              ? 'Chưa có bước quy trình trên hồ sơ này.'
+              : 'Danh sách bước và trạng thái thực hiện (chỉ xem).',
+          style: TextStyle(
+              fontSize: 12.5, color: Colors.grey.shade600, height: 1.35),
+        ),
+        if (buoc.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          for (final b in buoc)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+              decoration: BoxDecoration(
+                color: b.daThucHien
+                    ? const Color(0xFF0068A9).withValues(alpha: 0.06)
+                    : const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: b.daThucHien
+                      ? const Color(0xFF0068A9).withValues(alpha: 0.25)
+                      : Colors.grey.shade200,
+                ),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: b.daThucHien ? _primary : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '${b.soBuoc}',
+                      style: TextStyle(
+                        color:
+                        b.daThucHien ? Colors.white : Colors.grey.shade700,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13.5,
+                            height: 1.35,
+                            color: Color(0xFF0F172A),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: (b.daThucHien
+                                    ? AppColors.success
+                                    : _primary)
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                b.nhanTrangThai,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: b.daThucHien
+                                      ? AppColors.success
+                                      : _primary,
+                                ),
+                              ),
+                            ),
+                            if ((b.tenNhanVien ?? '').trim().isNotEmpty) ...[
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  b.tenNhanVien!,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
 }

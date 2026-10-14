@@ -63,9 +63,10 @@ class AuthService {
   }
 
   /// [emailCaNhan]: Gmail đã đăng ký trên hồ sơ — dùng để tìm tài khoản và gửi OTP.
-  static Future<void> quenMatKhau(String emailCaNhan) async {
+  /// Trả về mã OTP dev (OtpTest) nếu server bật DevShowOtp — null khi gửi mail thật.
+  static Future<String?> quenMatKhau(String emailCaNhan) async {
     final e = emailCaNhan.trim();
-    await ApiClient.instance.post<Map<String, dynamic>>(
+    final data = await ApiClient.instance.post<Map<String, dynamic>>(
       '${ApiConstants.auth}/quen-mat-khau/yeu-cau',
       {
         'email': e,
@@ -73,6 +74,14 @@ class AuthService {
       },
       auth: false,
     );
+    final d = data['data'] ?? data['Data'];
+    if (d is Map) {
+      final otp = d['otpTest'] ?? d['OtpTest'];
+      if (otp != null && otp.toString().isNotEmpty) return otp.toString();
+    }
+    final otpTop = data['otpTest'] ?? data['OtpTest'];
+    if (otpTop != null && otpTop.toString().isNotEmpty) return otpTop.toString();
+    return null;
   }
 
   static Future<void> xacNhanOtp(String email, String maOtp) async {

@@ -543,7 +543,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                                       const SizedBox(width: 8),
                                       const Expanded(
                                         child: Text(
-                                          'Quy trình đã chọn',
+                                          'Quy trình thực hiện',
                                           style: TextStyle(
                                               fontWeight: FontWeight.w800,
                                               fontSize: 13.5),

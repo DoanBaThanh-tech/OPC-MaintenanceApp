@@ -8,11 +8,15 @@ import 'services/work_order_service.dart';
 // Logic cho work_order_repair_screens.dart
 
 /// Danh sách hồ sơ sửa chữa.
+/// Lọc năm theo ngày tạo hồ sơ (sửa chữa bất ngờ — không lập kế hoạch trước năm).
 class WorkOrderSuaChuaListController extends ChangeNotifier {
   List<HoSoSuaChua> danhSach = [];
   bool dangTai = true;
   String? loi;
   String? locTrangThai;
+
+  /// Mặc định chỉ xem năm hiện tại.
+  int locNam = DateTime.now().year;
 
   WorkOrderSuaChuaListController({String? trangThaiMacDinh}) {
     locTrangThai = trangThaiMacDinh;
@@ -23,8 +27,14 @@ class WorkOrderSuaChuaListController extends ChangeNotifier {
     loi = null;
     notifyListeners();
     try {
-      // Load tất cả rồi lọc client-side (giống hồ sơ bảo trì)
+      // Load tất cả rồi lọc client-side theo năm tạo + tab
       danhSach = await WorkOrderService.layDanhSachHoSoSuaChua(trangThai: null);
+      // Nếu năm đang chọn không còn hồ sơ và không phải năm hiện tại → về năm nay
+      final namHienTai = DateTime.now().year;
+      final namCoData = danhSach.map((h) => h.ngayTao.year).toSet();
+      if (locNam != namHienTai && !namCoData.contains(locNam)) {
+        locNam = namHienTai;
+      }
     } catch (e) {
       loi = e is ApiException ? e.message : '$e';
       danhSach = [];
@@ -39,9 +49,28 @@ class WorkOrderSuaChuaListController extends ChangeNotifier {
     notifyListeners();
   }
 
+  void datLocNam(int nam) {
+    locNam = nam;
+    notifyListeners();
+  }
+
+  /// Các năm có hồ sơ SC thực tế + luôn có năm hiện tại (để chọn mặc định).
+  /// Không bịa năm tương lai nếu chưa có hồ sơ tạo trong năm đó.
+  List<int> get cacNamCoHoSo {
+    final namHienTai = DateTime.now().year;
+    final set = danhSach.map((h) => h.ngayTao.year).toSet();
+    set.add(namHienTai);
+    final list = set.toList()..sort((a, b) => b.compareTo(a));
+    return list;
+  }
+
+  List<HoSoSuaChua> get danhSachTheoNam =>
+      danhSach.where((h) => h.ngayTao.year == locNam).toList();
+
   List<HoSoSuaChua> locTheoTab(String tab) {
-    if (tab == 'Tất cả') return List.from(danhSach);
-    return danhSach.where((h) {
+    final base = danhSachTheoNam;
+    if (tab == 'Tất cả') return List.from(base);
+    return base.where((h) {
       if (tab == 'Chờ phân công') {
         return h.trangThai == 'Chờ phân công' || h.trangThai == 'Đã duyệt';
       }

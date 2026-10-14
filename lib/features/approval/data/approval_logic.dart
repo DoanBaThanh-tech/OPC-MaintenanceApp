@@ -8,8 +8,65 @@ import '../../../core/network/api_exception.dart';
 // MODEL
 // ============================================================
 
+/// Bước quy trình trên hồ sơ duyệt (GĐ xem trạng thái đầy đủ).
+class BuocQuyTrinhDuyet {
+  final int soBuoc;
+  final String moTa;
+  final String trangThai;
+  final String? tenNhanVien;
+
+  const BuocQuyTrinhDuyet({
+    required this.soBuoc,
+    required this.moTa,
+    required this.trangThai,
+    this.tenNhanVien,
+  });
+
+  bool get daThucHien {
+    final t = trangThai.toLowerCase();
+    return t.contains('hoàn thành') ||
+        t.contains('đã thực hiện') ||
+        t == 'dathuchien' ||
+        t == 'done';
+  }
+
+  bool get daChon {
+    final t = trangThai.toLowerCase();
+    return daThucHien ||
+        t.contains('chọn') ||
+        t == 'duocchon' ||
+        t == 'được chọn' ||
+        t.isNotEmpty;
+  }
+
+  /// Nhãn trạng thái dễ đọc cho giám đốc.
+  String get nhanTrangThai {
+    final t = trangThai.trim();
+    if (t.isEmpty) return 'Chưa thực hiện';
+    final low = t.toLowerCase();
+    if (low.contains('hoàn thành') || low == 'dathuchien' || low.contains('đã thực hiện')) {
+      return 'Đã thực hiện';
+    }
+    if (low.contains('đang')) return 'Đang thực hiện';
+    if (low.contains('chọn') || low == 'duocchon') return 'Đã chọn — chưa làm';
+    if (low.contains('bỏ') || low.contains('không')) return 'Không chọn';
+    return t;
+  }
+
+  factory BuocQuyTrinhDuyet.fromJson(Map<String, dynamic> j) {
+    int n(dynamic v) => (v as num?)?.toInt() ?? 0;
+    return BuocQuyTrinhDuyet(
+      soBuoc: n(j['soBuoc'] ?? j['SoBuoc']),
+      moTa: (j['moTaBuoc'] ?? j['MoTaBuoc'] ?? j['moTa'] ?? j['MoTa'] ?? '').toString(),
+      trangThai: (j['trangThai'] ?? j['TrangThai'] ?? '').toString(),
+      tenNhanVien: (j['tenNhanVien'] ?? j['TenNhanVien'])?.toString(),
+    );
+  }
+}
+
 class HoSoBaoTriDuyet {
   final int maHoSoBaoTri;
+  final int? maThietBi;
   final String tenThietBi;
   final String? tenNguoiLap;
   final String? noiDungCongViec;
@@ -23,9 +80,11 @@ class HoSoBaoTriDuyet {
   final String? rowVersion;
   final int nam;
   final bool namTuKeHoach;
+  final List<BuocQuyTrinhDuyet> danhSachBuocQuyTrinh;
 
   HoSoBaoTriDuyet({
     required this.maHoSoBaoTri,
+    this.maThietBi,
     required this.tenThietBi,
     this.tenNguoiLap,
     this.noiDungCongViec,
@@ -39,6 +98,7 @@ class HoSoBaoTriDuyet {
     this.rowVersion,
     required this.nam,
     required this.namTuKeHoach,
+    this.danhSachBuocQuyTrinh = const [],
   });
 
   /// Giám đốc chỉ thấy hồ sơ khi Xưởng đã gửi (Chờ GĐ duyệt).
@@ -50,24 +110,39 @@ class HoSoBaoTriDuyet {
   bool get daHoanThanh => trangThai == 'Đã hoàn thành';
   bool get biTuChoi => trangThai == 'Từ chối';
 
-  factory HoSoBaoTriDuyet.fromJson(Map<String, dynamic> j) => HoSoBaoTriDuyet(
-    maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
-    tenThietBi: j['tenThietBi']?.toString() ?? '',
-    tenNguoiLap: j['tenNhanVienTao']?.toString(),
-    noiDungCongViec: j['noiDungCongViec']?.toString(),
-    thoiGianDuKien: j['thoiGianDuKien']?.toString(),
-    gioBatDauDuKien: j['gioBatDauDuKien']?.toString(),
-    gioKetThucDuKien: j['gioKetThucDuKien']?.toString(),
-    ngayDuKienBaoTri: j['ngayDuKienBaoTri'] != null
-        ? DateTime.tryParse(j['ngayDuKienBaoTri'].toString())
-        : null,
-    ngayTao: DateTime.parse(j['ngayTao'].toString()),
-    trangThai: j['trangThai']?.toString() ?? '',
-    lyDoTuChoi: j['lyDoTuChoi']?.toString(),
-    rowVersion: j['rowVersion']?.toString(),
-    nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
-    namTuKeHoach: j['namTuKeHoach'] == true,
-  );
+  factory HoSoBaoTriDuyet.fromJson(Map<String, dynamic> j) {
+    final rawBuoc = j['danhSachBuocQuyTrinh'] ?? j['DanhSachBuocQuyTrinh'];
+    final buoc = <BuocQuyTrinhDuyet>[];
+    if (rawBuoc is List) {
+      for (final e in rawBuoc) {
+        if (e is Map) {
+          buoc.add(BuocQuyTrinhDuyet.fromJson(Map<String, dynamic>.from(e)));
+        }
+      }
+      buoc.sort((a, b) => a.soBuoc.compareTo(b.soBuoc));
+    }
+    return HoSoBaoTriDuyet(
+      maHoSoBaoTri: (j['maHoSoBaoTri'] as num?)?.toInt() ?? 0,
+      maThietBi: (j['maThietBi'] as num?)?.toInt() ??
+          (j['MaThietBi'] as num?)?.toInt(),
+      tenThietBi: j['tenThietBi']?.toString() ?? '',
+      tenNguoiLap: j['tenNhanVienTao']?.toString(),
+      noiDungCongViec: j['noiDungCongViec']?.toString(),
+      thoiGianDuKien: j['thoiGianDuKien']?.toString(),
+      gioBatDauDuKien: j['gioBatDauDuKien']?.toString(),
+      gioKetThucDuKien: j['gioKetThucDuKien']?.toString(),
+      ngayDuKienBaoTri: j['ngayDuKienBaoTri'] != null
+          ? DateTime.tryParse(j['ngayDuKienBaoTri'].toString())
+          : null,
+      ngayTao: DateTime.parse(j['ngayTao'].toString()),
+      trangThai: j['trangThai']?.toString() ?? '',
+      lyDoTuChoi: j['lyDoTuChoi']?.toString(),
+      rowVersion: j['rowVersion']?.toString(),
+      nam: (j['nam'] as num?)?.toInt() ?? DateTime.now().year,
+      namTuKeHoach: j['namTuKeHoach'] == true,
+      danhSachBuocQuyTrinh: buoc,
+    );
+  }
 }
 
 class LichSuPheDuyetItem {

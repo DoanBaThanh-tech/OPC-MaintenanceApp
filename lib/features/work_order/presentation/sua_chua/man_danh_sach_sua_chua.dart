@@ -87,6 +87,85 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
   String _tenTt(String tt) =>
       tt == 'Chờ xác nhận' ? 'Đang thực hiện' : tt;
 
+  void _moBoLocNam() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) {
+        return AnimatedBuilder(
+          animation: _ctrl,
+          builder: (context, _) {
+            final nams = _ctrl.cacNamCoHoSo;
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Lọc theo năm tạo hồ sơ',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Chỉ các năm đã có hồ sơ sửa chữa được tạo. Không lập trước kế hoạch năm.',
+                    style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final n in nams)
+                        ChoiceChip(
+                          label: Text(
+                            n == DateTime.now().year
+                                ? 'Năm $n (hiện tại)'
+                                : 'Năm $n',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: _ctrl.locNam == n
+                                  ? Colors.white
+                                  : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          selected: _ctrl.locNam == n,
+                          selectedColor: _scPrimary,
+                          backgroundColor: const Color(0xFFF1F5F9),
+                          onSelected: (_) {
+                            _ctrl.datLocNam(n);
+                            Navigator.pop(context);
+                          },
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final top = MediaQuery.paddingOf(context).top;
@@ -199,7 +278,7 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
                               Text(
                                 _ctrl.dangTai
                                     ? 'Đang tải…'
-                                    : '${_ctrl.danhSach.length} hồ sơ',
+                                    : '${_ctrl.danhSachTheoNam.length} hồ sơ · Năm ${_ctrl.locNam}',
                                 style: TextStyle(
                                   color: Colors.white.withValues(alpha: 0.88),
                                   fontSize: 13,
@@ -209,6 +288,35 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
                             ],
                           ),
                         ),
+                        Material(
+                          color: Colors.white.withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(12),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: _moBoLocNam,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 8),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.calendar_month_rounded,
+                                      color: Colors.white, size: 18),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${_ctrl.locNam}',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
                         Material(
                           color: Colors.white.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(12),

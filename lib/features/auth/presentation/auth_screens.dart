@@ -877,8 +877,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     });
     try {
       final emailOtp = _emailOtpCtrl.text.trim();
-      await AuthService.quenMatKhau(emailOtp);
+      final otpDev = await AuthService.quenMatKhau(emailOtp);
       if (!mounted) return;
+      if (otpDev != null && otpDev.isNotEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Mã OTP (dev): $otpDev — nhập vào màn hình tiếp theo'),
+            duration: const Duration(seconds: 12),
+            backgroundColor: const Color(0xFF0068A9),
+          ),
+        );
+      }
       Navigator.push(
         context,
         PageRouteBuilder(
@@ -886,6 +895,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           pageBuilder: (_, __, ___) => OtpScreen(
             email: emailOtp,
             emailNhanOtp: emailOtp,
+            otpGoiYDev: otpDev,
           ),
           transitionsBuilder: (_, a, __, child) =>
               FadeTransition(opacity: a, child: child),
@@ -1022,10 +1032,12 @@ class _ErrorBanner extends StatelessWidget {
 class OtpScreen extends StatefulWidget {
   final String email;
   final String emailNhanOtp;
+  final String? otpGoiYDev;
   const OtpScreen({
     super.key,
     required this.email,
     required this.emailNhanOtp,
+    this.otpGoiYDev,
   });
   @override
   State<OtpScreen> createState() => _OtpScreenState();
@@ -1049,6 +1061,9 @@ class _OtpScreenState extends State<OtpScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    if (widget.otpGoiYDev != null && widget.otpGoiYDev!.isNotEmpty) {
+      _otpController.text = widget.otpGoiYDev!;
+    }
     _enter = AnimationController(
         vsync: this, duration: const Duration(milliseconds: 700));
     _fade = CurvedAnimation(parent: _enter, curve: Curves.easeOutCubic);
