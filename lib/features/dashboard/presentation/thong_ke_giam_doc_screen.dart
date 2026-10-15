@@ -136,7 +136,10 @@ class _ThongKeGiamDocScreenState extends State<ThongKeGiamDocScreen>
   }
 
   Widget _header() {
-    final years = List.generate(5, (i) => DateTime.now().year - 2 + i);
+    // Chỉ năm >= 2026 và đã có kế hoạch BT / SC hoàn thành (từ API).
+    final years = _ctrl.danhSachNam.isNotEmpty
+        ? _ctrl.danhSachNam
+        : <int>[_ctrl.nam < 2026 ? 2026 : _ctrl.nam];
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
@@ -177,7 +180,7 @@ class _ThongKeGiamDocScreenState extends State<ThongKeGiamDocScreen>
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<int>(
-                value: years.contains(_ctrl.nam) ? _ctrl.nam : years.last,
+                value: years.contains(_ctrl.nam) ? _ctrl.nam : years.first,
                 dropdownColor: _blue,
                 iconEnabledColor: Colors.white,
                 style: const TextStyle(

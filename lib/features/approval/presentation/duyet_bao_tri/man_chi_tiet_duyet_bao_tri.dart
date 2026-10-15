@@ -585,146 +585,163 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
           )
         else
           for (final b in buoc)
-            Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: b.daThucHien
-                    ? Colors.white
-                    : (!b.daChon
-                    ? const Color(0xFFF1F5F9)
-                    : const Color(0xFFF8FAFC)),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: b.daThucHien
-                      ? const Color(0xFFBAE6FD)
-                      : Colors.grey.shade200,
+            Opacity(
+              // Bước không chọn: làm mờ hơn để bước đã chọn nổi bật
+              opacity: b.daChon ? 1 : 0.55,
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: !b.daChon
+                      ? const Color(0xFFF1F5F9)
+                      : (b.daThucHien
+                      ? const Color(0xFFEFF8FF)
+                      : Colors.white),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: !b.daChon
+                        ? Colors.grey.shade300
+                        : (b.daThucHien
+                        ? const Color(0xFF7DD3FC)
+                        : const Color(0xFFBAE6FD)),
+                    width: b.daChon ? 1.4 : 1,
+                  ),
+                  boxShadow: b.daChon
+                      ? [
+                    BoxShadow(
+                      color: _primary.withValues(alpha: 0.10),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ]
+                      : null,
                 ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 28,
-                        height: 28,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: !b.daChon
-                              ? Colors.grey.shade400
-                              : (b.daThucHien ? _primary : Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          '${b.soBuoc}',
-                          style: TextStyle(
-                            color: (!b.daChon || b.daThucHien)
-                                ? Colors.white
-                                : Colors.grey.shade700,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 14,
-                            color: b.daChon
-                                ? const Color(0xFF0F172A)
-                                : Colors.grey.shade600,
-                          ),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: !b.daChon
-                              ? Colors.grey.shade100
-                              : (b.daThucHien
-                              ? const Color(0xFFD1FAE5)
-                              : const Color(0xFFE0F2FE)),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          b.nhanTrangThai,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        // Accent trái + số bước
+                        Container(
+                          width: 28,
+                          height: 28,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
                             color: !b.daChon
-                                ? Colors.grey.shade600
+                                ? Colors.grey.shade400
                                 : (b.daThucHien
                                 ? const Color(0xFF047857)
                                 : _primary),
+                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  if ((b.tenNhanVien ?? '').trim().isNotEmpty) ...[
-                    const SizedBox(height: 6),
-                    Text(
-                      'NVKT: ${b.tenNhanVien}',
-                      style: TextStyle(
-                          fontSize: 12, color: Colors.grey.shade600),
-                    ),
-                  ],
-                  // Vật tư gọn (khi có) — đơn giá + thành tiền
-                  if (b.vatTu.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    for (final vt in b.vatTu)
-                      if (vt.tenVatTu.isNotEmpty && vt.soLuong > 0)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 3),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.inventory_2_outlined,
-                                  size: 15, color: Color(0xFF0068A9)),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  vt.donGia > 0
-                                      ? '${vt.tenVatTu} × ${vt.soLuong} · ${_fmtTien(vt.donGia)}'
-                                      : '${vt.tenVatTu} × ${vt.soLuong}',
-                                  style: const TextStyle(fontSize: 13),
-                                ),
-                              ),
-                              if (vt.donGia > 0)
-                                Text(
-                                  _fmtTien(vt.thanhTien),
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.grey.shade800,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                    if (b.vatTu.any((e) => e.donGia > 0))
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 2),
                           child: Text(
-                            'Tổng bước: ${_fmtTien(b.vatTu.fold<int>(0, (a, e) => a + e.thanhTien))}',
-                            style: TextStyle(
+                            '${b.soBuoc}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
                               fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: _primary,
                             ),
                           ),
                         ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            b.moTa.isEmpty ? 'Bước ${b.soBuoc}' : b.moTa,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 14,
+                              color: b.daChon
+                                  ? const Color(0xFF0F172A)
+                                  : Colors.grey.shade600,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: !b.daChon
+                                ? Colors.grey.shade100
+                                : (b.daThucHien
+                                ? const Color(0xFFD1FAE5)
+                                : const Color(0xFFE0F2FE)),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            b.nhanTrangThai,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w800,
+                              color: !b.daChon
+                                  ? Colors.grey.shade600
+                                  : (b.daThucHien
+                                  ? const Color(0xFF047857)
+                                  : _primary),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if ((b.tenNhanVien ?? '').trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'NVKT: ${b.tenNhanVien}',
+                        style: TextStyle(
+                            fontSize: 12, color: Colors.grey.shade600),
                       ),
+                    ],
+                    // Vật tư gọn (khi có) — đơn giá + thành tiền
+                    if (b.vatTu.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      for (final vt in b.vatTu)
+                        if (vt.tenVatTu.isNotEmpty && vt.soLuong > 0)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 3),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.inventory_2_outlined,
+                                    size: 15, color: Color(0xFF0068A9)),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    vt.donGia > 0
+                                        ? '${vt.tenVatTu} × ${vt.soLuong} · ${_fmtTien(vt.donGia)}'
+                                        : '${vt.tenVatTu} × ${vt.soLuong}',
+                                    style: const TextStyle(fontSize: 13),
+                                  ),
+                                ),
+                                if (vt.donGia > 0)
+                                  Text(
+                                    _fmtTien(vt.thanhTien),
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.grey.shade800,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                      if (b.vatTu.any((e) => e.donGia > 0))
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Tổng bước: ${_fmtTien(b.vatTu.fold<int>(0, (a, e) => a + e.thanhTien))}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                color: _primary,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ],
-                ],
+                ),
               ),
-            ),
+            ), // Opacity
         // Tổng tiền tất cả bước
         if (tongTien > 0) ...[
           const SizedBox(height: 4),

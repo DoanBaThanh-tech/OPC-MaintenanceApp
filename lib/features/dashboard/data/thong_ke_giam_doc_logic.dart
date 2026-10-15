@@ -39,6 +39,8 @@ class ThongKeThang {
 
 class ThongKeGiamDocData {
   final int nam;
+  /// Năm được phép chọn: >= 2026 và có kế hoạch BT hoặc SC đã hoàn thành.
+  final List<int> danhSachNam;
   final int tongBaoTri;
   final int tongBaoTriHoanThanh;
   final int tongSuaChua;
@@ -49,6 +51,7 @@ class ThongKeGiamDocData {
 
   const ThongKeGiamDocData({
     required this.nam,
+    required this.danhSachNam,
     required this.tongBaoTri,
     required this.tongBaoTriHoanThanh,
     required this.tongSuaChua,
@@ -60,6 +63,15 @@ class ThongKeGiamDocData {
 
   factory ThongKeGiamDocData.fromJson(Map<String, dynamic> j) {
     int n(dynamic v) => (v as num?)?.toInt() ?? 0;
+    final rawNam = j['danhSachNam'] ?? j['DanhSachNam'];
+    final dsNam = <int>[];
+    if (rawNam is List) {
+      for (final e in rawNam) {
+        final y = n(e);
+        if (y >= 2026) dsNam.add(y);
+      }
+    }
+    dsNam.sort();
     final raw = j['theoThang'] ?? j['TheoThang'];
     final list = <ThongKeThang>[];
     if (raw is List) {
@@ -84,7 +96,8 @@ class ThongKeGiamDocData {
           ).copyWithThang(m);
     });
     return ThongKeGiamDocData(
-      nam: n(j['nam'] ?? j['Nam']).clamp(2000, 2100),
+      nam: n(j['nam'] ?? j['Nam']).clamp(2026, 2100),
+      danhSachNam: dsNam,
       tongBaoTri: n(j['tongBaoTri'] ?? j['TongBaoTri']),
       tongBaoTriHoanThanh:
       n(j['tongBaoTriHoanThanh'] ?? j['TongBaoTriHoanThanh']),
@@ -114,10 +127,13 @@ class ThongKeGiamDocController extends ChangeNotifier {
   ThongKeGiamDocData? data;
   bool dangTai = true;
   String? loi;
-  int nam = DateTime.now().year;
+  int nam = DateTime.now().year < 2026 ? 2026 : DateTime.now().year;
+  /// Năm dropdown: chỉ >= 2026 và có dữ liệu đủ điều kiện.
+  List<int> danhSachNam = [];
 
   Future<void> tai({int? namMoi}) async {
     if (namMoi != null) nam = namMoi;
+    if (nam < 2026) nam = 2026;
     dangTai = true;
     loi = null;
     notifyListeners();
@@ -127,6 +143,28 @@ class ThongKeGiamDocController extends ChangeNotifier {
         query: {'nam': nam},
       );
       data = ThongKeGiamDocData.fromJson(raw);
+      if (data!.danhSachNam.isNotEmpty) {
+        danhSachNam = List<int>.from(data!.danhSachNam);
+        // Nếu năm đang chọn không còn trong list → chuyển sang năm mới nhất có dữ liệu
+        if (!danhSachNam.contains(nam)) {
+          nam = danhSachNam.last;
+          if (data!.nam != nam) {
+            final raw2 = await ApiClient.instance.get<Map<String, dynamic>>(
+              ApiConstants.thongKeGiamDoc,
+              query: {'nam': nam},
+            );
+            data = ThongKeGiamDocData.fromJson(raw2);
+            if (data!.danhSachNam.isNotEmpty) {
+              danhSachNam = List<int>.from(data!.danhSachNam);
+            }
+          }
+        }
+      } else {
+        // Chưa có năm đủ điều kiện — chỉ hiện năm hiện tại nếu >= 2026 (trống số liệu)
+        final y = DateTime.now().year < 2026 ? 2026 : DateTime.now().year;
+        danhSachNam = [y];
+        nam = y;
+      }
     } on ApiException catch (e) {
       loi = e.message;
       data = null;
@@ -141,6 +179,8 @@ class ThongKeGiamDocController extends ChangeNotifier {
 
   void doiNam(int n) {
     if (n == nam) return;
+    if (n < 2026) return;
+    if (danhSachNam.isNotEmpty && !danhSachNam.contains(n)) return;
     tai(namMoi: n);
   }
 }

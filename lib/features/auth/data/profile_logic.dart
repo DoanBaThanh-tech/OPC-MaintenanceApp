@@ -60,12 +60,17 @@ class ProfileRules {
     return null;
   }
 
-  /// Chỉ chữ số 0–9, tối đa 10 số.
+  /// Bắt buộc đúng 10 chữ số (0–9) — thiếu/thừa không cho lưu.
   static String? kiemTraSdt(String? raw) {
     final t = (raw ?? '').trim();
-    if (t.isEmpty) return null;
-    if (!RegExp(r'^\d{1,10}$').hasMatch(t)) {
-      return 'Số điện thoại chỉ gồm số, tối đa 10 chữ số.';
+    if (t.isEmpty) {
+      return 'Vui lòng nhập số điện thoại đủ 10 chữ số.';
+    }
+    if (!RegExp(r'^\d+$').hasMatch(t)) {
+      return 'Số điện thoại chỉ được nhập số (không chữ, không ký tự đặc biệt).';
+    }
+    if (t.length != 10) {
+      return 'Số điện thoại phải đủ đúng 10 chữ số (hiện ${t.length}/10).';
     }
     return null;
   }
