@@ -385,8 +385,8 @@ class _ThongKeGiamDocScreenState extends State<ThongKeGiamDocScreen>
               WidgetStatePropertyAll(const Color(0xFF0B6BCB).withValues(alpha: 0.08)),
               columns: const [
                 DataColumn(label: Text('Tháng')),
-                DataColumn(label: Text('TB bảo trì')),
-                DataColumn(label: Text('TB sửa chữa')),
+                DataColumn(label: Text('BT đã HT')),
+                DataColumn(label: Text('SC đã HT')),
                 DataColumn(label: Text('SL vật tư')),
                 DataColumn(label: Text('Tổng tiền VT')),
               ],
@@ -520,7 +520,7 @@ class _BarChartBtSc extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
           ),
           child: const Text(
-            'Mỗi cặp cột = 1 tháng · Số trên cột xanh = số TB bảo trì · Số trên cột cam = số TB sửa chữa',
+            'Mỗi cặp cột = 1 tháng · Chỉ đếm thiết bị đã hoàn thành bảo trì (xanh) / sửa chữa (cam)',
             style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600, height: 1.35),
           ),
         ),
@@ -551,8 +551,7 @@ class _BarChartBtSc extends StatelessWidget {
                                   Color(0xFF38BDF8)
                                 ],
                                 tooltip:
-                                'Tháng ${t.thang}: ${t.soBaoTri} thiết bị bảo trì'
-                                    '${t.soBaoTriHoanThanh > 0 ? ' (HT: ${t.soBaoTriHoanThanh})' : ''}',
+                                'Tháng ${t.thang}: ${t.soBaoTri} thiết bị bảo trì đã hoàn thành',
                               ),
                             ),
                             const SizedBox(width: 2),
@@ -565,8 +564,7 @@ class _BarChartBtSc extends StatelessWidget {
                                   Color(0xFFFBBF24)
                                 ],
                                 tooltip:
-                                'Tháng ${t.thang}: ${t.soSuaChua} thiết bị sửa chữa'
-                                    '${t.soSuaChuaHoanThanh > 0 ? ' (HT: ${t.soSuaChuaHoanThanh})' : ''}',
+                                'Tháng ${t.thang}: ${t.soSuaChua} thiết bị sửa chữa đã hoàn thành',
                               ),
                             ),
                           ],
