@@ -1,11 +1,4 @@
 
-
- 
-
-
-
-
-
 🇻🇳 Tiếng Việt
 
 🔧 OPC Maintenance App - Quản lý hồ sơ bảo trì & sửa chữa thiết bị cơ điện
@@ -182,16 +175,36 @@ Service – gọi API / truy vấn
 
 📸 Screenshots
 
+<div align="center">
 
-<img width="404" height="718" alt="image" src="https://github.com/user-attachments/assets/fac9324c-550d-4c90-8a82-c02f76b54d37" /><img width="383" height="718" alt="image" src="https://github.com/user-attachments/assets/8f14aac8-c12c-46d6-9b4d-2be0e586656b" />
-<img width="403" height="718" alt="image" src="https://github.com/user-attachments/assets/6fb3b7a4-dc29-44c0-9579-21d8b3fe7357" /><img width="403" height="718" alt="image" src="https://github.com/user-attachments/assets/21db9927-d6fd-4367-bcce-e50a41c07144" />
-<img width="791" height="718" alt="image" src="https://github.com/user-attachments/assets/c56f0b1a-9010-4a88-af7c-c80a46890b37" /><img width="812" height="718" alt="image" src="https://github.com/user-attachments/assets/c532ae60-60d3-4c6d-b948-379e69c57293" />
-<img width="968" height="564" alt="image" src="https://github.com/user-attachments/assets/a4af1fde-1ec5-4792-a9ba-3e42260460b2" /><img width="827" height="718" alt="image" src="https://github.com/user-attachments/assets/5ee7a011-92d9-4196-a554-1fcd26918e05" />
-<img width="802" height="718" alt="image" src="https://github.com/user-attachments/assets/b74eed8e-edec-4703-97d9-72a272b0fa94" />
-<img width="809" height="718" alt="image" src="https://github.com/user-attachments/assets/44fcd7b3-8ed7-4936-8a01-b49c04010a7f" />
-<img width="802" height="718" alt="image" src="https://github.com/user-attachments/assets/8f0de4b6-af36-4d5a-bef5-83e6fdc08e2e" />
+<img src="https://github.com/user-attachments/assets/bea81c66-b364-4a2a-8150-94289ca40fc8" width="140" />
+<img src="https://github.com/user-attachments/assets/7bf83598-d063-46a8-9bd5-2730bbf3d252" width="140" />
+<img src="https://github.com/user-attachments/assets/2149f644-27f7-422f-962e-7fc6098eac87" width="140" />
+<img src="https://github.com/user-attachments/assets/aa149b87-2f04-4635-81da-61b9888a8e71" width="140" />
 
-<img width="802" height="718" alt="image" src="https://github.com/user-attachments/assets/8fcc5ffd-e33c-4ad9-8287-980373b80b2d" />
+<br/><br/>
+
+<img src="https://github.com/user-attachments/assets/0f1d0441-336c-4479-845c-0a72428ff43b" width="140" />
+<img src="https://github.com/user-attachments/assets/e3070b93-6d05-42de-afff-a2e66353a669" width="140" />
+<img src="https://github.com/user-attachments/assets/a465c5e7-5095-4dc3-8c62-58c8209cfd8c" width="140" />
+<img src="https://github.com/user-attachments/assets/1917fda6-03bd-41ed-af20-fc1a7bc0fcf7" width="140" />
+
+<br/><br/>
+
+<img src="https://github.com/user-attachments/assets/29b4f8b0-7a3a-4bdb-b853-440cfcc852e3" width="140" />
+<img src="https://github.com/user-attachments/assets/726e6461-8641-4e6a-ada3-d3a2e2f6e1ae" width="140" />
+<img src="https://github.com/user-attachments/assets/a16ce750-b98a-4a4f-8dcb-65b6f5eabb94" width="140" />
+
+</div>
+
+
+
+
+
+
+
+
+
 
 
 
@@ -444,8 +457,6 @@ Service – API / data access
 📸 Screenshots
 
 
-
-Replace the placeholders below with real image URLs after uploading screenshots to GitHub.
 
 
 
