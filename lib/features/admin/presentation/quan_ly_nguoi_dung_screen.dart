@@ -233,7 +233,10 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                       TextField(
                         controller: mkCtrl,
                         obscureText: true,
-                        decoration: dec(label: 'Mật khẩu *'),
+                        decoration: dec(
+                          label: 'Mật khẩu *',
+                          hint: '≥8 ký tự, có chữ in hoa, số và ký tự đặc biệt',
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Text('Vai trò *',
@@ -291,9 +294,9 @@ class _QuanLyNguoiDungScreenState extends State<QuanLyNguoiDungScreen>
                             setModal(() => loiForm = 'Chọn vai trò.');
                             return;
                           }
-                          if (mkCtrl.text.isEmpty) {
-                            setModal(
-                                    () => loiForm = 'Vui lòng nhập mật khẩu.');
+                          final eMk = AdminNguoiDungRules.kiemTraMatKhau(mkCtrl.text);
+                          if (eMk != null) {
+                            setModal(() => loiForm = eMk);
                             return;
                           }
                           final err = await _ctrl.taoTaiKhoan(

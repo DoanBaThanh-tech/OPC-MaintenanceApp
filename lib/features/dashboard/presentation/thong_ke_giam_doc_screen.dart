@@ -357,7 +357,16 @@ class _ThongKeGiamDocScreenState extends State<ThongKeGiamDocScreen>
     );
   }
 
+
   Widget _bangChiTiet(ThongKeGiamDocData d) {
+    final months = d.theoThang
+        .where((t) =>
+    t.soBaoTri > 0 ||
+        t.soSuaChua > 0 ||
+        t.soLuongVatTu > 0 ||
+        t.tongTienVatTu > 0)
+        .toList();
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -374,44 +383,128 @@ class _ThongKeGiamDocScreenState extends State<ThongKeGiamDocScreen>
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Padding(
-            padding: EdgeInsets.fromLTRB(14, 14, 14, 8),
-            child: Text('Chi tiết theo tháng',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15)),
+            padding: EdgeInsets.fromLTRB(14, 14, 14, 4),
+            child: Text(
+              'Chi tiết theo tháng',
+              style: TextStyle(fontWeight: FontWeight.w900, fontSize: 15),
+            ),
           ),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              headingRowColor:
-              WidgetStatePropertyAll(const Color(0xFF0B6BCB).withValues(alpha: 0.08)),
-              columns: const [
-                DataColumn(label: Text('Tháng')),
-                DataColumn(label: Text('BT đã HT')),
-                DataColumn(label: Text('SC đã HT')),
-                DataColumn(label: Text('SL vật tư')),
-                DataColumn(label: Text('Tổng tiền VT')),
-              ],
-              rows: d.theoThang.map((t) {
-                return DataRow(cells: [
-                  DataCell(Text('Tháng ${t.thang}',
-                      style: const TextStyle(fontWeight: FontWeight.w800))),
-                  DataCell(Text('${t.soBaoTri} TB',
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 0, 14, 8),
+            child: Text(
+              'Mỗi tháng gồm: bảo trì đã HT · sửa chữa đã HT · số lượng vật tư · tổng tiền VT',
+              style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade600),
+            ),
+          ),
+          if (months.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(14, 8, 14, 16),
+              child: Text(
+                'Chưa có dữ liệu hoàn thành trong năm này.',
+                style: TextStyle(color: Colors.blueGrey),
+              ),
+            )
+          else
+            ...months.map((t) {
+              return Container(
+                margin: const EdgeInsets.fromLTRB(12, 0, 12, 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tháng ${t.thang}',
                       style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0B6BCB)))),
-                  DataCell(Text('${t.soSuaChua} TB',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFFD97706)))),
-                  DataCell(Text('${t.soLuongVatTu}',
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF059669)))),
-                  DataCell(Text(_fmtTien(t.tongTienVatTu),
-                      style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF7C3AED)))),
-                ]);
-              }).toList(),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _chiTietChiSo(
+                            label: 'Bảo trì đã HT',
+                            value: '${t.soBaoTri} TB',
+                            color: const Color(0xFF0B6BCB),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _chiTietChiSo(
+                            label: 'Sửa chữa đã HT',
+                            value: '${t.soSuaChua} TB',
+                            color: const Color(0xFFD97706),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _chiTietChiSo(
+                            label: 'Số lượng vật tư',
+                            value: '${t.soLuongVatTu}',
+                            color: const Color(0xFF059669),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _chiTietChiSo(
+                            label: 'Tổng tiền VT',
+                            value: _fmtTien(t.tongTienVatTu),
+                            color: const Color(0xFF7C3AED),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }),
+          const SizedBox(height: 6),
+        ],
+      ),
+    );
+  }
+
+  Widget _chiTietChiSo({
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: color.withValues(alpha: 0.9),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+              color: color,
             ),
           ),
         ],
@@ -419,6 +512,7 @@ class _ThongKeGiamDocScreenState extends State<ThongKeGiamDocScreen>
     );
   }
 }
+
 
 class SliiverPad extends StatelessWidget {
   final EdgeInsets padding;

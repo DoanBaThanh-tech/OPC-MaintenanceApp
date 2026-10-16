@@ -63,10 +63,10 @@ class AuthService {
   }
 
   /// [emailCaNhan]: Gmail đã đăng ký trên hồ sơ — dùng để tìm tài khoản và gửi OTP.
-  /// Trả về mã OTP dev (OtpTest) nếu server bật DevShowOtp — null khi gửi mail thật.
-  static Future<String?> quenMatKhau(String emailCaNhan) async {
+  /// Gửi OTP về Gmail cá nhân đã gắn trên hồ sơ. Không trả mã OTP về app.
+  static Future<void> quenMatKhau(String emailCaNhan) async {
     final e = emailCaNhan.trim();
-    final data = await ApiClient.instance.post<Map<String, dynamic>>(
+    await ApiClient.instance.post<Map<String, dynamic>>(
       '${ApiConstants.auth}/quen-mat-khau/yeu-cau',
       {
         'email': e,
@@ -74,14 +74,6 @@ class AuthService {
       },
       auth: false,
     );
-    final d = data['data'] ?? data['Data'];
-    if (d is Map) {
-      final otp = d['otpTest'] ?? d['OtpTest'];
-      if (otp != null && otp.toString().isNotEmpty) return otp.toString();
-    }
-    final otpTop = data['otpTest'] ?? data['OtpTest'];
-    if (otpTop != null && otpTop.toString().isNotEmpty) return otpTop.toString();
-    return null;
   }
 
   static Future<void> xacNhanOtp(String email, String maOtp) async {
@@ -115,9 +107,9 @@ class AuthValidators {
   static final _emailRegex = RegExp(r'^[\w\.\-]+@[\w\-]+\.[\w\.\-]+$');
 
   // Khớp CHÍNH XÁC quy tắc trong QuanLyNguoiDungService.cs backend
-  // ≥8 ký tự, có số + ký tự đặc biệt (khớp AuthService API)
+  // ≥8 ký tự, có chữ in hoa + số + ký tự đặc biệt (khớp AuthService API)
   static final _matKhauRegex =
-  RegExp(r'^(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>_\-]).{8,}$');
+  RegExp(r'^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>_\-]).{8,}$');
 
   static String? email(String? value) {
     if (value == null || value.trim().isEmpty) return 'Vui lòng nhập email';
@@ -133,7 +125,7 @@ class AuthValidators {
   static String? matKhauMoi(String? value) {
     if (value == null || value.isEmpty) return 'Vui lòng nhập mật khẩu';
     if (!_matKhauRegex.hasMatch(value)) {
-      return 'Mật khẩu tối thiểu 8 ký tự, có 1 chữ số và 1 ký tự đặc biệt';
+      return 'Mật khẩu tối thiểu 8 ký tự, có 1 chữ in hoa, 1 chữ số và 1 ký tự đặc biệt';
     }
     return null;
   }

@@ -269,6 +269,20 @@ class AdminNguoiDungRules {
     return null;
   }
 
+  /// ≥8 ký tự, có 1 chữ in hoa, 1 số, 1 ký tự đặc biệt.
+  static final RegExp _matKhauRegex =
+  RegExp(r'^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*(),.?":{}|<>_\-]).{8,}$');
+
+  static String? kiemTraMatKhau(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Vui lòng nhập mật khẩu';
+    }
+    if (!_matKhauRegex.hasMatch(value)) {
+      return 'Mật khẩu tối thiểu 8 ký tự, có 1 chữ in hoa, 1 chữ số và 1 ký tự đặc biệt';
+    }
+    return null;
+  }
+
 }
 
 // ============ SERVICE ============
@@ -471,6 +485,8 @@ class QuanLyNguoiDungController extends ChangeNotifier {
     if (e1 != null) return e1;
     final e2 = AdminNguoiDungRules.kiemTraHoTen(hoTen);
     if (e2 != null) return e2;
+    final eMk = AdminNguoiDungRules.kiemTraMatKhau(matKhau);
+    if (eMk != null) return eMk;
     try {
       await AdminService.taoTaiKhoan(
         email: email.trim(),

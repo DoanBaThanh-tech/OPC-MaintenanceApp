@@ -688,7 +688,7 @@ class _ProfileSheetBodyState extends State<_ProfileSheetBody>
                             keyboardType: TextInputType.emailAddress,
                             decoration: _dec(
                               label: 'Email nhận OTP',
-                              hint: 'vd: tenban@gmail.com',
+                              hint: 'Gmail riêng, không trùng tài khoản khác',
                               prefix: Icons.alternate_email_rounded,
                             ),
                           ),
