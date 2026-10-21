@@ -171,9 +171,18 @@ mixin _XuLyQuyTrinhNvkt on _QuyTrinhNvktScreenStateBase {
           b.moTaCtrl.text = moTaTd.trim();
         }
 
-        if (tt == 'DuocChon') {
-          if (_cheDoCapNhat) {
-            // Không áp bước tổ trưởng — để trống như bước chưa chọn
+        if (tt == 'BoChon') {
+          // NVKT đã bỏ tích — xóa tiến độ trên server; giữ chưa chọn
+          b.daChon = false;
+          b.daXong = false;
+          b.khoaBoiNguoiKhac = false;
+          b.moRong = false;
+          b.daLuuDieuChinh = false;
+          b.dangMoCapNhat = false;
+          b.tenNguoiGiu = null;
+        } else if (tt == 'DuocChon') {
+          if (_cheDoCapNhat || _buocNguoiDungBoChon.contains(b.soBuoc)) {
+            // Không áp bước tổ trưởng nếu NVKT đã bỏ tích trong phiên này
             b.daChon = false;
             b.daXong = false;
             b.khoaBoiNguoiKhac = false;

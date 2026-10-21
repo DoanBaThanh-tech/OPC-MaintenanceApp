@@ -85,7 +85,8 @@ mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNvkt, _
                       // Chỉ tích chọn local — không claim DangLam (tránh khóa sớm).
                       // Khóa chỉ khi bấm Xong (DaXong trên server).
                       if (v == true) {
-                        await _dongBoTienDo(silent: true);
+                        // Không gọi _dongBoTienDo toàn bộ ở đây:
+                        // sync lại sẽ áp DuocChon của tổ trưởng → bước vừa bỏ tích bị tích lại.
                         if (b.khoaBoiNguoiKhac) {
                           if (mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
@@ -104,6 +105,7 @@ mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNvkt, _
                           return;
                         }
                         setState(() {
+                          _buocNguoiDungBoChon.remove(b.soBuoc);
                           b.daChon = true;
                           b.moRong = true;
                           b.tenNguoiGiu = _tenToi;
@@ -119,9 +121,9 @@ mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNvkt, _
                         )) {
                           return;
                         }
-                        final canBoServer = b.daXong || _cheDoCapNhat;
                         // Về trạng thái trắng ngay: bỏ tích + xóa VT + hết xanh
                         setState(() {
+                          _buocNguoiDungBoChon.add(b.soBuoc);
                           for (final v in b.vatTu) {
                             v.dispose();
                           }
@@ -133,12 +135,9 @@ mixin _GiaoDienTheBuocNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNvkt, _
                           b.daLuuDieuChinh = false;
                           b.tenNguoiGiu = null;
                         });
-                        // Lưu server ngay để back vào lại không còn tích
-                        if (canBoServer) {
-                          await _luuBoBuoc(b, silent: true);
-                        } else {
-                          await _luuNhapBuoc(b);
-                        }
+                        // Luôn BoChon trên server (xóa tiến độ DuocChon/DangLam)
+                        // — không dùng _luuNhapBuoc (DangLam) vì sync sẽ tích lại bước.
+                        await _luuBoBuoc(b, silent: true);
                       }
                     },
                   ),

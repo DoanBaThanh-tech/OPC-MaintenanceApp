@@ -445,14 +445,27 @@ class _TaoHoSoBaoTriThuCongScreenState extends State<TaoHoSoBaoTriThuCongScreen>
                           value: _ctrl.thietBiChon,
                           isExpanded: true,
                           decoration: _dec(
-                              'Thiết bị * (đang Sản xuất)'),
-                          items: _ctrl.dsThietBiTheoDanhMuc
-                              .map((tb) => DropdownMenuItem(
-                            value: tb,
-                            child: Text(tb.tenThietBi,
-                                overflow: TextOverflow.ellipsis),
-                          ))
-                              .toList(),
+                              'Thiết bị * (đang Sản xuất — xám = đã BT tháng này)'),
+                          items: _ctrl.dsThietBiTheoDanhMuc.map((tb) {
+                            final daBt = _ctrl.daBaoTriTrongThang(tb.maThietBi);
+                            return DropdownMenuItem(
+                              value: tb,
+                              enabled: !daBt,
+                              child: Text(
+                                daBt
+                                    ? '${tb.tenThietBi} (đã bảo trì tháng này)'
+                                    : tb.tenThietBi,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: daBt
+                                      ? Colors.grey.shade500
+                                      : Colors.grey.shade900,
+                                  fontWeight:
+                                  daBt ? FontWeight.w500 : FontWeight.w600,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                           onChanged: _ctrl.chonThietBi,
                           validator: (v) =>
                           v == null ? 'Chọn thiết bị' : null,

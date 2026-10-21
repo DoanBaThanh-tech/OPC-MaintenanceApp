@@ -448,15 +448,24 @@ class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
                                 color: _scPrimary),
                           ),
                           borderRadius: BorderRadius.circular(14),
-                          items: dsTb
-                              .map((t) => DropdownMenuItem(
-                            value: t,
-                            child: Text(
-                              '${t.tenThietBi}${t.viTriLapDat != null && t.viTriLapDat!.isNotEmpty ? ' · ${t.viTriLapDat}' : ''}',
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ))
-                              .toList(),
+                          items: dsTb.map((t) {
+                            final daSc = _ctrl.daSuaChuaTrongThang(t.maThietBi);
+                            final label =
+                                '${t.tenThietBi}${t.viTriLapDat != null && t.viTriLapDat!.isNotEmpty ? ' · ${t.viTriLapDat}' : ''}';
+                            return DropdownMenuItem(
+                              value: t,
+                              enabled: !daSc,
+                              child: Text(
+                                daSc ? '$label (đã SC tháng này)' : label,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: daSc
+                                      ? Colors.grey.shade500
+                                      : Colors.grey.shade900,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                           onChanged:
                           _ctrl.danhMucChon == null || dsTb.isEmpty
                               ? null

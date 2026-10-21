@@ -53,6 +53,8 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
   List<NhomThietBiTheoDanhMuc> nhoms = [];
   String? danhMucChon;
   ThietBiModel? thietBiChon;
+  /// Thiết bị đã có hồ sơ SC trong tháng hiện tại → tô xám, không chọn.
+  Set<int> maThietBiDaSuaChuaTrongThang = {};
 
   late final DateTime ngaySuaChua;
 
@@ -115,6 +117,7 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
       nhoms = await EquipmentService.layTheoDanhMuc(
         trangThai: TrangThaiThietBi.sanXuat,
       );
+      await _taiThietBiDaSuaChuaTrongThang();
     } catch (e) {
       loi = 'Không tải được danh mục thiết bị: $e';
       nhoms = [];
@@ -124,6 +127,27 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
     }
   }
 
+  Future<void> _taiThietBiDaSuaChuaTrongThang() async {
+    try {
+      final ds = await WorkOrderService.layDanhSachHoSoSuaChua();
+      final nam = ngaySuaChua.year;
+      final thang = ngaySuaChua.month;
+      maThietBiDaSuaChuaTrongThang = ds
+          .where((h) {
+        final tt = h.trangThai.trim();
+        if (tt == 'Nháp' || tt == 'Đã hủy') return false;
+        return h.ngayTao.year == nam && h.ngayTao.month == thang;
+      })
+          .map((h) => h.maThietBi)
+          .toSet();
+    } catch (_) {
+      maThietBiDaSuaChuaTrongThang = {};
+    }
+  }
+
+  bool daSuaChuaTrongThang(int maThietBi) =>
+      maThietBiDaSuaChuaTrongThang.contains(maThietBi);
+
   void chonDanhMuc(String? dm) {
     danhMucChon = dm;
     thietBiChon = null;
@@ -132,6 +156,7 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
   }
 
   void chonThietBi(ThietBiModel? tb) {
+    if (tb != null && daSuaChuaTrongThang(tb.maThietBi)) return;
     thietBiChon = tb;
     loi = null;
     notifyListeners();
@@ -282,6 +307,8 @@ class CreateWorkOrderBaoTriThuCongController extends ChangeNotifier {
   String? danhMucChon;
   ThietBiModel? thietBiChon;
   DateTime? ngayDuKien;
+  /// Thiết bị đã có hồ sơ BT trong tháng của ngày dự kiến → tô xám.
+  Set<int> maThietBiDaBaoTriTrongThang = {};
   bool dangTai = true;
   bool dangLuu = false;
   String? loi;
@@ -320,6 +347,7 @@ class CreateWorkOrderBaoTriThuCongController extends ChangeNotifier {
   }
 
   void chonThietBi(ThietBiModel? v) {
+    if (v != null && daBaoTriTrongThang(v.maThietBi)) return;
     thietBiChon = v;
     notifyListeners();
   }
@@ -339,10 +367,42 @@ class CreateWorkOrderBaoTriThuCongController extends ChangeNotifier {
     return null;
   }
 
+  bool daBaoTriTrongThang(int maThietBi) =>
+      maThietBiDaBaoTriTrongThang.contains(maThietBi);
+
+  Future<void> _taiThietBiDaBaoTriTheoNgay() async {
+    maThietBiDaBaoTriTrongThang = {};
+    final d = ngayDuKien;
+    if (d == null) {
+      notifyListeners();
+      return;
+    }
+    try {
+      final ds = await WorkOrderService.layDanhSachHoSoBaoTri(nam: d.year);
+      maThietBiDaBaoTriTrongThang = ds
+          .where((h) {
+        final tt = h.trangThai.trim();
+        if (tt == 'Nháp' || tt == 'Đã hủy') return false;
+        final n = h.ngayDuKienBaoTri ?? h.ngayTao;
+        return n.year == d.year && n.month == d.month;
+      })
+          .map((h) => h.maThietBi)
+          .toSet();
+    } catch (_) {
+      maThietBiDaBaoTriTrongThang = {};
+    }
+    // Bỏ chọn nếu thiết bị đang chọn đã có BT tháng này
+    if (thietBiChon != null && daBaoTriTrongThang(thietBiChon!.maThietBi)) {
+      thietBiChon = null;
+    }
+    notifyListeners();
+  }
+
   void chonNgay(DateTime? d) {
     ngayDuKien = d;
     loiNgay = kiemTraNgay(d);
     notifyListeners();
+    _taiThietBiDaBaoTriTheoNgay();
   }
 
   Future<bool> luu({

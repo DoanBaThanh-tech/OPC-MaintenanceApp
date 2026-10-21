@@ -23,6 +23,8 @@ abstract class _QuyTrinhNvktScreenStateBase extends State<QuyTrinhNvktScreen>
   int? _maHoSoVatTu;
   String? _tenToi;
   Timer? _pollTimer;
+  /// Bước NVKT đã bỏ tích trong phiên — không để DuocChon của TT tích lại khi poll.
+  final Set<int> _buocNguoiDungBoChon = {};
 
   late final AnimationController _headerAnim;
   late final AnimationController _pulseAnim;
