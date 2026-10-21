@@ -428,6 +428,28 @@ mixin _XuLyVatTuVaHoanThanhNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNv
       return;
     }
 
+    // Bước đã tích (và đã Xong) nhưng quên thêm vật tư → chặn hoàn thành
+    final thieuVatTu = buocGui
+        .where((b) => b.vatTu.isEmpty)
+        .map((b) => b.soBuoc)
+        .toList();
+    if (thieuVatTu.isNotEmpty) {
+      final ds = thieuVatTu.join(', ');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            thieuVatTu.length == 1
+                ? 'Bước $ds đang thiếu vật tư. Vui lòng thêm vật tư trước khi hoàn thành quy trình.'
+                : 'Bước $ds đang thiếu vật tư. Vui lòng thêm vật tư cho các bước này trước khi hoàn thành quy trình.',
+          ),
+          backgroundColor: AppColors.danger,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
     for (final b in buocGui) {
       for (final d in b.vatTu) {
         final kq = validateSoLuongVatTu(

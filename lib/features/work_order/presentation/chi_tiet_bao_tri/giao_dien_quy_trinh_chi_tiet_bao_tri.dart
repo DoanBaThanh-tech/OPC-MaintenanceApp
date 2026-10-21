@@ -20,7 +20,7 @@ extension _ChiTietBaoTriQuyTrinhUi on _WorkOrderBaoTriDetailScreenState {
       bannerBd = AppColors.danger.withValues(alpha: 0.3);
     } else {
       banner =
-      'NVKT đã gửi quy trình (đủ bước, kể cả bước không làm). Đã thay bản tổ trưởng chọn lúc tạo. Chỉ Xưởng được Xác nhận / Từ chối.';
+      'NVKT đã gửi quy trình (đủ bước, kể cả bước không làm). Đã thay bản tổ trưởng chọn lúc tạo. Chỉ Tổ trưởng cơ điện được Xác nhận / Từ chối.';
       bannerBg = AppColors.primary.withValues(alpha: 0.08);
       bannerBd = AppColors.primary.withValues(alpha: 0.3);
     }
@@ -114,7 +114,7 @@ extension _ChiTietBaoTriQuyTrinhUi on _WorkOrderBaoTriDetailScreenState {
               Border.all(color: AppColors.warning.withValues(alpha: 0.35)),
             ),
             child: const Text(
-              'NVKT đã gửi kết quả quy trình. Xưởng kiểm tra từng bước / vật tư rồi Xác nhận (→ Đã hoàn thành) hoặc Từ chối (quy trình giữ nguyên, vẫn Đang thực hiện để NVKT chỉnh lại).',
+              'NVKT đã gửi kết quả quy trình. Tổ trưởng cơ điện kiểm tra từng bước / vật tư rồi Xác nhận (→ Đã hoàn thành) hoặc Từ chối (quy trình giữ nguyên, vẫn Đang thực hiện để NVKT chỉnh lại).',
               style: TextStyle(fontWeight: FontWeight.w600, height: 1.35),
             ),
           )

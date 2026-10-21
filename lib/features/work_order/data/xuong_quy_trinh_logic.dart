@@ -48,6 +48,17 @@ class XuongQuyTrinhController extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Hồ sơ vật tư gắn với công việc (để xem VT từng bước khi XN quy trình).
+  Future<HoSoVatTuItem?> layQuyTrinhVatTu({
+    int? maHoSoBaoTri,
+    int? maHoSoSuaChua,
+  }) async {
+    return MaterialUsageService.layHoSoTheoCongViec(
+      maHoSoBaoTri: maHoSoBaoTri,
+      maHoSoSuaChua: maHoSoSuaChua,
+    );
+  }
+
   Future<(bool ok, String? message)> xacNhan({
     int? maHoSoBaoTri,
     int? maHoSoSuaChua,
@@ -89,21 +100,6 @@ class XuongQuyTrinhController extends ChangeNotifier {
       return (false, e.message);
     } catch (e) {
       return (false, '$e');
-    }
-  }
-
-  /// Tải hồ sơ vật tư + bước quy trình theo công việc.
-  Future<HoSoVatTuItem?> layQuyTrinhVatTu({
-    int? maHoSoBaoTri,
-    int? maHoSoSuaChua,
-  }) async {
-    try {
-      return await MaterialUsageService.layHoSoTheoCongViec(
-        maHoSoBaoTri: maHoSoBaoTri,
-        maHoSoSuaChua: maHoSoSuaChua,
-      );
-    } catch (_) {
-      return null;
     }
   }
 }

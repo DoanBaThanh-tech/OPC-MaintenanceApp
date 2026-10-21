@@ -633,7 +633,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                                               'Từ chối' =>
                                               'Quy trình bị từ chối — NVKT chỉnh sửa và gửi lại.',
                                               'Chờ xác nhận' =>
-                                              'Đang chờ Xưởng xác nhận.',
+                                              'Đang chờ Tổ trưởng xác nhận.',
                                               'Đang thực hiện' =>
                                               'NVKT đang thực hiện quy trình.',
                                               _ => 'Trạng thái: $nhanTt',
@@ -877,7 +877,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
           ? 'Quy trình bị từ chối. Hồ sơ vẫn Đang thực hiện — NVKT chỉnh sửa và gửi lại.'
           : 'Quy trình bị từ chối. Hồ sơ vẫn Đang thực hiện — chờ NVKT gửi lại.',
       'Chờ xác nhận' =>
-      'NVKT đã gửi quy trình — đang chờ Xưởng xác nhận hoặc từ chối.',
+      'NVKT đã gửi quy trình — đang chờ Tổ trưởng xác nhận hoặc từ chối.',
       'Đang thực hiện' =>
       'Nhân viên kỹ thuật đang thực hiện quy trình sửa chữa.',
       _ => 'Trạng thái quy trình: $nhan',
