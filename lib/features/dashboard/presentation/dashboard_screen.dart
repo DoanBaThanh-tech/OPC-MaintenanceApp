@@ -150,14 +150,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onMoHoSo: _moHoSoCaNhan,
             ),
           ),
-          body: _dangChon?.screenBuilder() ??
-              const Center(child: Text('Chưa có chức năng cho vai trò này')),
-          // Nhân vật AI nổi — bấm vào chatbot theo đúng vai trò đang đăng nhập
-          floatingActionButton: NutMascotChatbot(
-            hoTen: _phien!.hoTen,
-            vaiTro: _phien!.vaiTro,
+          body: Stack(
+            children: [
+              _dangChon?.screenBuilder() ??
+                  const Center(child: Text('Chưa có chức năng cho vai trò này')),
+              // Nhân vật AI 3D — kéo thả, co giãn theo màn hình
+              NutMascotChatbot(
+                hoTen: _phien!.hoTen,
+                vaiTro: _phien!.vaiTro,
+              ),
+            ],
           ),
-          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
     );
