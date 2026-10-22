@@ -324,6 +324,13 @@ extension _ChiTietBaoTriQuyTrinhUi on _WorkOrderBaoTriDetailScreenState {
             (a, b) =>
         a +
             b.vatTu.where((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0).length);
+    final tongTien = _dsBuocFull.fold<int>(
+      0,
+          (a, b) =>
+      a +
+          b.vatTu.fold<int>(
+              0, (x, c) => x + (c.donGia > 0 ? c.soLuong * c.donGia : 0)),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -350,6 +357,46 @@ extension _ChiTietBaoTriQuyTrinhUi on _WorkOrderBaoTriDetailScreenState {
               ),
             ],
           ),
+          // Tổng tiền trên đầu — Xưởng / Tổ trưởng / Giám đốc dễ thấy
+          if (tongTien > 0) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF6EE7B7)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.payments_rounded,
+                      size: 18, color: Color(0xFF059669)),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Tổng tiền toàn quy trình',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                        color: Color(0xFF065F46),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _fmtTienVt(tongTien),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w900,
+                      fontSize: 15,
+                      color: Color(0xFF047857),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ]),
         const SizedBox(height: 8),
         for (final b in _dsBuocFull)
@@ -496,51 +543,7 @@ extension _ChiTietBaoTriQuyTrinhUi on _WorkOrderBaoTriDetailScreenState {
               ],
             ),
           ),
-        // Tổng tiền tất cả bước
-        Builder(builder: (_) {
-          final tong = _dsBuocFull.fold<int>(
-            0,
-                (a, b) => a +
-                b.vatTu.fold<int>(
-                    0, (x, c) => x + (c.donGia > 0 ? c.soLuong * c.donGia : 0)),
-          );
-          if (tong <= 0) return const SizedBox.shrink();
-          return Container(
-            margin: const EdgeInsets.only(top: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF0068A9).withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                  color: const Color(0xFF0068A9).withValues(alpha: 0.25)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.payments_outlined,
-                    size: 18, color: Color(0xFF0068A9)),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Tổng tiền vật tư (tất cả bước)',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-                Text(
-                  _fmtTienVt(tong),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    color: Color(0xFF0068A9),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }),
+        // Tổng tiền chỉ hiện trên đầu khối quy trình — không lặp ở cuối
       ],
     );
   }

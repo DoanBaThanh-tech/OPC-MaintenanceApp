@@ -236,24 +236,11 @@ class _EquipmentDetailScreenState extends State<EquipmentDetailScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          // Tab-like: cả 2 quy trình, chỉnh nội dung bước + Lưu
-          _QuyTrinhSection(
-            title: 'Quy trình bảo trì',
-            icon: Icons.build_circle_outlined,
-            accent: AppColors.primary,
-            loaiCongViec: 'Bảo trì',
+          // Một khung: Bảo trì | Sửa chữa (tab trên mobile, 2 cột khi màn rộng)
+          _QuyTrinhThucHienGom(
             maThietBi: tb.maThietBi,
-            buoc: _controller.quyTrinhBaoTri,
-            onSaved: () => _controller.taiChiTiet(widget.maThietBi),
-          ),
-          const SizedBox(height: 12),
-          _QuyTrinhSection(
-            title: 'Quy trình sửa chữa',
-            icon: Icons.handyman_rounded,
-            accent: AppColors.warning,
-            loaiCongViec: 'Sửa chữa',
-            maThietBi: tb.maThietBi,
-            buoc: _controller.quyTrinhSuaChua,
+            buocBaoTri: _controller.quyTrinhBaoTri,
+            buocSuaChua: _controller.quyTrinhSuaChua,
             onSaved: () => _controller.taiChiTiet(widget.maThietBi),
           ),
         ],

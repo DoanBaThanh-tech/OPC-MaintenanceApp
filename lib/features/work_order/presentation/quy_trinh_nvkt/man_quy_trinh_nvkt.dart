@@ -316,13 +316,74 @@ class _QuyTrinhNvktScreenState extends _QuyTrinhNvktScreenStateBase
                 ),
                 const SizedBox(height: 16),
 
+                // Tổng tiền trên đầu (dễ thấy) — không đặt ở cuối danh sách
+                if (_tinhTongTien() > 0 ||
+                    _buoc.any((b) => b.vatTu.isNotEmpty)) ...[
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 14),
+                    margin: const EdgeInsets.only(bottom: 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF047857), Color(0xFF059669)],
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF059669).withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.payments_rounded,
+                            color: Colors.white, size: 24),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Tổng tiền toàn quy trình',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              Text(
+                                'Cộng tất cả bước đã chọn vật tư',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 11.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          _fmtTien(_tinhTongTien()),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 // Steps
                 ...List.generate(
                   _buoc.length,
                       (i) => _buildBuocCard(i),
                 ),
 
-                const SizedBox(height: 4),
+                const SizedBox(height: 12),
                 // Bước lấy từ quy trình thiết bị — không thêm thủ công
                 Container(
                   padding: const EdgeInsets.all(12),
@@ -396,55 +457,7 @@ class _QuyTrinhNvktScreenState extends _QuyTrinhNvktScreenStateBase
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 12),
-                    margin: const EdgeInsets.only(bottom: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFECFDF5),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFA7F3D0)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.payments_rounded,
-                            color: Color(0xFF059669), size: 22),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Tổng tiền toàn quy trình',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 14,
-                                  color: Color(0xFF065F46),
-                                ),
-                              ),
-                              Text(
-                                'Cộng tất cả bước đã chọn vật tư',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          _fmtTien(_tinhTongTien()),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 17,
-                            color: Color(0xFF047857),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  // Tổng tiền chỉ hiện trên đầu trang — thanh dưới chỉ nút hoàn thành
                   SizedBox(
                     height: 54,
                     width: double.infinity,

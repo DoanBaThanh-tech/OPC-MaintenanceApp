@@ -1336,6 +1336,47 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
           b.vatTu.fold<int>(0, (x, v) => x + (v.donGia > 0 ? v.thanhTien : 0)),
     );
     final widgets = <Widget>[];
+    // Tổng tiền trên đầu — Xưởng / Tổ trưởng / Giám đốc dễ thấy
+    if (tongTien > 0) {
+      widgets.add(
+        Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+            ),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFF6EE7B7)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.payments_rounded,
+                  size: 18, color: Color(0xFF059669)),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Tổng tiền toàn quy trình',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13.5,
+                    color: Color(0xFF065F46),
+                  ),
+                ),
+              ),
+              Text(
+                _fmtTienSc(tongTien),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                  color: Color(0xFF047857),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
     for (final b in ds) {
       final chon = b.daChon;
       final tt = b.trangThai.trim();
@@ -1475,44 +1516,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
         ),
       );
     }
-    if (tongTien > 0) {
-      widgets.add(
-        Container(
-          margin: const EdgeInsets.only(top: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: _scPrimary.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _scPrimary.withValues(alpha: 0.25)),
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.payments_outlined,
-                  size: 18, color: _scPrimary),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Tổng tiền vật tư (tất cả bước)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 13.5,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-              ),
-              Text(
-                _fmtTienSc(tongTien),
-                style: const TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 15,
-                  color: _scPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
+    // Tổng tiền chỉ trên đầu — không lặp ở cuối
     return widgets;
   }
 

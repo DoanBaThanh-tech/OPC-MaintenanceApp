@@ -518,6 +518,13 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
             (a, b) =>
         a +
             b.vatTu.where((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0).length);
+    final tongTien = _dsBuocFull.fold<int>(
+      0,
+          (a, b) =>
+      a +
+          b.vatTu.fold<int>(
+              0, (x, c) => x + (c.donGia > 0 ? c.soLuong * c.donGia : 0)),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,6 +536,46 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
           '${_dsBuocFull.length} bước (đủ quy trình) · $soDaLam đã làm · $soVt dòng vật tư',
           style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
         ),
+        // Tổng tiền trên đầu — Xưởng dễ thấy
+        if (tongTien > 0) ...[
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+              ),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF6EE7B7)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.payments_rounded,
+                    size: 18, color: Color(0xFF059669)),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Tổng tiền toàn quy trình',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13.5,
+                      color: Color(0xFF065F46),
+                    ),
+                  ),
+                ),
+                Text(
+                  _fmtTien(tongTien),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: Color(0xFF047857),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         for (final b in _dsBuocFull)
           TweenAnimationBuilder<double>(
@@ -650,14 +697,39 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(
-                                  '${c.tenVatTu} × ${c.soLuong}',
+                                  '${c.tenVatTu} × ${c.soLuong}'
+                                      '${c.donGia > 0 ? ' · ${_fmtTien(c.donGia)}' : ''}',
                                   style: const TextStyle(
                                       fontSize: 13, fontWeight: FontWeight.w600),
                                 ),
                               ),
+                              if (c.donGia > 0)
+                                Text(
+                                  _fmtTien(c.soLuong * c.donGia),
+                                  style: const TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w700,
+                                    color: Color(0xFF047857),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
+                    if (b.vatTu.any((c) => c.donGia > 0))
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            'Tổng tiền bước ${b.soBuoc}: ${_fmtTien(b.vatTu.fold<int>(0, (a, c) => a + (c.donGia > 0 ? c.soLuong * c.donGia : 0)))}',
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF047857),
+                            ),
+                          ),
+                        ),
+                      ),
                   ] else if (!b.daThucHien) ...[
                     const SizedBox(height: 6),
                     Text(

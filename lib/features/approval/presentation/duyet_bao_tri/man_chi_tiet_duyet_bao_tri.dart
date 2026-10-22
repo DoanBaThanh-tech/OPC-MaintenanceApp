@@ -531,7 +531,7 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Header
+        // Header + tổng tiền trên đầu (Giám đốc dễ thấy)
         Container(
           padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(
@@ -539,30 +539,75 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(Icons.account_tree_rounded,
-                  size: 18, color: _primary.withValues(alpha: 0.9)),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Quy trình thực hiện',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: Color(0xFF0F172A),
+              Row(
+                children: [
+                  Icon(Icons.account_tree_rounded,
+                      size: 18, color: _primary.withValues(alpha: 0.9)),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Quy trình thực hiện',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                        color: Color(0xFF0F172A),
+                      ),
+                    ),
                   ),
-                ),
+                  if (buoc.isNotEmpty)
+                    Text(
+                      '$soChon/${buoc.length} chọn · $soDaLam đã làm',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                ],
               ),
-              if (buoc.isNotEmpty)
-                Text(
-                  '$soChon/${buoc.length} chọn · $soDaLam đã làm',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
+              if (tongTien > 0) ...[
+                const SizedBox(height: 10),
+                Container(
+                  width: double.infinity,
+                  padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF6EE7B7)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.payments_rounded,
+                          size: 18, color: Color(0xFF059669)),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Tổng tiền toàn quy trình',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                            color: Color(0xFF065F46),
+                          ),
+                        ),
+                      ),
+                      Text(
+                        _fmtTien(tongTien),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 15,
+                          color: Color(0xFF047857),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
+              ],
             ],
           ),
         ),
@@ -742,42 +787,7 @@ class _ApprovalBaoTriDetailScreenState extends State<ApprovalBaoTriDetailScreen>
                 ),
               ),
             ), // Opacity
-        // Tổng tiền tất cả bước
-        if (tongTien > 0) ...[
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: _primary.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _primary.withValues(alpha: 0.25)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.payments_outlined, size: 18, color: _primary),
-                const SizedBox(width: 8),
-                const Expanded(
-                  child: Text(
-                    'Tổng tiền vật tư (tất cả bước)',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 13.5,
-                      color: Color(0xFF0F172A),
-                    ),
-                  ),
-                ),
-                Text(
-                  _fmtTien(tongTien),
-                  style: TextStyle(
-                    fontWeight: FontWeight.w900,
-                    fontSize: 15,
-                    color: _primary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        // Tổng tiền chỉ trên đầu — không lặp ở cuối
       ],
     );
   }

@@ -696,6 +696,15 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
               .where((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0)
               .length,
     );
+    // Tổng tiền toàn quy trình (cộng tất cả bước)
+    final tongTienQuyTrinh = _dsBuocFull.fold<int>(
+      0,
+          (a, b) =>
+      a +
+          b.vatTu
+              .where((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0)
+              .fold<int>(0, (x, c) => x + c.thanhTien),
+    );
 
     return _infoCard([
       Row(
@@ -723,11 +732,53 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
         '${_dsBuocFull.length} bước · $soDaChon đã chọn · $soDaLam đã làm · $soVt VT',
         style: TextStyle(color: Colors.grey.shade600, fontSize: 12.5),
       ),
+      if (soVt > 0) ...[
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
+            ),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF6EE7B7)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.payments_rounded,
+                  size: 18, color: Color(0xFF059669)),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Tổng tiền toàn quy trình',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                    color: Color(0xFF065F46),
+                  ),
+                ),
+              ),
+              Text(
+                _fmtTien(tongTienQuyTrinh),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 15,
+                  color: Color(0xFF047857),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
       const SizedBox(height: 10),
       for (var i = 0; i < _dsBuocFull.length; i++) ...[
         if (i > 0) const SizedBox(height: 8),
         Builder(builder: (_) {
           final b = _dsBuocFull[i];
+          final tongBuoc = b.vatTu
+              .where((c) => c.tenVatTu.isNotEmpty && c.soLuong > 0)
+              .fold<int>(0, (x, c) => x + c.thanhTien);
           return Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -844,7 +895,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                             const SizedBox(width: 6),
                             Expanded(
                               child: Text(
-                                '${c.tenVatTu} × ${c.soLuong}',
+                                '${c.tenVatTu} × ${c.soLuong}'
+                                    '${c.donGia > 0 ? ' · ${_fmtTien(c.donGia)}' : ''}',
                                 style: const TextStyle(fontSize: 13),
                               ),
                             ),
@@ -857,6 +909,43 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                           ],
                         ),
                       ),
+                  // Tổng tiền của bước
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFECFDF5),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFA7F3D0)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.account_balance_wallet_outlined,
+                            size: 16, color: Color(0xFF059669)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'Tổng tiền bước ${b.soBuoc}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12.5,
+                              color: Color(0xFF065F46),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          _fmtTien(tongBuoc),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13.5,
+                            color: Color(0xFF047857),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ] else if (!b.daChon) ...[
                   const SizedBox(height: 6),
                   Text(
@@ -873,6 +962,7 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
           );
         }),
       ],
+      // Chỉ giữ tổng tiền trên đầu — không lặp ở cuối
     ]);
   }
 
