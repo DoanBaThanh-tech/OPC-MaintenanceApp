@@ -77,9 +77,14 @@ class ApiClient {
     throw ApiException(res.statusCode, message);
   }
 
-  Future<T> _thucHien<T>(Future<http.Response> Function() request, {bool auth = true}) async {
+  Future<T> _thucHien<T>(
+      Future<http.Response> Function() request, {
+        bool auth = true,
+        Duration? timeout,
+      }) async {
     try {
-      final res = await request().timeout(ApiConstants.connectTimeout);
+      final res =
+      await request().timeout(timeout ?? ApiConstants.connectTimeout);
       final parsed = _xuLyResponse(res, auth: auth);
 
       // Body rỗng (Ok() không nội dung) — trả về null an toàn, không ép Map
@@ -116,11 +121,16 @@ class ApiClient {
     }, auth: auth);
   }
 
-  Future<T> post<T>(String path, Map<String, dynamic> body, {bool auth = true}) {
+  Future<T> post<T>(
+      String path,
+      Map<String, dynamic> body, {
+        bool auth = true,
+        Duration? timeout,
+      }) {
     return _thucHien<T>(() async {
       final headers = await _headers(auth: auth);
       return http.post(_uri(path), headers: headers, body: jsonEncode(body));
-    }, auth: auth);
+    }, auth: auth, timeout: timeout);
   }
 
   Future<T> put<T>(String path, Map<String, dynamic> body, {bool auth = true}) {

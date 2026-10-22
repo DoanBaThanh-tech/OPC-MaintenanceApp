@@ -56,4 +56,9 @@ class ApiConstants {
   /// Backend: GET /api/WorkOrder/nhan-vien?vaiTro=...
   /// (đặt ở WorkOrder để Tổ trưởng không bị 403 từ SystemController)
   static const String nhanVien = "$workOrder/nhan-vien";
+
+  /// AI chatbot local (Ollama) — không tốn token cloud
+  static const String ai = "/Ai";
+  static const String aiTrangThai = "$ai/trang-thai";
+  static const String aiChat = "$ai/chat";
 }

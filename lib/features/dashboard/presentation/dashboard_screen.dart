@@ -8,6 +8,7 @@ import '../data/dashboard_logic.dart';
 import '../../notification/data/thong_bao_service.dart';
 import '../../../core/storage/token_storage.dart';
 import '../../../main.dart' show navigatorKey;
+import '../../chatbot/presentation/nut_mascot_chatbot.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -151,6 +152,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
           body: _dangChon?.screenBuilder() ??
               const Center(child: Text('Chưa có chức năng cho vai trò này')),
+          // Nhân vật AI nổi — bấm vào chatbot theo đúng vai trò đang đăng nhập
+          floatingActionButton: NutMascotChatbot(
+            hoTen: _phien!.hoTen,
+            vaiTro: _phien!.vaiTro,
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
         );
       },
     );
