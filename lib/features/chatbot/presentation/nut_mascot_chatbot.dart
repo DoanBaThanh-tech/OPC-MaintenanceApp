@@ -59,12 +59,28 @@ class _NutMascotChatbotState extends State<NutMascotChatbot>
     super.dispose();
   }
 
-  double _sizeFor(BuildContext context) {
-    final w = MediaQuery.sizeOf(context).width;
-    if (w < 360) return 58;
-    if (w < 600) return 66;
-    if (w < 900) return 74;
-    return 82;
+  double _sizeFor(double width) {
+    if (width < 360) return 56;
+    if (width < 600) return 64;
+    if (width < 900) return 72;
+    return 80;
+  }
+
+  /// Biên an toàn trong khung Stack (body), trừ margin + phần animation nổi.
+  Offset _kepTrongKhung({
+    required Offset raw,
+    required double size,
+    required double maxW,
+    required double maxH,
+  }) {
+    // Animation float ±6 + nghiêng/anten ~10 → chừa margin
+    const margin = 10.0;
+    final maxLeft = math.max(margin, maxW - size - margin);
+    final maxTop = math.max(margin, maxH - size - margin);
+    return Offset(
+      raw.dx.clamp(margin, maxLeft),
+      raw.dy.clamp(margin, maxTop),
+    );
   }
 
   void _moChat() {
@@ -92,60 +108,114 @@ class _NutMascotChatbotState extends State<NutMascotChatbot>
 
   @override
   Widget build(BuildContext context) {
-    final size = _sizeFor(context);
-    final mq = MediaQuery.of(context);
-    final pad = mq.padding;
-    final screen = mq.size;
+    // Dùng LayoutBuilder để lấy đúng kích thước Stack body
+    // (không dùng full screen — tránh kéo tràn AppBar / ngoài máy).
+    return Positioned.fill(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final maxW = constraints.maxWidth;
+          final maxH = constraints.maxHeight;
+          final size = _sizeFor(maxW);
 
-    final defaultLeft = screen.width - size - 16;
-    final defaultTop = screen.height - size - pad.bottom - 88;
+          final defaultPos = Offset(
+            maxW - size - 16,
+            maxH - size - 16,
+          );
+          final safeDefault = _kepTrongKhung(
+            raw: defaultPos,
+            size: size,
+            maxW: maxW,
+            maxH: maxH,
+          );
 
-    final left =
-    (_offset?.dx ?? defaultLeft).clamp(8.0, screen.width - size - 8);
-    final top = (_offset?.dy ?? defaultTop)
-        .clamp(pad.top + 8, screen.height - size - pad.bottom - 8);
+          final pos = _kepTrongKhung(
+            raw: _offset ?? safeDefault,
+            size: size,
+            maxW: maxW,
+            maxH: maxH,
+          );
 
-    return Positioned(
-      left: left,
-      top: top,
-      child: GestureDetector(
-        onPanUpdate: (d) {
-          setState(() {
-            final base = _offset ?? Offset(defaultLeft, defaultTop);
-            _offset = Offset(base.dx + d.delta.dx, base.dy + d.delta.dy);
-          });
-        },
-        onTap: _moChat,
-        child: AnimatedBuilder(
-          animation: Listenable.merge([_float, _emotion, _blink, _wave]),
-          builder: (context, _) {
-            final dy = math.sin(_float.value * math.pi) * 6;
-            final tilt = math.sin(_wave.value * math.pi) * 0.08;
-            // 0=vui, 1=suy nghĩ, 2=ngạc nhiên
-            final phase = (_emotion.value * 3).floor() % 3;
-            final eyeClosed =
-            _blink.value > 0.88 && _blink.value < 0.94 ? 1.0 : 0.0;
+          // Đồng bộ lại offset đã kẹp (tránh lần kéo sau bị cộng dồn ra ngoài)
+          if (_offset != null &&
+              (_offset!.dx != pos.dx || _offset!.dy != pos.dy)) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() => _offset = pos);
+            });
+          }
 
-            return Transform.translate(
-              offset: Offset(0, dy),
-              child: Transform.rotate(
-                angle: tilt,
-                child: SizedBox(
-                  width: size,
-                  height: size,
-                  child: CustomPaint(
-                    painter: _OpcBotEmotionPainter(
-                      emotion: phase,
-                      eyeClosed: eyeClosed,
-                      t: _float.value,
-                      arm: _wave.value,
-                    ),
+          return Stack(
+            clipBehavior: Clip.hardEdge,
+            children: [
+              Positioned(
+                left: pos.dx,
+                top: pos.dy,
+                child: GestureDetector(
+                  onPanUpdate: (d) {
+                    setState(() {
+                      final base = _offset ?? safeDefault;
+                      final next = Offset(
+                        base.dx + d.delta.dx,
+                        base.dy + d.delta.dy,
+                      );
+                      _offset = _kepTrongKhung(
+                        raw: next,
+                        size: size,
+                        maxW: maxW,
+                        maxH: maxH,
+                      );
+                    });
+                  },
+                  onPanEnd: (_) {
+                    // Kẹp lần cuối khi thả tay
+                    setState(() {
+                      final base = _offset ?? safeDefault;
+                      _offset = _kepTrongKhung(
+                        raw: base,
+                        size: size,
+                        maxW: maxW,
+                        maxH: maxH,
+                      );
+                    });
+                  },
+                  onTap: _moChat,
+                  child: AnimatedBuilder(
+                    animation:
+                    Listenable.merge([_float, _emotion, _blink, _wave]),
+                    builder: (context, _) {
+                      // Giảm biên độ float để không tràn mép sau khi đã kẹp
+                      final dy = math.sin(_float.value * math.pi) * 4;
+                      final tilt = math.sin(_wave.value * math.pi) * 0.06;
+                      final phase = (_emotion.value * 3).floor() % 3;
+                      final eyeClosed =
+                      _blink.value > 0.88 && _blink.value < 0.94
+                          ? 1.0
+                          : 0.0;
+
+                      return Transform.translate(
+                        offset: Offset(0, dy),
+                        child: Transform.rotate(
+                          angle: tilt,
+                          child: SizedBox(
+                            width: size,
+                            height: size,
+                            child: CustomPaint(
+                              painter: _OpcBotEmotionPainter(
+                                emotion: phase,
+                                eyeClosed: eyeClosed,
+                                t: _float.value,
+                                arm: _wave.value,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),
-            );
-          },
-        ),
+            ],
+          );
+        },
       ),
     );
   }

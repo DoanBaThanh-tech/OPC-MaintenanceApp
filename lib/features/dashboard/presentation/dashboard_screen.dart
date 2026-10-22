@@ -151,6 +151,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           body: Stack(
+            clipBehavior: Clip.hardEdge,
             children: [
               _dangChon?.screenBuilder() ??
                   const Center(child: Text('Chưa có chức năng cho vai trò này')),
