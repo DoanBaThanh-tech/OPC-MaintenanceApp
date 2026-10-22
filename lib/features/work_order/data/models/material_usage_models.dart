@@ -119,12 +119,17 @@ class BuocQuyTrinh {
 
   /// Xuất tất cả dòng vật tư của bước (mỗi dòng 1 chi tiết API).
   List<Map<String, dynamic>> toChiTietJsonList() {
-    final out = <Map<String, dynamic>>[];
+    // Gộp theo mã/tên vật tư trong cùng bước — không cộng dồn SL (giữ SL cuối),
+    // tránh gửi 2 dòng trùng → Xưởng thấy số lượng gấp đôi.
+    final map = <String, Map<String, dynamic>>{};
     for (final d in vatTuList) {
       if (d.tenVatTu.isEmpty || d.soLuong <= 0) continue;
-      out.add(d.toChiTietJson(soBuoc, moTa));
+      final key = d.maVatTu != null && d.maVatTu! > 0
+          ? 'id:${d.maVatTu}'
+          : 'ten:${d.tenVatTu.trim().toLowerCase()}';
+      map[key] = d.toChiTietJson(soBuoc, moTa);
     }
-    return out;
+    return map.values.toList();
   }
 
   /// Tương thích cũ — 1 dòng.

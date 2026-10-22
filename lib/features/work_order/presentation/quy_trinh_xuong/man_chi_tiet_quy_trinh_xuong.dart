@@ -69,11 +69,25 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
       final tienDo = results[1] as List<Map<String, dynamic>>;
       final mau = results[2] as List<BuocQuyTrinh>;
 
-      // Map vật tư theo bước từ hồ sơ VT
+      // Map vật tư theo bước từ hồ sơ VT (nguồn chính).
+      // Cùng bước + cùng vật tư → giữ dòng cuối, không cộng dồn → tránh SL gấp đôi.
       final vtTheoBuoc = <int, List<ChiTietVatTuSuDung>>{};
       if (hs != null) {
         for (final c in hs.chiTiet) {
-          vtTheoBuoc.putIfAbsent(c.soBuoc, () => []).add(c);
+          if (c.tenVatTu.trim().isEmpty || c.soLuong <= 0) continue;
+          final list = vtTheoBuoc.putIfAbsent(c.soBuoc, () => []);
+          final idx = list.indexWhere((e) {
+            if (c.maVatTu != null && c.maVatTu! > 0 && e.maVatTu != null) {
+              return e.maVatTu == c.maVatTu;
+            }
+            return e.tenVatTu.trim().toLowerCase() ==
+                c.tenVatTu.trim().toLowerCase();
+          });
+          if (idx >= 0) {
+            list[idx] = c;
+          } else {
+            list.add(c);
+          }
         }
       }
 

@@ -26,10 +26,24 @@ extension _ChiTietBaoTriXuLy on _WorkOrderBaoTriDetailScreenState {
       final tienDo = results[1] as List<Map<String, dynamic>>;
       final mau = results[2] as List<BuocQuyTrinh>;
 
+      // Hồ sơ VT: cùng bước + cùng vật tư → giữ 1 dòng (SL cuối), không cộng dồn
       final vtTheoBuoc = <int, List<ChiTietVatTuSuDung>>{};
       if (hsVt != null) {
         for (final c in hsVt.chiTiet) {
-          vtTheoBuoc.putIfAbsent(c.soBuoc, () => []).add(c);
+          if (c.tenVatTu.trim().isEmpty || c.soLuong <= 0) continue;
+          final list = vtTheoBuoc.putIfAbsent(c.soBuoc, () => []);
+          final idx = list.indexWhere((e) {
+            if (c.maVatTu != null && c.maVatTu! > 0 && e.maVatTu != null) {
+              return e.maVatTu == c.maVatTu;
+            }
+            return e.tenVatTu.trim().toLowerCase() ==
+                c.tenVatTu.trim().toLowerCase();
+          });
+          if (idx >= 0) {
+            list[idx] = c;
+          } else {
+            list.add(c);
+          }
         }
       }
       final tdTheoBuoc = <int, Map<String, dynamic>>{};

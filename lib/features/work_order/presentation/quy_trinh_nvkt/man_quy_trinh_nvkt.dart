@@ -411,21 +411,34 @@ class _QuyTrinhNvktScreenState extends _QuyTrinhNvktScreenStateBase
                         const Icon(Icons.payments_rounded,
                             color: Color(0xFF059669), size: 22),
                         const SizedBox(width: 10),
-                        const Expanded(
-                          child: Text(
-                            'Tổng tiền vật tư',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
-                              color: Color(0xFF065F46),
-                            ),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Tổng tiền toàn quy trình',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 14,
+                                  color: Color(0xFF065F46),
+                                ),
+                              ),
+                              Text(
+                                'Cộng tất cả bước đã chọn vật tư',
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  color: Colors.grey.shade600,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         Text(
                           _fmtTien(_tinhTongTien()),
                           style: const TextStyle(
                             fontWeight: FontWeight.w900,
-                            fontSize: 16,
+                            fontSize: 17,
                             color: Color(0xFF047857),
                           ),
                         ),

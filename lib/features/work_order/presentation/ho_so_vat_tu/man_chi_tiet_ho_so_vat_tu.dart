@@ -537,11 +537,21 @@ class _HoSoVatTuDetailScreenState extends State<HoSoVatTuDetailScreen>
     );
   }
 
-  /// Gộp vật tư trùng — không theo bước (logic).
+  /// Gộp vật tư theo tên (không theo bước).
+  /// Trước khi gộp: loại dòng trùng cùng bước+cùng vật tư (giữ SL cuối) —
+  /// tránh dữ liệu cũ bị lưu 2 lần làm SL nhìn gấp đôi.
   List<({String ten, int soLuong, int donGia, int thanhTien})> _gopVatTu(
       List<ChiTietVatTuSuDung> chiTiet) {
+    final unique = <String, ChiTietVatTuSuDung>{};
+    for (final c in chiTiet) {
+      if (c.tenVatTu.trim().isEmpty || c.soLuong <= 0) continue;
+      final keyVat = c.maVatTu != null && c.maVatTu! > 0
+          ? 'id:${c.maVatTu}'
+          : 'ten:${c.tenVatTu.trim().toLowerCase()}';
+      unique['${c.soBuoc}|$keyVat'] = c;
+    }
     return QuyTrinhNvktRules.gopVatTuKhongTheoBuoc([
-      for (final c in chiTiet)
+      for (final c in unique.values)
         (
         maVatTu: c.maVatTu,
         ten: c.tenVatTu,

@@ -53,8 +53,9 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
   List<NhomThietBiTheoDanhMuc> nhoms = [];
   String? danhMucChon;
   ThietBiModel? thietBiChon;
-  /// Thiết bị đã có hồ sơ SC trong tháng hiện tại → tô xám, không chọn.
-  Set<int> maThietBiDaSuaChuaTrongThang = {};
+  /// Thiết bị đã có hồ sơ SC trong ngày hiện tại → tô xám, không chọn (chống spam).
+  /// Không khóa cả tháng: thiết bị có thể sửa chữa nhiều lần trong tháng.
+  Set<int> maThietBiDaSuaChuaTrongNgay = {};
 
   late final DateTime ngaySuaChua;
 
@@ -117,7 +118,7 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
       nhoms = await EquipmentService.layTheoDanhMuc(
         trangThai: TrangThaiThietBi.sanXuat,
       );
-      await _taiThietBiDaSuaChuaTrongThang();
+      await _taiThietBiDaSuaChuaTrongNgay();
     } catch (e) {
       loi = 'Không tải được danh mục thiết bị: $e';
       nhoms = [];
@@ -127,26 +128,30 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
     }
   }
 
-  Future<void> _taiThietBiDaSuaChuaTrongThang() async {
+  Future<void> _taiThietBiDaSuaChuaTrongNgay() async {
     try {
       final ds = await WorkOrderService.layDanhSachHoSoSuaChua();
-      final nam = ngaySuaChua.year;
-      final thang = ngaySuaChua.month;
-      maThietBiDaSuaChuaTrongThang = ds
+      final ngay = DateTime(ngaySuaChua.year, ngaySuaChua.month, ngaySuaChua.day);
+      maThietBiDaSuaChuaTrongNgay = ds
           .where((h) {
         final tt = h.trangThai.trim();
         if (tt == 'Nháp' || tt == 'Đã hủy') return false;
-        return h.ngayTao.year == nam && h.ngayTao.month == thang;
+        final n = h.ngayTao;
+        return n.year == ngay.year && n.month == ngay.month && n.day == ngay.day;
       })
           .map((h) => h.maThietBi)
           .toSet();
     } catch (_) {
-      maThietBiDaSuaChuaTrongThang = {};
+      maThietBiDaSuaChuaTrongNgay = {};
     }
   }
 
-  bool daSuaChuaTrongThang(int maThietBi) =>
-      maThietBiDaSuaChuaTrongThang.contains(maThietBi);
+  /// true nếu thiết bị đã có SC trong ngày hiện tại (không tạo thêm cùng ngày).
+  bool daSuaChuaTrongNgay(int maThietBi) =>
+      maThietBiDaSuaChuaTrongNgay.contains(maThietBi);
+
+  /// Alias tương thích UI cũ — thực chất khóa theo ngày, không theo tháng.
+  bool daSuaChuaTrongThang(int maThietBi) => daSuaChuaTrongNgay(maThietBi);
 
   void chonDanhMuc(String? dm) {
     danhMucChon = dm;
@@ -156,7 +161,7 @@ class CreateHoSoSuaChuaController extends ChangeNotifier {
   }
 
   void chonThietBi(ThietBiModel? tb) {
-    if (tb != null && daSuaChuaTrongThang(tb.maThietBi)) return;
+    if (tb != null && daSuaChuaTrongNgay(tb.maThietBi)) return;
     thietBiChon = tb;
     loi = null;
     notifyListeners();

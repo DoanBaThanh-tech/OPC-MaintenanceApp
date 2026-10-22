@@ -462,14 +462,24 @@ class ApprovalBaoTriDetailController extends ChangeNotifier {
         final fromHs = <int, List<VatTuBuocDuyet>>{};
         for (final c in hsVt.chiTiet) {
           if (c.tenVatTu.trim().isEmpty || c.soLuong <= 0) continue;
-          fromHs.putIfAbsent(c.soBuoc, () => []).add(VatTuBuocDuyet(
+          final list = fromHs.putIfAbsent(c.soBuoc, () => []);
+          // Cùng bước + cùng vật tư → giữ dòng cuối, không cộng dồn SL
+          final key = c.tenVatTu.trim().toLowerCase();
+          final idx =
+          list.indexWhere((e) => e.tenVatTu.trim().toLowerCase() == key);
+          final dong = VatTuBuocDuyet(
             tenVatTu: c.tenVatTu,
             soLuong: c.soLuong,
             donGia: c.donGia,
-          ));
+          );
+          if (idx >= 0) {
+            list[idx] = dong;
+          } else {
+            list.add(dong);
+          }
         }
         for (final e in fromHs.entries) {
-          vtTheoBuoc[e.key] = e.value;
+          vtTheoBuoc[e.key] = e.value; // ghi đè Json, không cộng
           final old = selected[e.key];
           if (old != null) {
             selected[e.key] = BuocQuyTrinhDuyet(

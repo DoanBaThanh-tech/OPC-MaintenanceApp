@@ -593,16 +593,42 @@ mixin _XuLyVatTuVaHoanThanhNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNv
       final coVatTu = buocApi
           .any((b) => b.vatTuList.any((d) => d.soLuong > 0 && d.tenVatTu.isNotEmpty));
       if (coVatTu) {
+        // Luôn lấy HS vật tư hiện có theo công việc (tránh tạo 2 lần → SL gấp đôi)
+        if (_maHoSoVatTu == null) {
+          try {
+            final hsCu = await MaterialUsageService.layHoSoTheoCongViec(
+              maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+              maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+            );
+            if (hsCu != null && hsCu.maHoSoVatTu > 0) {
+              _maHoSoVatTu = hsCu.maHoSoVatTu;
+            }
+          } catch (_) {}
+        }
+        // API Tao đã upsert; vẫn ưu tiên capNhat khi đã có mã
         if (_maHoSoVatTu != null) {
-          await MaterialUsageService.capNhatHoSoVatTu(
-            maHoSoVatTu: _maHoSoVatTu!,
-            maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
-            maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
-            maThietBi: y.maThietBi ?? 0,
-            tenThietBi: y.tenThietBi ?? '',
-            loaiCongViec: _laBaoTri ? 'Bảo trì' : 'Sửa chữa',
-            buoc: buocApi,
-          );
+          try {
+            await MaterialUsageService.capNhatHoSoVatTu(
+              maHoSoVatTu: _maHoSoVatTu!,
+              maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+              maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+              maThietBi: y.maThietBi ?? 0,
+              tenThietBi: y.tenThietBi ?? '',
+              loaiCongViec: _laBaoTri ? 'Bảo trì' : 'Sửa chữa',
+              buoc: buocApi,
+            );
+          } catch (_) {
+            // CapNhat lỗi (vd. trạng thái) → tạo/upsert qua API
+            final created = await MaterialUsageService.taoHoSoVatTu(
+              maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,
+              maHoSoSuaChua: _laBaoTri ? null : y.maHoSo,
+              maThietBi: y.maThietBi ?? 0,
+              tenThietBi: y.tenThietBi ?? '',
+              loaiCongViec: _laBaoTri ? 'Bảo trì' : 'Sửa chữa',
+              buoc: buocApi,
+            );
+            if (created != null) _maHoSoVatTu = created.maHoSoVatTu;
+          }
         } else {
           final created = await MaterialUsageService.taoHoSoVatTu(
             maHoSoBaoTri: _laBaoTri ? y.maHoSo : null,

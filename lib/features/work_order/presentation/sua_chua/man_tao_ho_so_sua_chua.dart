@@ -456,7 +456,7 @@ class _TaoHoSoSuaChuaScreenState extends State<TaoHoSoSuaChuaScreen>
                               value: t,
                               enabled: !daSc,
                               child: Text(
-                                daSc ? '$label (đã SC tháng này)' : label,
+                                daSc ? '$label (đã SC hôm nay)' : label,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   color: daSc

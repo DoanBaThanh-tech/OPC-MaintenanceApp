@@ -104,13 +104,14 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
         if (tt.isNotEmpty) ttTheoBuoc[so] = tt;
         final moTa = (row['moTaBuoc'] ?? row['MoTaBuoc'])?.toString() ?? '';
         if (moTa.trim().isNotEmpty) moTaTheoBuoc[so] = moTa.trim();
-        // Vật tư lưu trên tiến độ bước
+        // Vật tư trên tiến độ bước (JsonVatTu) — chỉ dùng khi chưa có hồ sơ vật tư
         final jsonVt = (row['jsonVatTu'] ?? row['JsonVatTu'])?.toString();
         if (jsonVt != null && jsonVt.trim().isNotEmpty) {
           try {
             final arr = jsonDecode(jsonVt);
             if (arr is List) {
               final list = <_VatTuBuocSc>[];
+              final seen = <String>{};
               for (final item in arr) {
                 if (item is! Map) continue;
                 final m = Map<String, dynamic>.from(item);
@@ -119,6 +120,10 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
                 final sl = (m['soLuong'] as num?)?.toInt() ?? 0;
                 final dg = (m['donGia'] as num?)?.toInt() ?? 0;
                 if (ten.isEmpty || sl <= 0) continue;
+                // Không thêm 2 lần cùng tên trong 1 bước (tránh SL nhìn gấp đôi)
+                final key = ten.toLowerCase();
+                if (seen.contains(key)) continue;
+                seen.add(key);
                 list.add(_VatTuBuocSc(ten: ten, soLuong: sl, donGia: dg));
               }
               if (list.isNotEmpty) {
@@ -129,20 +134,32 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
           } catch (_) {}
         }
       }
+      // Hồ sơ vật tư theo công việc — NGUỒN CHÍNH, ghi đè Json (không cộng dồn)
       if (hsVt != null) {
+        final fromHs = <int, List<_VatTuBuocSc>>{};
         for (final c in hsVt.chiTiet) {
           if (c.tenVatTu.isEmpty || c.soLuong <= 0) continue;
           chonSet.add(c.soBuoc);
-          vtTheoBuoc.putIfAbsent(c.soBuoc, () => []).add(
-            _VatTuBuocSc(
-              ten: c.tenVatTu,
-              soLuong: c.soLuong,
-              donGia: c.donGia,
-            ),
+          final list = fromHs.putIfAbsent(c.soBuoc, () => []);
+          // Cùng bước + cùng tên → giữ dòng cuối, không cộng SL
+          final key = c.tenVatTu.trim().toLowerCase();
+          final idx = list.indexWhere((e) => e.ten.toLowerCase() == key);
+          final dong = _VatTuBuocSc(
+            ten: c.tenVatTu,
+            soLuong: c.soLuong,
+            donGia: c.donGia,
           );
+          if (idx >= 0) {
+            list[idx] = dong;
+          } else {
+            list.add(dong);
+          }
           if (c.moTaBuoc.trim().isNotEmpty) {
             moTaTheoBuoc.putIfAbsent(c.soBuoc, () => c.moTaBuoc.trim());
           }
+        }
+        for (final e in fromHs.entries) {
+          vtTheoBuoc[e.key] = e.value; // ghi đè, không cộng với Json
         }
       }
 

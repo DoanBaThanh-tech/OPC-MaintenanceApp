@@ -28,6 +28,18 @@ class _BuocState {
         daLuuDieuChinh = false,
         dangMoCapNhat = false;
 
+  /// Tổng tiền vật tư của bước (SL × đơn giá từng dòng).
+  int get tongTienBuoc {
+    var sum = 0;
+    for (final d in vatTu) {
+      if (d.tenVatTu.isEmpty) continue;
+      final sl = int.tryParse(d.slCtrl.text.trim()) ?? d.soLuong;
+      if (sl <= 0 || d.donGia < 0) continue;
+      sum += sl * d.donGia;
+    }
+    return sum;
+  }
+
   void dispose() {
     moTaCtrl.dispose();
     for (final v in vatTu) {
@@ -49,6 +61,12 @@ class _VatTuDongState {
     required this.soLuong,
     required this.donGia,
   }) : slCtrl = TextEditingController(text: soLuong.toString());
+
+  int get thanhTien {
+    final sl = int.tryParse(slCtrl.text.trim()) ?? soLuong;
+    if (sl <= 0 || donGia < 0) return 0;
+    return sl * donGia;
+  }
 
   void dispose() => slCtrl.dispose();
 }
