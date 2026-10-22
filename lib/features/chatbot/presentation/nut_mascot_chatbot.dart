@@ -2,7 +2,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'man_chatbot.dart';
 
-/// Nút AI 3D-style (OPC dược + cơ điện), co giãn theo màn hình, kéo thả tự do.
+/// Nút AI 3D hoạt hình — cảm xúc + chuyển động, kéo thả, co giãn theo màn hình.
 class NutMascotChatbot extends StatefulWidget {
   final String hoTen;
   final String vaiTro;
@@ -20,35 +20,51 @@ class NutMascotChatbot extends StatefulWidget {
 class _NutMascotChatbotState extends State<NutMascotChatbot>
     with TickerProviderStateMixin {
   late final AnimationController _float;
-  late final AnimationController _spin;
-  Offset? _offset; // null = góc mặc định
+  late final AnimationController _emotion;
+  late final AnimationController _blink;
+  late final AnimationController _wave;
+  Offset? _offset;
 
   @override
   void initState() {
     super.initState();
     _float = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 2200),
+      duration: const Duration(milliseconds: 1800),
     )..repeat(reverse: true);
-    _spin = AnimationController(
+
+    // Chu kỳ cảm xúc: vui → suy nghĩ → vui → nháy mắt…
+    _emotion = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 8),
+      duration: const Duration(seconds: 6),
     )..repeat();
+
+    _blink = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2800),
+    )..repeat();
+
+    _wave = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
   }
 
   @override
   void dispose() {
     _float.dispose();
-    _spin.dispose();
+    _emotion.dispose();
+    _blink.dispose();
+    _wave.dispose();
     super.dispose();
   }
 
   double _sizeFor(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
-    if (w < 360) return 56;
-    if (w < 600) return 64;
-    if (w < 900) return 72;
-    return 80;
+    if (w < 360) return 58;
+    if (w < 600) return 66;
+    if (w < 900) return 74;
+    return 82;
   }
 
   void _moChat() {
@@ -81,11 +97,11 @@ class _NutMascotChatbotState extends State<NutMascotChatbot>
     final pad = mq.padding;
     final screen = mq.size;
 
-    // Mặc định: góc phải dưới, tránh home indicator
     final defaultLeft = screen.width - size - 16;
     final defaultTop = screen.height - size - pad.bottom - 88;
 
-    final left = (_offset?.dx ?? defaultLeft).clamp(8.0, screen.width - size - 8);
+    final left =
+    (_offset?.dx ?? defaultLeft).clamp(8.0, screen.width - size - 8);
     final top = (_offset?.dy ?? defaultTop)
         .clamp(pad.top + 8, screen.height - size - pad.bottom - 8);
 
@@ -101,30 +117,28 @@ class _NutMascotChatbotState extends State<NutMascotChatbot>
         },
         onTap: _moChat,
         child: AnimatedBuilder(
-          animation: Listenable.merge([_float, _spin]),
+          animation: Listenable.merge([_float, _emotion, _blink, _wave]),
           builder: (context, _) {
-            final dy = math.sin(_float.value * math.pi) * 5;
+            final dy = math.sin(_float.value * math.pi) * 6;
+            final tilt = math.sin(_wave.value * math.pi) * 0.08;
+            // 0=vui, 1=suy nghĩ, 2=ngạc nhiên
+            final phase = (_emotion.value * 3).floor() % 3;
+            final eyeClosed =
+            _blink.value > 0.88 && _blink.value < 0.94 ? 1.0 : 0.0;
+
             return Transform.translate(
               offset: Offset(0, dy),
-              child: SizedBox(
-                width: size,
-                height: size,
-                child: CustomPaint(
-                  painter: _OpcBot3dPainter(
-                    t: _float.value,
-                    spin: _spin.value,
-                  ),
-                  child: Center(
-                    child: Text(
-                      'AI',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.95),
-                        fontWeight: FontWeight.w900,
-                        fontSize: size * 0.18,
-                        shadows: const [
-                          Shadow(blurRadius: 4, color: Colors.black26),
-                        ],
-                      ),
+              child: Transform.rotate(
+                angle: tilt,
+                child: SizedBox(
+                  width: size,
+                  height: size,
+                  child: CustomPaint(
+                    painter: _OpcBotEmotionPainter(
+                      emotion: phase,
+                      eyeClosed: eyeClosed,
+                      t: _float.value,
+                      arm: _wave.value,
                     ),
                   ),
                 ),
@@ -137,124 +151,188 @@ class _NutMascotChatbotState extends State<NutMascotChatbot>
   }
 }
 
-/// Vẽ nhân vật 3D-style: viên thuốc OPC + bánh răng cơ điện.
-class _OpcBot3dPainter extends CustomPainter {
+/// Robot 3D-style OPC: mặt cảm xúc + tay vẫy + viên thuốc + bánh răng.
+class _OpcBotEmotionPainter extends CustomPainter {
+  final int emotion; // 0 smile, 1 think, 2 wow
+  final double eyeClosed;
   final double t;
-  final double spin;
-  _OpcBot3dPainter({required this.t, required this.spin});
+  final double arm;
+
+  _OpcBotEmotionPainter({
+    required this.emotion,
+    required this.eyeClosed,
+    required this.t,
+    required this.arm,
+  });
 
   @override
   void paint(Canvas canvas, Size size) {
     final c = Offset(size.width / 2, size.height / 2);
-    final r = size.width * 0.42;
+    final r = size.width * 0.40;
 
-    // Bóng đổ 3D
-    final shadow = Paint()
-      ..color = const Color(0xFF004E80).withValues(alpha: 0.28)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
+    // Bóng
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(c.dx, c.dy + r * 0.85),
-        width: r * 1.4,
-        height: r * 0.35,
+        center: Offset(c.dx, c.dy + r * 0.95),
+        width: r * 1.5,
+        height: r * 0.32,
       ),
-      shadow,
+      Paint()
+        ..color = const Color(0xFF004E80).withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8),
     );
 
-    // Thân cầu gradient (chiều sâu)
+    // Tay trái vẫy
+    final armAngle = -0.6 + arm * 0.9;
+    _drawArm(canvas, c + Offset(-r * 0.85, r * 0.1), armAngle, r * 0.45);
+    // Tay phải
+    _drawArm(canvas, c + Offset(r * 0.85, r * 0.1), 0.5 - arm * 0.4, r * 0.45);
+
+    // Thân cầu 3D
     final body = Paint()
       ..shader = const RadialGradient(
-        center: Alignment(-0.35, -0.4),
-        radius: 1.1,
+        center: Alignment(-0.4, -0.45),
+        radius: 1.05,
         colors: [
-          Color(0xFF7DD3FC),
-          Color(0xFF0EA5E9),
-          Color(0xFF0068A9),
-          Color(0xFF003A5C),
+          Color(0xFFBAE6FD),
+          Color(0xFF38BDF8),
+          Color(0xFF0284C7),
+          Color(0xFF0C4A6E),
         ],
-        stops: [0.0, 0.35, 0.7, 1.0],
+        stops: [0.0, 0.3, 0.65, 1.0],
       ).createShader(Rect.fromCircle(center: c, radius: r));
     canvas.drawCircle(c, r, body);
 
-    // Highlight bóng kính
-    final hi = Paint()
-      ..shader = RadialGradient(
-        center: const Alignment(-0.45, -0.55),
-        radius: 0.55,
-        colors: [
-          Colors.white.withValues(alpha: 0.55),
-          Colors.white.withValues(alpha: 0.0),
-        ],
-      ).createShader(Rect.fromCircle(center: c, radius: r));
-    canvas.drawCircle(c, r * 0.92, hi);
+    // Highlight
+    canvas.drawCircle(
+      c + Offset(-r * 0.28, -r * 0.32),
+      r * 0.22,
+      Paint()..color = Colors.white.withValues(alpha: 0.35),
+    );
 
-    // Viên nang thuốc (chủ đề dược OPC)
-    final pillW = r * 0.95;
-    final pillH = r * 0.38;
-    final pillRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-          center: Offset(c.dx, c.dy - r * 0.08), width: pillW, height: pillH),
-      Radius.circular(pillH / 2),
-    );
-    canvas.save();
-    canvas.clipRRect(pillRect);
-    canvas.drawRRect(
-      pillRect,
-      Paint()..color = Colors.white.withValues(alpha: 0.92),
-    );
-    canvas.drawRect(
-      Rect.fromLTRB(
-        c.dx,
-        c.dy - r * 0.08 - pillH / 2,
-        c.dx + pillW / 2,
-        c.dy - r * 0.08 + pillH / 2,
-      ),
-      Paint()..color = const Color(0xFF0068A9).withValues(alpha: 0.9),
-    );
-    canvas.restore();
-    canvas.drawRRect(
-      pillRect,
+    // Ăng-ten
+    final ant = Paint()
+      ..color = const Color(0xFF0EA5E9)
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(c + Offset(0, -r), c + Offset(0, -r * 1.35), ant);
+    canvas.drawCircle(
+      c + Offset(0, -r * 1.4),
+      r * 0.12,
       Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..color = Colors.white.withValues(alpha: 0.5),
+        ..shader = RadialGradient(
+          colors: [
+            Color.lerp(const Color(0xFF4ADE80), const Color(0xFF22D3EE), t)!,
+            const Color(0xFF0EA5E9),
+          ],
+        ).createShader(Rect.fromCircle(
+            center: c + Offset(0, -r * 1.4), radius: r * 0.12)),
     );
 
-    // Bánh răng quay (cơ điện)
-    final gearR = r * 0.55;
-    final gearPaint = Paint()
-      ..color = const Color(0xFFFFF7ED).withValues(alpha: 0.35)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2;
-    canvas.save();
-    canvas.translate(c.dx, c.dy + r * 0.12);
-    canvas.rotate(spin * math.pi * 2);
-    final path = Path();
-    const teeth = 8;
-    for (var i = 0; i < teeth; i++) {
-      final a0 = (i / teeth) * math.pi * 2;
-      final a1 = a0 + math.pi / teeth;
-      path.moveTo(math.cos(a0) * gearR * 0.72, math.sin(a0) * gearR * 0.72);
-      path.lineTo(math.cos(a0) * gearR, math.sin(a0) * gearR);
-      path.lineTo(math.cos(a1) * gearR, math.sin(a1) * gearR);
-      path.lineTo(math.cos(a1) * gearR * 0.72, math.sin(a1) * gearR * 0.72);
+    // Mắt
+    final eyeY = c.dy - r * 0.12;
+    final eyeW = r * 0.16;
+    final eyeH = eyeClosed > 0.5 ? r * 0.03 : r * 0.18;
+    for (final dx in [-r * 0.28, r * 0.28]) {
+      final er = RRect.fromRectAndRadius(
+        Rect.fromCenter(center: Offset(c.dx + dx, eyeY), width: eyeW, height: eyeH),
+        const Radius.circular(6),
+      );
+      canvas.drawRRect(er, Paint()..color = Colors.white);
+      if (eyeClosed < 0.5) {
+        // Con ngươi theo cảm xúc
+        final pupilShift = emotion == 1 ? 2.0 : (emotion == 2 ? 0.0 : 0.0);
+        canvas.drawCircle(
+          Offset(c.dx + dx + pupilShift, eyeY),
+          eyeW * 0.35,
+          Paint()..color = const Color(0xFF0F172A),
+        );
+        canvas.drawCircle(
+          Offset(c.dx + dx + pupilShift - 1.5, eyeY - 1.5),
+          eyeW * 0.12,
+          Paint()..color = Colors.white,
+        );
+      }
     }
-    canvas.drawPath(path, gearPaint);
-    canvas.drawCircle(Offset.zero, gearR * 0.28, gearPaint);
+
+    // Miệng theo cảm xúc
+    final mouthPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.2
+      ..strokeCap = StrokeCap.round;
+    final my = c.dy + r * 0.28;
+    final path = Path();
+    if (emotion == 0) {
+      // Cười
+      path.moveTo(c.dx - r * 0.22, my);
+      path.quadraticBezierTo(c.dx, my + r * 0.18, c.dx + r * 0.22, my);
+    } else if (emotion == 1) {
+      // Suy nghĩ — miệng nhỏ lệch
+      path.moveTo(c.dx - r * 0.08, my + 2);
+      path.lineTo(c.dx + r * 0.14, my);
+    } else {
+      // Ngạc nhiên — miệng O
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset(c.dx, my + 2), width: r * 0.2, height: r * 0.16),
+        Paint()..color = Colors.white.withValues(alpha: 0.9),
+      );
+    }
+    if (emotion != 2) canvas.drawPath(path, mouthPaint);
+
+    // Má hồng khi vui
+    if (emotion == 0) {
+      final cheek = Paint()..color = const Color(0xFFF472B6).withValues(alpha: 0.35);
+      canvas.drawCircle(Offset(c.dx - r * 0.48, c.dy + r * 0.08), r * 0.1, cheek);
+      canvas.drawCircle(Offset(c.dx + r * 0.48, c.dy + r * 0.08), r * 0.1, cheek);
+    }
+
+    // Viên thuốc nhỏ (dược OPC) góc dưới
+    final pill = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+          center: Offset(c.dx, c.dy + r * 0.55), width: r * 0.7, height: r * 0.22),
+      Radius.circular(r * 0.11),
+    );
+    canvas.save();
+    canvas.clipRRect(pill);
+    canvas.drawRRect(pill, Paint()..color = Colors.white.withValues(alpha: 0.85));
+    canvas.drawRect(
+      Rect.fromLTRB(c.dx, c.dy + r * 0.55 - r * 0.11, c.dx + r * 0.35, c.dy + r * 0.55 + r * 0.11),
+      Paint()..color = const Color(0xFF0068A9).withValues(alpha: 0.85),
+    );
     canvas.restore();
 
-    // Viền phát sáng
+    // Viền sáng
     canvas.drawCircle(
       c,
       r,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2
-        ..color = Colors.white.withValues(alpha: 0.25 + 0.2 * t),
+        ..color = Colors.white.withValues(alpha: 0.3 + 0.2 * t),
     );
   }
 
+  void _drawArm(Canvas canvas, Offset root, double angle, double len) {
+    final end = Offset(
+      root.dx + math.cos(angle) * len,
+      root.dy + math.sin(angle) * len,
+    );
+    canvas.drawLine(
+      root,
+      end,
+      Paint()
+        ..color = const Color(0xFF38BDF8)
+        ..strokeWidth = 5
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(end, 5, Paint()..color = const Color(0xFF7DD3FC));
+  }
+
   @override
-  bool shouldRepaint(covariant _OpcBot3dPainter old) =>
-      old.t != t || old.spin != spin;
+  bool shouldRepaint(covariant _OpcBotEmotionPainter old) =>
+      old.emotion != emotion ||
+          old.eyeClosed != eyeClosed ||
+          old.t != t ||
+          old.arm != arm;
 }
