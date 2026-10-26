@@ -46,7 +46,7 @@ class ChatbotService {
       })
           .toList(),
     };
-    // OPC State Engine — thường < 2s
+    // OPC Intent Engine — thường < 2s
     final data = await ApiClient.instance.post<Map<String, dynamic>>(
       ApiConstants.aiChat,
       body,
