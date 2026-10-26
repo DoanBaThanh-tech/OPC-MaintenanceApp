@@ -14,7 +14,8 @@ import 'thong_bao_models.dart';
 typedef ThongBaoTapCallback = void Function(ThongBaoItem? item);
 
 /// Poll API → hiện thông báo hệ thống khi có phân công mới.
-/// Sau khi NVKT bấm Tiến hành → đánh dấu đã xử lý, không hiện lại.
+/// Mỗi phân công (mỗi hồ sơ/thiết bị) chỉ push 1 lần.
+/// Sau Tiến hành / đã vào quy trình → không hiện lại thông báo đó.
 class ThongBaoRealtimeService {
   ThongBaoRealtimeService._();
   static final instance = ThongBaoRealtimeService._();
@@ -46,7 +47,6 @@ class ThongBaoRealtimeService {
     await _taiDaXuLyLocal();
     if (_ready) return;
 
-    // Icon status bar / thông báo = logo app (mipmap)
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
     const ios = DarwinInitializationSettings();
     await _plugin.initialize(
@@ -90,12 +90,23 @@ class ThongBaoRealtimeService {
   void _xuLyBamThongBao(NotificationResponse resp) {
     final id = int.tryParse(resp.payload ?? '');
     final item = id == null ? null : _cacheById[id];
+    // Bấm thân TB hoặc nút «Tiến hành» → đánh dấu đã xử lý, không hiện lại
+    if (id != null && id > 0) {
+      unawaited(danhDauDaDoc(id));
+      if (item != null) {
+        unawaited(danhDauTheoHoSo(
+          maHoSoBaoTri: item.maHoSoBaoTri,
+          maHoSoSuaChua: item.maHoSoSuaChua,
+        ));
+      }
+    }
     onTap?.call(item);
   }
 
   void startPolling() {
     _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 12), (_) {
+    // Poll nhanh hơn để nhận phân công mới kịp thời
+    _timer = Timer.periodic(const Duration(seconds: 8), (_) {
       unawaited(refresh());
     });
     unawaited(refresh());
@@ -119,6 +130,7 @@ class ThongBaoRealtimeService {
 
       for (final tb in list) {
         _cacheById[tb.maThongBao] = tb;
+        // Server đã đánh dấu đọc (đã Tiến hành / hoàn thành) → hủy local
         if (tb.daDoc) {
           _daXuLyLocal.add(tb.maThongBao);
           _daHienLocal.add(tb.maThongBao);
@@ -127,9 +139,16 @@ class ThongBaoRealtimeService {
       }
       await _luuDaXuLyLocal();
 
+      // Chỉ push thông báo phân công CHƯA đọc, chưa từng hiện / chưa xử lý
       for (final tb in list.where((e) => !e.daDoc)) {
-        if (_daHienLocal.contains(tb.maThongBao)) continue;
         if (_daXuLyLocal.contains(tb.maThongBao)) continue;
+        if (_daHienLocal.contains(tb.maThongBao)) continue;
+
+        final loai = tb.loai.toLowerCase();
+        final isPhanCong = loai.contains('phancong') ||
+            tb.tieuDe.toLowerCase().contains('phân công');
+        if (!isPhanCong) continue;
+
         _daHienLocal.add(tb.maThongBao);
         await _hienThongBaoNgoaiApp(tb);
       }
@@ -142,7 +161,7 @@ class ThongBaoRealtimeService {
     if (!_ready) return;
 
     final isBt = tb.loai == 'PhanCongBT' ||
-        (tb.tieuDe.toLowerCase().contains('bảo trì'));
+        tb.tieuDe.toLowerCase().contains('bảo trì');
     final tieuDe = isBt
         ? '🔧 Phân công bảo trì mới'
         : '🛠️ Phân công sửa chữa mới';
@@ -152,8 +171,7 @@ class ThongBaoRealtimeService {
 
     final details = NotificationDetails(
       android: AndroidNotificationDetails(
-        // Channel mới để style/logo cập nhật trên Android
-        'opc_phan_cong_v2',
+        'opc_phan_cong_v3',
         'Yêu cầu công việc OPC',
         channelDescription:
         'Thông báo phân công bảo trì / sửa chữa — Maintenance app OPC',
@@ -162,7 +180,6 @@ class ThongBaoRealtimeService {
         visibility: NotificationVisibility.public,
         color: const Color(0xFF0068A9),
         colorized: true,
-        // Logo app (không dùng icon Flutter mặc định)
         icon: '@mipmap/ic_launcher',
         largeIcon: const DrawableResourceAndroidBitmap('@mipmap/ic_launcher'),
         styleInformation: BigTextStyleInformation(
@@ -181,6 +198,8 @@ class ThongBaoRealtimeService {
           ),
         ],
         ticker: tieuDe,
+        playSound: true,
+        enableVibration: true,
       ),
       iOS: const DarwinNotificationDetails(
         presentAlert: true,
@@ -197,6 +216,7 @@ class ThongBaoRealtimeService {
         details,
         payload: '${tb.maThongBao}',
       );
+      debugPrint('Đã push TB#${tb.maThongBao}: $tieuDe');
     } catch (e) {
       debugPrint('show notification: $e');
     }

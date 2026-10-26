@@ -31,6 +31,8 @@ abstract class _QuyTrinhNvktScreenStateBase extends State<QuyTrinhNvktScreen>
 
   bool get _laBaoTri => widget.yeuCau.laBaoTri;
   bool get _cheDoCapNhat => widget.yeuCau.biTuChoi;
+  String get _lyDoTuChoiHienThi =>
+      (widget.yeuCau.lyDoTuChoi ?? '').trim();
 
   bool _coTheSuaVatTu(_BuocState b) => QuyTrinhNvktRules.coTheSuaVatTu(
     daChon: b.daChon,
@@ -186,19 +188,40 @@ class _QuyTrinhNvktScreenState extends _QuyTrinhNvktScreenStateBase
                       Padding(
                         padding: const EdgeInsets.only(left: 16, top: 10, right: 8),
                         child: Container(
+                          width: double.infinity,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
+                              horizontal: 12, vertical: 10),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
+                            color: Colors.white.withValues(alpha: 0.22),
                             borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: const Text(
-                            'Xưởng đã từ chối — chỉnh bước / vật tư rồi gửi lại',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.35),
                             ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Xưởng đã từ chối — chỉnh bước / vật tư rồi gửi lại',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              if (_lyDoTuChoiHienThi.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Lý do từ chối: $_lyDoTuChoiHienThi',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFF7ED),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),
@@ -255,6 +278,57 @@ class _QuyTrinhNvktScreenState extends _QuyTrinhNvktScreenStateBase
                 : ListView(
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
               children: [
+                if (_cheDoCapNhat) ...[
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 14),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7ED),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFFDBA74)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFEA580C).withValues(alpha: 0.12),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.info_rounded,
+                                color: Color(0xFFC2410C), size: 20),
+                            SizedBox(width: 8),
+                            Text(
+                              'Lý do từ chối',
+                              style: TextStyle(
+                                color: Color(0xFF9A3412),
+                                fontWeight: FontWeight.w900,
+                                fontSize: 14.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          _lyDoTuChoiHienThi.isNotEmpty
+                              ? _lyDoTuChoiHienThi
+                              : 'Xưởng đã từ chối quy trình. Vui lòng chỉnh sửa bước/vật tư rồi gửi lại.',
+                          style: const TextStyle(
+                            color: Color(0xFF7C2D12),
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                            fontSize: 13.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 // Hint card
                 TweenAnimationBuilder<double>(
                   tween: Tween(begin: 0, end: 1),

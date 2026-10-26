@@ -24,7 +24,7 @@ class ThongKeThang {
   });
 
   factory ThongKeThang.fromJson(Map<String, dynamic> j) {
-    int n(dynamic v) => (v as num?)?.toInt() ?? 0;
+    int n(dynamic v) => ((v as num?)?.round() ?? 0);
     return ThongKeThang(
       thang: n(j['thang'] ?? j['Thang']),
       soBaoTri: n(j['soBaoTri'] ?? j['SoBaoTri']),
@@ -62,7 +62,7 @@ class ThongKeGiamDocData {
   });
 
   factory ThongKeGiamDocData.fromJson(Map<String, dynamic> j) {
-    int n(dynamic v) => (v as num?)?.toInt() ?? 0;
+    int n(dynamic v) => ((v as num?)?.round() ?? 0);
     final rawNam = j['danhSachNam'] ?? j['DanhSachNam'];
     final dsNam = <int>[];
     if (rawNam is List) {

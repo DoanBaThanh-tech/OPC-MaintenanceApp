@@ -46,11 +46,11 @@ class ChatbotService {
       })
           .toList(),
     };
-    // Ollama có thể mất 30–90s lần đầu
+    // OPC State Engine — thường < 2s
     final data = await ApiClient.instance.post<Map<String, dynamic>>(
       ApiConstants.aiChat,
       body,
-      timeout: const Duration(minutes: 3),
+      timeout: const Duration(seconds: 20),
     );
     final traLoi = data['traLoi']?.toString();
     if (traLoi == null || traLoi.isEmpty) {

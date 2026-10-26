@@ -27,4 +27,5 @@ flutter:
   assets:
     - assets/images/logo_opc.png
     - assets/images/logo_opc_icon.png
+    - assets/images/opc_bot.png
 
