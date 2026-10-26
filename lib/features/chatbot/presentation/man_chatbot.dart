@@ -292,7 +292,7 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
             Expanded(
               child: Text(
                 on
-                    ? 'OPC Bot · ${_model ?? "Intent"} · rule-based · ≤2s'
+                    ? 'OPC Bot · ${_model ?? "Gemini+DB"} · realtime'
                     : 'OPC Bot offline',
                 style: TextStyle(
                   fontSize: 12,
