@@ -76,7 +76,7 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
         _ollamaOnline = false;
         _tinNhan.add(ChatTinNhan(
           role: 'assistant',
-          content: 'Chưa kết nối được AI. Kiểm tra API/ngrok và Intent.',
+          content: 'Chưa kết nối được AI. Kiểm tra API/ngrok đang chạy.',
         ));
       });
     }
@@ -292,7 +292,7 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
             Expanded(
               child: Text(
                 on
-                    ? 'OPC Bot · ${_model ?? "Gemini+DB"} · realtime'
+                    ? 'OPC Bot · ${_model ?? "Groq+DB"} · realtime'
                     : 'OPC Bot offline',
                 style: TextStyle(
                   fontSize: 12,
