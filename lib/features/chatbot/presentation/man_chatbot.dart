@@ -51,8 +51,8 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
       _tinNhan.add(ChatTinNhan(
         role: 'assistant',
         content:
-        'Chào $_tenChao! Mình là OPC Bot — hỗ trợ vai trò «${widget.vaiTro}».\n'
-            'Hỏi số liệu, quy trình, vật tư… mình trả lời đúng câu bạn hỏi.',
+        'Chào $_tenChao! Mình là OPC Bot — hỗ trợ đúng vai trò «${widget.vaiTro}».\n'
+            'Hỏi quy trình, số liệu, hồ sơ, phân công, vật tư… trong phạm vi vai trò của bạn.',
       ));
     });
     try {
