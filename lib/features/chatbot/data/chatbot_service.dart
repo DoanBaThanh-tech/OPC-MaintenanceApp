@@ -7,10 +7,14 @@ class ChatTinNhan {
   final String content;
   final DateTime luc;
 
+  /// true = tin hệ thống (lời chào, thông báo lỗi) → KHÔNG gửi lên server làm lịch sử.
+  final bool boQuaLichSu;
+
   ChatTinNhan({
     required this.role,
     required this.content,
     DateTime? luc,
+    this.boQuaLichSu = false,
   }) : luc = luc ?? DateTime.now();
 
   bool get laBot => role == 'assistant';
@@ -34,23 +38,32 @@ class ChatbotService {
   Future<String> guiTinNhan({
     required String cauHoi,
     required List<ChatTinNhan> lichSu,
+    bool baoSai = false,
+    String? cauHoiGoc,
+    String? traLoiSai,
   }) async {
     final hoTen = await TokenStorage.getHoTen();
     final body = <String, dynamic>{
       'cauHoi': cauHoi,
       if (hoTen != null && hoTen.trim().isNotEmpty) 'hoTen': hoTen.trim(),
       'lichSu': lichSu
+          .where((e) => !e.boQuaLichSu)
           .map((e) => {
         'role': e.role,
         'content': e.content,
       })
           .toList(),
+      'baoSai': baoSai,
+      if (cauHoiGoc != null && cauHoiGoc.trim().isNotEmpty)
+        'cauHoiGoc': cauHoiGoc.trim(),
+      if (traLoiSai != null && traLoiSai.trim().isNotEmpty)
+        'traLoiSai': traLoiSai.trim(),
     };
-    // OPC Intent Engine — thường < 2s
+    // Báo sai / tool calling có thể cần nhiều lượt → tới 45s
     final data = await ApiClient.instance.post<Map<String, dynamic>>(
       ApiConstants.aiChat,
       body,
-      timeout: const Duration(seconds: 20),
+      timeout: const Duration(seconds: 45),
     );
     final traLoi = data['traLoi']?.toString();
     if (traLoi == null || traLoi.isEmpty) {

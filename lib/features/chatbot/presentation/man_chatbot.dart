@@ -23,7 +23,7 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
   final _scroll = ScrollController();
   final _tinNhan = <ChatTinNhan>[];
   bool _dangGui = false;
-  bool? _ollamaOnline;
+  bool? _online;
   String? _model;
 
   String get _tenChao {
@@ -32,6 +32,13 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
     final parts = t.split(RegExp(r'\s+'));
     return parts.isNotEmpty ? parts.last : t;
   }
+
+  /// Tin hệ thống (lời chào / lỗi): hiển thị nhưng không gửi làm lịch sử hội thoại.
+  ChatTinNhan _tinHeThong(String content) => ChatTinNhan(
+    role: 'assistant',
+    content: content,
+    boQuaLichSu: true,
+  );
 
   @override
   void initState() {
@@ -48,35 +55,31 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
 
   Future<void> _loiChaoVaKiemTra() async {
     setState(() {
-      _tinNhan.add(ChatTinNhan(
-        role: 'assistant',
-        content:
-        'Chào $_tenChao! Mình là OPC Bot — hỗ trợ đúng vai trò «${widget.vaiTro}».\n'
-            'Hỏi quy trình, số liệu, hồ sơ, phân công, vật tư… trong phạm vi vai trò của bạn.',
+      _tinNhan.add(_tinHeThong(
+        'Chào $_tenChao! Mình là OPC Bot — chỉ hỗ trợ vai trò «${widget.vaiTro}».\n'
+            'Hỏi số liệu/quy trình trong phạm vi của bạn. Nếu mình trả lời sai, bảo «xem lại» để mình kiểm tra lại ngay.',
       ));
     });
     try {
       final st = await ChatbotService.instance.kiemTra();
       if (!mounted) return;
       setState(() {
-        _ollamaOnline = st.online;
+        _online = st.online;
         _model = st.model;
       });
       if (!st.online) {
         setState(() {
-          _tinNhan.add(ChatTinNhan(
-            role: 'assistant',
-            content: 'Engine chatbot chưa sẵn sàng. Kiểm tra API đang chạy rồi hỏi lại nhé.',
+          _tinNhan.add(_tinHeThong(
+            'Engine chatbot chưa sẵn sàng. Kiểm tra API đang chạy rồi hỏi lại nhé.',
           ));
         });
       }
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _ollamaOnline = false;
-        _tinNhan.add(ChatTinNhan(
-          role: 'assistant',
-          content: 'Chưa kết nối được AI. Kiểm tra API/ngrok đang chạy.',
+        _online = false;
+        _tinNhan.add(_tinHeThong(
+          'Chưa kết nối được AI. Kiểm tra API/ngrok đang chạy.',
         ));
       });
     }
@@ -92,7 +95,9 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
     });
     _scrollCuoi();
     try {
-      final lichSu = List<ChatTinNhan>.from(_tinNhan)..removeLast();
+      // Lịch sử = các tin thật, bỏ tin hệ thống và bỏ câu hỏi vừa gửi
+      final lichSu = _tinNhan.where((m) => !m.boQuaLichSu).toList()
+        ..removeLast();
       final slice =
       lichSu.length > 8 ? lichSu.sublist(lichSu.length - 8) : lichSu;
       final traLoi = await ChatbotService.instance.guiTinNhan(
@@ -108,14 +113,79 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _tinNhan.add(ChatTinNhan(role: 'assistant', content: e.message));
+        _tinNhan.add(_tinHeThong(e.message));
         _dangGui = false;
       });
       _scrollCuoi();
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       setState(() {
-        _tinNhan.add(ChatTinNhan(role: 'assistant', content: '$e'));
+        _tinNhan.add(_tinHeThong(
+          'Chưa nhận được phản hồi. Bạn thử lại sau ít giây nhé.',
+        ));
+        _dangGui = false;
+      });
+      _scrollCuoi();
+    }
+  }
+
+  /// User bấm «Báo sai» trên 1 câu trả lời bot → API học lại theo dữ liệu app.
+  Future<void> _baoSaiTai(int indexBot) async {
+    if (_dangGui || indexBot < 0 || indexBot >= _tinNhan.length) return;
+    final botMsg = _tinNhan[indexBot];
+    if (!botMsg.laBot || botMsg.boQuaLichSu) return;
+
+    // Tìm câu hỏi user ngay trước bubble bot này
+    String? cauHoiGoc;
+    for (var i = indexBot - 1; i >= 0; i--) {
+      final m = _tinNhan[i];
+      if (m.boQuaLichSu) continue;
+      if (m.role == 'user') {
+        cauHoiGoc = m.content;
+        break;
+      }
+    }
+
+    setState(() {
+      _tinNhan.add(ChatTinNhan(
+        role: 'user',
+        content: 'Câu trả lời vừa rồi bị sai — hãy kiểm tra lại theo app.',
+        boQuaLichSu: true, // không đưa vào lịch sử LLM như câu hỏi thường
+      ));
+      _dangGui = true;
+    });
+    _scrollCuoi();
+
+    try {
+      final lichSu = _tinNhan.where((m) => !m.boQuaLichSu).toList();
+      final slice =
+      lichSu.length > 8 ? lichSu.sublist(lichSu.length - 8) : lichSu;
+      final traLoi = await ChatbotService.instance.guiTinNhan(
+        cauHoi: 'Câu trả lời trước bị sai, hãy kiểm tra lại số liệu trên app.',
+        lichSu: slice,
+        baoSai: true,
+        cauHoiGoc: cauHoiGoc,
+        traLoiSai: botMsg.content,
+      );
+      if (!mounted) return;
+      setState(() {
+        _tinNhan.add(ChatTinNhan(role: 'assistant', content: traLoi));
+        _dangGui = false;
+      });
+      _scrollCuoi();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _tinNhan.add(_tinHeThong(e.message));
+        _dangGui = false;
+      });
+      _scrollCuoi();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _tinNhan.add(_tinHeThong(
+          'Chưa kiểm tra lại được. Thử bấm Báo sai lần nữa sau vài giây.',
+        ));
         _dangGui = false;
       });
       _scrollCuoi();
@@ -154,7 +224,7 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
         child: Column(
           children: [
             _header(),
-            if (_ollamaOnline != null) _status(),
+            if (_online != null) _status(),
             Expanded(
               child: Container(
                 margin: const EdgeInsets.fromLTRB(10, 0, 10, 0),
@@ -183,7 +253,17 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
                       if (_dangGui && i == _tinNhan.length) {
                         return const _Waiting();
                       }
-                      return _Bubble(msg: _tinNhan[i]);
+                      final msg = _tinNhan[i];
+                      final choBaoSai = msg.laBot &&
+                          !msg.boQuaLichSu &&
+                          !_dangGui &&
+                          i == _tinNhan.lastIndexWhere(
+                                  (m) => m.laBot && !m.boQuaLichSu);
+                      return _Bubble(
+                        msg: msg,
+                        hienBaoSai: choBaoSai,
+                        onBaoSai: choBaoSai ? () => _baoSaiTai(i) : null,
+                      );
                     },
                   ),
                 ),
@@ -262,7 +342,7 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
   }
 
   Widget _status() {
-    final on = _ollamaOnline!;
+    final on = _online!;
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
       child: Container(
@@ -328,6 +408,12 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
               controller: _ctrl,
               minLines: 1,
               maxLines: 4,
+              maxLength: 1000,
+              buildCounter: (_,
+                  {required currentLength,
+                    required isFocused,
+                    maxLength}) =>
+              null,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _gui(),
               decoration: InputDecoration(
@@ -373,13 +459,46 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
   }
 }
 
-class _Bubble extends StatelessWidget {
+/// Làm sạch markdown còn sót từ LLM để hiển thị dạng text thuần.
+String _lamSachMarkdown(String s) {
+  var t = s.replaceAll('**', '').replaceAll('`', '');
+  t = t.replaceAll(RegExp(r'^\s{0,3}#{1,6}\s*', multiLine: true), '');
+  t = t.replaceAll(RegExp(r'^\s*[-*]\s+', multiLine: true), '• ');
+  return t.trim();
+}
+
+class _Bubble extends StatefulWidget {
   final ChatTinNhan msg;
-  const _Bubble({required this.msg});
+  final bool hienBaoSai;
+  final VoidCallback? onBaoSai;
+
+  const _Bubble({
+    required this.msg,
+    this.hienBaoSai = false,
+    this.onBaoSai,
+  });
+
+  @override
+  State<_Bubble> createState() => _BubbleState();
+}
+
+class _BubbleState extends State<_Bubble> {
+  static const int _maxDongRutGon = 5;
+  bool _moRong = false;
 
   @override
   Widget build(BuildContext context) {
+    final msg = widget.msg;
     final bot = msg.laBot;
+    final full = _lamSachMarkdown(msg.content);
+    final lines = full.split('\n');
+    final quaDai = lines.length > _maxDongRutGon || full.length > 320;
+    final hienThi = (!_moRong && quaDai)
+        ? (lines.length > _maxDongRutGon
+        ? '${lines.take(_maxDongRutGon).join('\n')}\n…'
+        : '${full.substring(0, full.length.clamp(0, 280))}…')
+        : full;
+
     return Align(
       alignment: bot ? Alignment.centerLeft : Alignment.centerRight,
       child: Container(
@@ -401,9 +520,7 @@ class _Bubble extends StatelessWidget {
             bottomLeft: Radius.circular(bot ? 6 : 18),
             bottomRight: Radius.circular(bot ? 18 : 6),
           ),
-          border: bot
-              ? Border.all(color: const Color(0xFFBAE6FD))
-              : null,
+          border: bot ? Border.all(color: const Color(0xFFBAE6FD)) : null,
           boxShadow: [
             BoxShadow(
               color: (bot ? const Color(0xFF0369A1) : const Color(0xFF0284C7))
@@ -413,14 +530,70 @@ class _Bubble extends StatelessWidget {
             ),
           ],
         ),
-        child: Text(
-          msg.content.replaceAll('**', ''),
-          style: TextStyle(
-            color: bot ? const Color(0xFF0C4A6E) : Colors.white,
-            height: 1.4,
-            fontSize: 14.5,
-            fontWeight: FontWeight.w500,
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SelectableText(
+              hienThi,
+              style: TextStyle(
+                color: bot ? const Color(0xFF0C4A6E) : Colors.white,
+                height: 1.45,
+                fontSize: 14.5,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            if (bot && quaDai) ...[
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: () => setState(() => _moRong = !_moRong),
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _moRong
+                            ? Icons.expand_less_rounded
+                            : Icons.expand_more_rounded,
+                        size: 18,
+                        color: const Color(0xFF0284C7),
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        _moRong ? 'Thu gọn' : 'Xem thêm',
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF0284C7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            if (widget.hienBaoSai && widget.onBaoSai != null) ...[
+              const SizedBox(height: 6),
+              TextButton.icon(
+                onPressed: widget.onBaoSai,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFB45309),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.flag_outlined, size: 16),
+                label: const Text(
+                  'Báo sai — kiểm tra lại',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
       ),
     );
@@ -457,7 +630,7 @@ class _WaitingState extends State<_Waiting>
       alignment: Alignment.centerLeft,
       child: AnimatedBuilder(
         animation: _c,
-        builder: (_, __) {
+        builder: (_, _) {
           return Container(
             margin: const EdgeInsets.only(bottom: 10),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
