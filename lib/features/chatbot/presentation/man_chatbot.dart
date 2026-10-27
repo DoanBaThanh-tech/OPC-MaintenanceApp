@@ -57,7 +57,7 @@ class _ManChatbotScreenState extends State<ManChatbotScreen> {
     setState(() {
       _tinNhan.add(_tinHeThong(
         'Chào $_tenChao! Mình là OPC Bot — chỉ hỗ trợ vai trò «${widget.vaiTro}».\n'
-            'Hỏi số liệu/quy trình trong phạm vi của bạn. Nếu mình trả lời sai, bảo «xem lại» để mình kiểm tra lại ngay.',
+            'Hỏi số liệu/quy trình trong phạm vi của bạn. Nếu mình trả lời sai, bấm «Báo sai — kiểm tra lại» để mình đối chiếu lại ngay.',
       ));
     });
     try {
