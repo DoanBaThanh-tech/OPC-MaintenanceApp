@@ -59,6 +59,7 @@ class ToTruongKeHoachBuocService {
           0;
       if (tt == 'DuocChon' ||
           tt == 'DangLam' ||
+          tt == 'BuocMoi' ||
           tt == 'DaXong' ||
           tt == 'DaCapNhat') {
         final so = (m['soBuoc'] as num?)?.toInt() ??

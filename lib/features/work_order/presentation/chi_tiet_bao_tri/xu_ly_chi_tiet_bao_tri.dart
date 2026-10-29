@@ -80,11 +80,14 @@ extension _ChiTietBaoTriXuLy on _WorkOrderBaoTriDetailScreenState {
             .where((s) => s.isNotEmpty)
             .toSet()
             .join(' · ');
+        // Trạng thái bước là nguồn chính. Chỉ suy ra "đã thực hiện" từ vật tư
+        // khi chưa có dòng tiến độ — tránh bước mới có vật tư bị hiện thành đã xong.
         final daThucHien = tt == 'DaXong' ||
             tt == 'DaCapNhat' ||
-            (vtTheoBuoc[so]?.any((c) => c.soLuong > 0) ?? false);
+            (tt.isEmpty && (vtTheoBuoc[so]?.any((c) => c.soLuong > 0) ?? false));
         final daChon = daThucHien ||
             tt == 'DangLam' ||
+            tt == 'BuocMoi' ||
             tt == 'DuocChon' ||
             vtTheoBuoc.containsKey(so);
         views.add(_BuocQtDetailView(

@@ -139,11 +139,13 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
             .where((s) => s.isNotEmpty)
             .toSet()
             .join(' · ');
+        // Trạng thái bước là nguồn chính; vật tư chỉ là fallback khi thiếu dòng tiến độ.
         final daThucHien = tt == 'DaXong' ||
             tt == 'DaCapNhat' ||
-            (vtTheoBuoc[so]?.any((c) => c.soLuong > 0) ?? false);
+            (tt.isEmpty && (vtTheoBuoc[so]?.any((c) => c.soLuong > 0) ?? false));
         final daChon = daThucHien ||
             tt == 'DangLam' ||
+            tt == 'BuocMoi' ||
             tt == 'DuocChon' ||
             vtTheoBuoc.containsKey(so);
         views.add(_BuocQtNvktView(
@@ -856,6 +858,8 @@ class _ChiTietYeuCauScreenState extends State<ChiTietYeuCauScreen> {
                             : (b.daChon
                             ? (b.trangThai == 'DuocChon'
                             ? 'Tổ trưởng chọn'
+                            : b.trangThai == 'BuocMoi'
+                            ? 'Bước mới'
                             : 'Đã chọn / nháp')
                             : 'Chưa chọn'),
                         style: TextStyle(

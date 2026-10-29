@@ -456,18 +456,24 @@ extension _ChiTietBaoTriQuyTrinhUi on _WorkOrderBaoTriDetailScreenState {
                       decoration: BoxDecoration(
                         color: b.daThucHien
                             ? const Color(0xFFD1FAE5)
+                            : b.trangThai == 'BuocMoi'
+                            ? const Color(0xFFFFF7ED)
                             : Colors.grey.shade100,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         b.daThucHien
                             ? 'Đã thực hiện'
+                            : b.trangThai == 'BuocMoi'
+                            ? 'Bước mới'
                             : (b.daChon ? 'Đã chọn / nháp' : 'Không làm'),
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: b.daThucHien
                               ? const Color(0xFF047857)
+                              : b.trangThai == 'BuocMoi'
+                              ? const Color(0xFFC2410C)
                               : Colors.grey.shade600,
                         ),
                       ),

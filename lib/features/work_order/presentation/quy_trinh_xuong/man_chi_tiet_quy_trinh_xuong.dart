@@ -127,11 +127,13 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
             .where((s) => s.isNotEmpty)
             .toSet()
             .join(' · ');
+        // Trạng thái bước là nguồn chính; vật tư chỉ là fallback khi thiếu dòng tiến độ.
         final daThucHien = tt == 'DaXong' ||
             tt == 'DaCapNhat' ||
-            (vtTheoBuoc[so]?.any((c) => c.soLuong > 0) ?? false);
+            (tt.isEmpty && (vtTheoBuoc[so]?.any((c) => c.soLuong > 0) ?? false));
         final daChon = daThucHien ||
             tt == 'DangLam' ||
+            tt == 'BuocMoi' ||
             tt == 'DuocChon' ||
             (vtTheoBuoc.containsKey(so));
         views.add(_BuocXuongView(
@@ -658,18 +660,24 @@ class _XuongQuyTrinhChiTietScreenState extends State<XuongQuyTrinhChiTietScreen>
                         decoration: BoxDecoration(
                           color: b.daThucHien
                               ? const Color(0xFFD1FAE5)
+                              : b.trangThai == 'BuocMoi'
+                              ? const Color(0xFFFFF7ED)
                               : Colors.grey.shade100,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
                           b.daThucHien
                               ? 'Đã thực hiện'
+                              : b.trangThai == 'BuocMoi'
+                              ? 'Bước mới'
                               : (b.daChon ? 'Đã chọn / nháp' : 'Không làm'),
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
                             color: b.daThucHien
                                 ? const Color(0xFF047857)
+                                : b.trangThai == 'BuocMoi'
+                                ? const Color(0xFFC2410C)
                                 : Colors.grey.shade600,
                           ),
                         ),

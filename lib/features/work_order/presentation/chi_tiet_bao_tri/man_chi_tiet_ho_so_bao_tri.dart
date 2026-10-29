@@ -546,6 +546,8 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                                     ? 'Không chọn'
                                     : (tt == 'DaXong' || tt == 'DaCapNhat'
                                     ? 'Đã xong'
+                                    : tt == 'BuocMoi'
+                                    ? 'Bước mới'
                                     : tt == 'DangLam'
                                     ? 'Đang làm'
                                     : 'Đã chọn');
@@ -553,7 +555,7 @@ class _WorkOrderBaoTriDetailScreenState extends State<WorkOrderBaoTriDetailScree
                                     ? Colors.grey
                                     : (tt == 'DaXong' || tt == 'DaCapNhat'
                                     ? AppColors.success
-                                    : tt == 'DangLam'
+                                    : tt == 'BuocMoi' || tt == 'DangLam'
                                     ? AppColors.warning
                                     : _kBtPrimary);
                                 return Opacity(

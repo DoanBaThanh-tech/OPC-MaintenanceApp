@@ -208,29 +208,21 @@ mixin _XuLyQuyTrinhNvkt on _QuyTrinhNvktScreenStateBase {
           if (ap.tenHienThi != null && ap.tenHienThi!.isNotEmpty) {
             b.tenNguoiGiu = ap.tenHienThi;
           }
-        } else if (tt == 'DangLam' && laCuaToi) {
-          // Trang cập nhật sau từ chối: không khôi phục nháp chưa Xong
-          if (_cheDoCapNhat) {
-            b.daChon = false;
-            b.daXong = false;
-            b.khoaBoiNguoiKhac = false;
-            b.moRong = false;
-            b.tenNguoiGiu = null;
-            b.dangMoCapNhat = false;
-          } else {
-            b.daChon = ap.daChon;
-            b.daXong = ap.daXong;
-            b.khoaBoiNguoiKhac = ap.khoaBoiNguoiKhac;
-            b.moRong = ap.moRong;
-            b.daLuuDieuChinh = false;
-            b.dangMoCapNhat = false;
-            b.tenNguoiGiu = null;
-          }
+        } else if ((tt == 'DangLam' || tt == 'BuocMoi') && laCuaToi) {
+          // Giữ nguyên bước đang làm dở / bước NVKT tự thêm, kể cả trang cập nhật
+          // sau từ chối — trước đây nháp bị reset nên mở lại mất tích chọn.
+          b.daChon = ap.daChon;
+          b.daXong = ap.daXong;
+          b.khoaBoiNguoiKhac = ap.khoaBoiNguoiKhac;
+          b.moRong = ap.moRong;
+          b.daLuuDieuChinh = false;
+          b.dangMoCapNhat = false;
+          b.tenNguoiGiu = tt == 'BuocMoi' ? tenNv : null;
         }
-        // Khôi phục vật tư: đã Xong / đã cập nhật; nháp DangLam chỉ quy trình mới
+        // Khôi phục vật tư: đã Xong / đã cập nhật, hoặc bước nháp / bước mới của mình
         final canRestoreVt = tt == 'DaXong' ||
             tt == 'DaCapNhat' ||
-            (!_cheDoCapNhat && tt == 'DangLam' && laCuaToi);
+            ((tt == 'DangLam' || tt == 'BuocMoi') && laCuaToi);
         if (tt == 'DaXong' || tt == 'DaCapNhat') {
           b.tenNguoiGiu = tenNv;
         }
@@ -313,10 +305,9 @@ mixin _XuLyQuyTrinhNvkt on _QuyTrinhNvktScreenStateBase {
     }
   }
 
-  /// Lưu nháp (DangLam + vật tư) — chỉ quy trình mới.
-  /// Trang cập nhật sau từ chối: **không** lưu nháp tích chọn (back ra phải mất tích nếu chưa Xong).
+  /// Lưu nháp (tích chọn + vật tư) ở cả quy trình mới và trang cập nhật sau từ chối.
+  /// Bước NVKT tự thêm được server đánh dấu BuocMoi để Tổ trưởng/Xưởng/Giám đốc thấy.
   Future<void> _luuNhapBuoc(_BuocState b, {bool silent = true}) async {
-    if (_cheDoCapNhat) return;
     final y = widget.yeuCau;
     if (y.maHoSo == null) return;
     if (b.khoaBoiNguoiKhac) return;
@@ -346,7 +337,11 @@ mixin _XuLyQuyTrinhNvkt on _QuyTrinhNvktScreenStateBase {
         moTaBuoc: b.moTaCtrl.text.trim().isEmpty
             ? 'Bước ${b.soBuoc}'
             : b.moTaCtrl.text.trim(),
-        trangThai: 'DangLam',
+        // Bước đã Xong chỉ đang sửa vật tư → giữ nguyên trạng thái đã xong,
+        // không hạ về nháp. Bước chưa Xong → nháp (server tự đánh dấu BuocMoi).
+        trangThai: b.daXong
+            ? (_cheDoCapNhat ? 'DaCapNhat' : 'DaXong')
+            : 'DangLam',
         jsonVatTu: jsonVt,
       );
       b.tenNguoiGiu = _tenToi;

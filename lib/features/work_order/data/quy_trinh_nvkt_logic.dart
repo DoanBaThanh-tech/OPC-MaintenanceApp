@@ -280,6 +280,17 @@ class QuyTrinhNvktRules {
       tenHienThi: tenNhanVien,
       );
     }
+    // NVKT tự thêm bước (chưa Xong) → vẫn tích, hiện tên người thêm
+    if (trangThai == 'BuocMoi' && laCuaToi) {
+      return (
+      daChon: true,
+      daXong: false,
+      khoaBoiNguoiKhac: false,
+      moRong: true,
+      daLuuDieuChinh: false,
+      tenHienThi: tenNhanVien,
+      );
+    }
     if (trangThai == 'DangLam' && laCuaToi) {
       return (
       daChon: true,

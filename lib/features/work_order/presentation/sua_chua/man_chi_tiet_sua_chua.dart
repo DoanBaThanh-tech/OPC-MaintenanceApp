@@ -97,6 +97,7 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
         final tt = (row['trangThai'] ?? row['TrangThai'])?.toString() ?? '';
         if (tt == 'DuocChon' ||
             tt == 'DangLam' ||
+            tt == 'BuocMoi' ||
             tt == 'DaXong' ||
             tt == 'DaCapNhat') {
           chonSet.add(so);
@@ -1384,6 +1385,8 @@ class _ChiTietHoSoSuaChuaScreenState extends State<ChiTietHoSoSuaChuaScreen>
           ? 'Không chọn'
           : (tt == 'DaXong' || tt == 'DaCapNhat'
           ? 'Đã thực hiện'
+          : tt == 'BuocMoi'
+          ? 'Bước mới'
           : tt == 'DangLam'
           ? 'Đang thực hiện'
           : 'Đã chọn — chưa làm');

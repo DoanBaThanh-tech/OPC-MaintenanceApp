@@ -537,6 +537,7 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
               return _HsCard(
                 index: i,
                 tenThietBi: hs.tenThietBi,
+                nhanVien: hs.tenNhanVienThucHiens,
                 maHoSo: hs.maHoSoBaoTri,
                 ngayTao: _fmt(hs.ngayTao),
                 ngayDuKien: hs.ngayDuKienBaoTri != null
@@ -582,6 +583,9 @@ class _WorkOrderBaoTriListScreenState extends State<WorkOrderBaoTriListScreen>
 class _HsCard extends StatefulWidget {
   final int index;
   final String tenThietBi;
+
+  /// NVKT đang được phân công — lấy từ API danh sách, khớp với chi tiết hồ sơ.
+  final String? nhanVien;
   final int maHoSo;
   final String ngayTao;
   final String? ngayDuKien;
@@ -595,6 +599,7 @@ class _HsCard extends StatefulWidget {
   const _HsCard({
     required this.index,
     required this.tenThietBi,
+    this.nhanVien,
     required this.maHoSo,
     required this.ngayTao,
     this.ngayDuKien,
@@ -721,6 +726,21 @@ class _HsCardState extends State<_HsCard> with SingleTickerProviderStateMixin {
                                 fontSize: 11.5,
                                 color: Colors.grey.shade600,
                                 fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              (widget.nhanVien ?? '').trim().isEmpty
+                                  ? 'Chưa phân công NVKT'
+                                  : 'NVKT: ${widget.nhanVien!.trim()}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: (widget.nhanVien ?? '').trim().isEmpty
+                                    ? Colors.grey.shade500
+                                    : AppColors.primaryDark,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],

@@ -688,16 +688,29 @@ class _WorkOrderSuaChuaListScreenState extends State<WorkOrderSuaChuaListScreen>
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Icon(Icons.person_outline_rounded,
-                            size: 15, color: Colors.grey.shade500),
+                        Icon(
+                          (hs.tenNhanVienThucHiens ?? '').trim().isEmpty
+                              ? Icons.person_off_outlined
+                              : Icons.engineering_outlined,
+                          size: 15,
+                          color: (hs.tenNhanVienThucHiens ?? '').trim().isEmpty
+                              ? Colors.grey.shade500
+                              : AppColors.primaryDark,
+                        ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            hs.tenNhanVienTao ?? '—',
+                            (hs.tenNhanVienThucHiens ?? '').trim().isEmpty
+                                ? 'Chưa phân công NVKT'
+                                : 'NVKT: ${hs.tenNhanVienThucHiens!.trim()}',
                             style: TextStyle(
                                 fontSize: 12.5,
-                                color: Colors.grey.shade600,
-                                fontWeight: FontWeight.w500),
+                                color: (hs.tenNhanVienThucHiens ?? '')
+                                        .trim()
+                                        .isEmpty
+                                    ? Colors.grey.shade600
+                                    : AppColors.primaryDark,
+                                fontWeight: FontWeight.w600),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),

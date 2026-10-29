@@ -412,6 +412,9 @@ mixin _XuLyVatTuVaHoanThanhNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNv
     // Chỉ gửi các bước đã tích chọn và đã bấm Xong (không bắt buộc đủ mọi bước)
     // Chỉ ghi nhận bước đã bấm Xong (+ vật tư). Tích mà chưa Xong → không hợp lệ.
     final buocGui = _buoc.where((b) => b.daChon && b.daXong).toList();
+    // Gửi cả bước đã tích nhưng chưa bấm Xong (bước mới) — trước đây bị bỏ khỏi
+    // hồ sơ vật tư nên Xưởng/Tổ trưởng/Giám đốc không thấy bước đó.
+    final buocDaChon = _buoc.where((b) => b.daChon).toList();
     final chiTichChuaXong =
     _buoc.where((b) => b.daChon && !b.daXong).map((b) => b.soBuoc).toList();
     if (buocGui.isEmpty) {
@@ -419,7 +422,8 @@ mixin _XuLyVatTuVaHoanThanhNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNv
         SnackBar(
           content: Text(
             chiTichChuaXong.isNotEmpty
-                ? 'Bước ${chiTichChuaXong.join(", ")} đã tích nhưng chưa bấm Xong — không được ghi nhận. Hãy Xong ít nhất 1 bước có vật tư.'
+                ? 'Bước ${chiTichChuaXong.join(", ")} đã tích nhưng chưa Xong — sẽ lưu là bước mới. '
+                    'Hãy bấm Xong ít nhất 1 bước có vật tư để hoàn thành quy trình.'
                 : 'Hãy tích chọn ít nhất 1 bước, chọn vật tư, bấm Xong từng bước rồi hoàn thành quy trình.',
           ),
           backgroundColor: AppColors.danger,
@@ -504,7 +508,9 @@ mixin _XuLyVatTuVaHoanThanhNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNv
         content: Text(
           _cheDoCapNhat
               ? 'Nếu đã chỉnh xong, bấm «Gửi xưởng» để gửi lại quy trình. Bấm «Hủy» để ở lại chỉnh tiếp.'
-              : 'Gửi ${buocGui.length} bước đã hoàn thành (kèm vật tư) về Xưởng xác nhận. Không bắt buộc làm đủ mọi bước.',
+              : 'Gửi ${buocGui.length} bước đã xong'
+                  '${buocDaChon.length > buocGui.length ? " và ${buocDaChon.length - buocGui.length} bước mới chưa xong" : ""}'
+                  ' (kèm vật tư) về Xưởng xác nhận. Không bắt buộc làm đủ mọi bước.',
           style: TextStyle(color: Colors.grey.shade700, height: 1.4),
         ),
         actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -563,9 +569,14 @@ mixin _XuLyVatTuVaHoanThanhNvkt on _QuyTrinhNvktScreenStateBase, _XuLyQuyTrinhNv
 
     setState(() => _dangXuLy = true);
     try {
+      // Chốt trạng thái các bước mới/chưa xong trước khi gửi (nếu lần lưu trước lỗi mạng)
+      for (final b in buocDaChon.where((b) => !b.daXong)) {
+        await _luuNhapBuoc(b, silent: true);
+      }
+
       final buocApi = <BuocQuyTrinh>[];
       final buffer = StringBuffer();
-      for (final b in buocGui) {
+      for (final b in buocDaChon) {
         final moTa = b.moTaCtrl.text.trim().isEmpty
             ? 'Bước ${b.soBuoc}'
             : b.moTaCtrl.text.trim();
